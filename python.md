@@ -82,6 +82,13 @@ ruff check --select I . 2>&1       # isort rules
 ruff format --check . 2>&1         # formatting
 ```
 
+### Code coverage
+```bash
+pytest --cov=. --cov-report=term-missing 2>&1
+# Or:
+coverage run -m pytest && coverage report --show-missing 2>&1
+```
+
 ### Semgrep SAST
 ```bash
 semgrep --config=auto . 2>&1
@@ -188,6 +195,21 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 - Business logic in views/routes (should be in services/domain layer)
 - No `__init__.py` structure (flat package, hard to navigate)
 - Test files not mirroring source structure
+
+### Task queue checks (Celery, RQ, Dramatiq)
+
+<details><summary>Celery / task queue</summary>
+
+- Tasks are idempotent (safe to retry)
+- Retry with `max_retries` + exponential backoff (`retry_backoff=True`)
+- Result backend configured and cleaned up (results expire)
+- Dead letter queue / error handling for failed tasks
+- Task serialization: JSON preferred over pickle (security)
+- `task_acks_late=True` for at-least-once delivery
+- Worker concurrency configured (not unlimited)
+- Periodic tasks via `celery beat` with proper schedule (no drift)
+
+</details>
 
 ### Django/Flask/FastAPI specific
 

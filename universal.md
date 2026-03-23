@@ -3,9 +3,13 @@
 Language-agnostic checks. Apply to ANY project regardless of stack.
 These are code review tasks for Opus agents.
 
+> **Note:** Stack-specific files (`go.md`, `python.md`, etc.) extend but do not repeat these checks. If a check here overlaps with a stack file, the stack file provides language-specific details.
+
 ---
 
 ## Level 2: Git Hygiene (CLI, haiku)
+
+> Requires Unix shell (Git Bash / WSL on Windows). These commands may not work in Windows cmd/PowerShell natively.
 
 ```bash
 # Large files >1MB
@@ -15,8 +19,8 @@ git rev-list --objects --all | git cat-file --batch-check='%(objecttype) %(objec
 git ls-files | grep -iE '\.(env|key|pem|p12|pfx|jks|sqlite|db)$' 2>&1
 git ls-files '*.dll' '*.pdb' '*.exe' | grep -v 'tools/' 2>&1
 
-# .gitignore completeness
-for f in node_modules .env dist build .DS_Store __pycache__ .venv venv; do
+# .gitignore completeness (add OS/stack-specific entries as needed)
+for f in node_modules .env dist build .DS_Store Thumbs.db desktop.ini __pycache__ .venv venv target bin obj; do
   git ls-files --error-unmatch "$f" 2>/dev/null && echo "WARNING: $f tracked"
 done
 ```
@@ -37,6 +41,75 @@ Verify responses include:
 
 ---
 
+## Level 2: CSRF Protection (Opus)
+
+- State-changing endpoints (POST/PUT/DELETE) protected against CSRF
+- If using cookies for auth: CSRF token or SameSite=Strict/Lax cookie flag
+- Double-submit cookie pattern or synchronizer token pattern implemented
+- Origin/Referer header validated on server side
+- GET requests do not cause side effects (safe methods)
+- AJAX requests include CSRF header if required by framework
+
+---
+
+## Level 2: Rate Limiting (Opus)
+
+- Rate limiting on all public-facing API endpoints (not just login)
+- Per-user, per-IP, or per-API-key throttling
+- 429 Too Many Requests response with `Retry-After` header
+- Login/auth endpoints have stricter limits (prevent brute force)
+- Rate limits documented for API consumers
+- No rate limit bypass via header manipulation (X-Forwarded-For spoofing)
+
+---
+
+## Level 3: XSS Prevention (Opus)
+
+- All user input escaped before rendering in HTML context
+- No raw HTML rendering with user data (e.g., `v-html`, `dangerouslySetInnerHTML`, `innerHTML`, `Html.Raw()`, `|safe` Jinja filter, `@Html.Raw()`)
+- Content-Security-Policy header blocks inline scripts (`script-src` without `unsafe-inline`)
+- URL parameters not reflected in page without sanitization
+- Rich text editors sanitize output (DOMPurify or equivalent)
+- SVG uploads sanitized (can contain embedded scripts)
+- JSON responses use `Content-Type: application/json` (not `text/html`)
+
+---
+
+## Level 3: SSRF Prevention (Opus)
+
+- User-supplied URLs validated: only `http://` and `https://` schemes allowed
+- Private/internal IP ranges blocked (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, ::1)
+- DNS rebinding protection (resolve hostname, check IP before request)
+- Redirect following limited or disabled for user-supplied URLs
+- Cloud metadata endpoints blocked (169.254.169.254, metadata.google.internal)
+- URL validation applied before saving to config/DB, not just before use
+
+---
+
+## Level 3: IDOR / Access Control (Opus)
+
+- Every endpoint validates that the authenticated user has access to the requested resource
+- Object IDs in URLs/params checked against user's ownership/permissions (not just existence)
+- No sequential/predictable IDs exposed without access check (use UUIDs or verify ownership)
+- Bulk endpoints validate access for each item in the list
+- Admin endpoints have explicit role/permission checks
+- Privilege escalation paths checked: can a regular user access admin resources by changing IDs?
+- Horizontal access checked: can user A access user B's resources?
+
+---
+
+## Level 3: Session Management (Opus)
+
+- Session ID regenerated after login (prevent session fixation)
+- Session timeout: idle timeout (e.g., 30 min) + absolute timeout (e.g., 24h)
+- Concurrent session limits (if applicable)
+- Session invalidated on logout (server-side, not just client-side token deletion)
+- Secure cookie flags: `Secure`, `HttpOnly`, `SameSite=Strict` or `Lax`
+- Session binding: consider IP/User-Agent binding for sensitive apps
+- Session storage: server-side or encrypted JWT (not plain data in cookie)
+
+---
+
 ## Level 3: JWT / Auth Audit (Opus)
 
 - Algorithm validation (no `alg: none` acceptance, no RS256/HS256 confusion)
@@ -53,12 +126,12 @@ Verify responses include:
 
 ## Level 3: API Contract Consistency (Opus)
 
-- Backend struct/model JSON field names match frontend interface/type definitions
-- Nullable fields (backend: pointer+omitempty / Optional) match frontend optional (`field?: type`)
+- Backend model JSON field names match frontend interface/type definitions
+- Nullable fields (backend: language-appropriate nullable type) match frontend optional (`field?: type`)
 - Enums: backend values match frontend constants
 - HTTP status codes: frontend handles 4xx/5xx appropriately
 - No dead endpoints (backend route without any frontend caller, or vice versa)
-- Request/response shapes documented (OpenAPI/Swagger or at least TypeScript types)
+- Request/response shapes documented (OpenAPI/Swagger or at least typed interfaces)
 - Pagination: backend supports it, frontend uses it
 - Error response format consistent across all endpoints
 
@@ -74,6 +147,18 @@ Verify responses include:
 - Correct log levels (ERROR for errors, WARN for degradation, INFO for operations, DEBUG for dev)
 - Log rotation configured (not growing unbounded)
 - Request ID / correlation ID for tracing across services
+- Debug endpoints disabled in production (`/debug/pprof`, `/actuator`, `/__debug__`, `/swagger` if not public API)
+
+---
+
+## Level 3: Error Information Disclosure (Opus)
+
+- Stack traces not returned in production API responses
+- Internal paths, hostnames, database names not leaked in errors
+- Generic error messages to clients ("Internal server error"), details to logs
+- Framework default error pages disabled in production
+- Database error details not exposed (SQL syntax, table names)
+- Verbose error modes disabled (`DEBUG=False`, `ASPNETCORE_ENVIRONMENT=Production`, etc.)
 
 ---
 
@@ -93,9 +178,9 @@ Verify responses include:
 
 **Workarounds & tech debt markers:**
 - `TODO` / `HACK` / `FIXME` / `XXX` markers (count and assess)
-- Lint suppression (`//nolint`, `@ts-ignore`, `# noqa`, `#pragma warning disable`) without explanation
+- Lint suppression without explanation (examples per language: `//nolint`, `@ts-ignore`, `# noqa`, `#pragma warning disable`, `@SuppressWarnings`)
 - Copy-paste >10 lines (should be extracted)
-- Type system bypass (`any`, `object`, `dynamic`, `interface{}`, `unsafe`)
+- Type system bypass (examples per language: `any`, `object`, `dynamic`, `interface{}`, `unsafe`)
 - Magic numbers (unexplained constants)
 
 ---
@@ -122,6 +207,7 @@ Verify responses include:
 - Query/path params not passed raw to SQL, filesystem, or shell
 - JSON deserialized into explicit structs/classes (not raw dict/map)
 - Array/list inputs: size limits (prevent memory exhaustion)
+- Path traversal: user input in file paths validated (canonical path check, prefix validation)
 
 ---
 
@@ -145,6 +231,7 @@ Verify responses include:
 - Hot reload without race conditions (if supported)
 - Secrets in env vars / secret manager (not in config files committed to git)
 - Config files have comments/documentation for non-obvious values
+- Debug endpoints disabled in production
 
 ---
 
@@ -176,13 +263,14 @@ Verify responses include:
 
 ## Level 3: Supply Chain (Opus)
 
-- Lock files committed (`package-lock.json`, `go.sum`, `Cargo.lock`, `poetry.lock`, etc.)
+- Lock files committed (e.g., `package-lock.json`, `go.sum`, `Cargo.lock`, `poetry.lock`, `packages.lock.json`)
 - No `latest` / `*` / unbounded versions in manifests
 - Binaries in repo have provenance documentation
 - CI actions pinned by SHA, not by mutable tag (see Trivy v0.69.4 incident)
 - Dependencies from trusted registries (not random git URLs)
 - Minimal dependency count (each dependency justified)
 - Sub-dependency audit: transitive deps checked for known vulns
+- Dependency confusion: private package names don't conflict with public registries
 
 > `skip_if` no CI/CD: check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines.yml` first.
 

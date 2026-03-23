@@ -88,6 +88,17 @@ mvn dependency:analyze 2>&1    # unused + used-undeclared
 ./gradlew dependencies --configuration runtimeClasspath 2>&1
 ```
 
+### Code coverage (JaCoCo)
+```bash
+# Maven (if jacoco plugin configured)
+mvn jacoco:report -q 2>&1
+# Check: target/site/jacoco/index.html
+
+# Gradle
+./gradlew jacocoTestReport 2>&1
+# Check: build/reports/jacoco/test/html/index.html
+```
+
 ### Semgrep SAST
 ```bash
 semgrep --config=auto . 2>&1

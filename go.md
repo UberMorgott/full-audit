@@ -209,6 +209,35 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 - Circular package dependencies
 - Test coverage assessment (target: >60% for business logic)
 
+### Performance patterns
+
+- `clone` / copy where pointer/reference would work in hot path
+- `string` concatenation in loop (use `strings.Builder`)
+- `fmt.Sprintf` in hot path (use `strconv` or builder)
+- Missing `sync.Pool` for frequently allocated objects
+- Value receiver on large struct (copies on every call)
+- `append()` without pre-allocated capacity for known sizes
+- Unbounded `[]byte` growth without reset
+
+### Overengineering
+
+- Interface with exactly 1 implementation (not for testing)
+- `context.Value` for passing function arguments (should be explicit params)
+- Channel where mutex suffices
+- Goroutine for synchronous operation
+
+<details><summary>Web framework checks (Gin, Echo, Fiber, chi)</summary>
+
+- Middleware order correct (logging -> recovery -> auth -> CORS -> routes)
+- Request binding validated (`ShouldBind` not `Bind` in Gin)
+- Rate limiting middleware configured
+- CORS policy scoped (not blanket `AllowAll`)
+- Graceful shutdown with `signal.NotifyContext`
+- Custom error handler returns generic errors to client
+- Route groups for versioning (`/api/v1/`)
+
+</details>
+
 ### License compliance
 
 ```bash

@@ -60,6 +60,13 @@ dotnet tool install -g snitch
 snitch 2>&1
 ```
 
+### Code coverage
+```bash
+dotnet test --collect:"XPlat Code Coverage" 2>&1
+# Report: dotnet tool install -g dotnet-reportgenerator-globaltool
+# reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coveragereport
+```
+
 ### Secrets scan
 ```bash
 gitleaks detect --source . --no-git -v 2>&1

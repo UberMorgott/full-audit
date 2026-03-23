@@ -88,6 +88,19 @@ cargo llvm-cov --summary-only 2>&1
 cargo bloat --release --crates 2>&1
 ```
 
+### Fuzz testing
+```bash
+# Requires cargo-fuzz (nightly)
+cargo +nightly fuzz list 2>&1
+# Run each target for 30s:
+cargo +nightly fuzz run {target} -- -max_total_time=30 2>&1
+```
+
+### Miri (undefined behavior detection)
+```bash
+cargo +nightly miri test 2>&1
+```
+
 ### Semgrep SAST
 ```bash
 semgrep --config=auto . 2>&1
@@ -191,6 +204,22 @@ Check:
 - Minimal dependency tree (each dep justified)
 - `[patch]` section explained in comments
 - Feature flags used to minimize compiled code
+
+### Web framework checks (Actix-web, Axum, Rocket)
+
+<details><summary>Actix-web / Axum / Rocket</summary>
+
+- Middleware/layer order correct (tracing -> auth -> CORS -> routes)
+- Extractors validate input (reject malformed requests early)
+- Shared state via `Arc` / `Extension` — not global mutable
+- Rate limiting middleware configured
+- CORS policy scoped (not blanket allow-all)
+- Graceful shutdown via `tokio::signal`
+- Custom error responses (no internal details to client)
+- Request body size limits configured
+- TLS configured or behind reverse proxy
+
+</details>
 
 ### Async-specific (if using tokio/async-std)
 

@@ -84,6 +84,15 @@ Check:
 gitleaks detect --source . --no-git -v 2>&1
 ```
 
+### Code coverage
+```bash
+# Vitest
+npx vitest run --coverage 2>&1
+
+# Jest
+npx jest --coverage --passWithNoTests 2>&1
+```
+
 ### Semgrep SAST
 ```bash
 semgrep --config=auto . 2>&1
@@ -166,6 +175,21 @@ npx license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0" 2>&1
 ```bash
 npm outdated 2>&1
 ```
+
+### SSR / Meta-framework checks
+
+<details><summary>Next.js / Nuxt / SvelteKit</summary>
+
+- Hydration mismatch errors (server HTML !== client render)
+- SEO: meta tags, Open Graph, canonical URLs
+- Lazy routes configured (dynamic imports for route components)
+- Route guards / middleware for protected pages
+- ISR/SSG where applicable (static pages not SSR'd unnecessarily)
+- API routes don't leak server secrets to client bundle
+- `getServerSideProps` / `useAsyncData` / `load` error handling
+- Auto-imports configured correctly (Nuxt: no manual import of composables)
+
+</details>
 
 ### Overengineering
 
