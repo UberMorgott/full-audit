@@ -8,11 +8,11 @@ Universal codebase audit system for Claude Code. Works with any project, any sta
 
 User says:
 ```
-Run full audit. Instructions: github.com/{user}/full-audit
+сделай полный аудит проекта инструкции на github.com/UberMorgott/full-audit
 ```
 
 Claude executes:
-1. **Fetch this README** via WebFetch (`https://raw.githubusercontent.com/{user}/full-audit/main/README.md`)
+1. **Fetch this README** via WebFetch (`https://raw.githubusercontent.com/UberMorgott/full-audit/main/README.md`)
 2. **Read project's `CLAUDE.md`** — project-specific code rules override generic checks
 3. **Detect stack** (Step 0 below)
 4. **Fetch relevant files** from this repo (stack-specific + universal)
