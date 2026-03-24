@@ -9,10 +9,11 @@ These are code review tasks for Opus agents.
 
 ## Level 2: Git Hygiene (CLI, haiku)
 
-> Requires Unix shell (Git Bash / WSL on Windows). These commands may not work in Windows cmd/PowerShell natively.
+> Requires Unix shell with `sed` and `awk`. Works in Git Bash on Windows for most commands.
+> `skip_if: windows` for the "Large files" command below — `awk` piping from `git cat-file` may fail in Git Bash due to line ending issues. On Windows, use `git lfs ls-files` or `git ls-files | xargs ls -la | sort -k5 -rn | head -20` as a simpler alternative.
 
 ```bash
-# Large files >1MB
+# Large files >1MB (skip_if: windows — see note above)
 git rev-list --objects --all | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | sed -n '/^blob/{s/blob //;p}' | awk '{if ($2 > 1048576) print $2, $3}' | sort -rn 2>&1
 
 # Suspicious files (adjust exclusions per project)
@@ -68,8 +69,8 @@ Verify responses include:
 > Source: Trail of Bits `insecure-defaults` methodology. Only check prod-reachable code paths.
 
 **Hardcoded secrets & fallback patterns — grep for these regex:**
-- `getenv\(.*\)\s*(or|OR|\|\|)\s*["']` — fallback secret after env var lookup
-- `DEFAULT_SECRET|default_password|changeme|password123` — well-known placeholder secrets
+- `getenv\(.*(SECRET|PASSWORD|TOKEN|KEY|PRIVATE|CREDENTIAL).*\)\s*(or|OR|\|\|)\s*["']` — fallback secret after env var lookup (only for security-sensitive vars; non-secret fallbacks like PORT, HOST are OK)
+- `DEFAULT_SECRET|default_password|changeme|password123|s3cr3t|hunter2` — well-known placeholder secrets
 - `DEBUG\s*[:=]\s*(true|1|yes|on)` — debug mode enabled
 - `AUTH.*[:=]\s*(false|0|no|off|disabled)` — auth disabled
 - `VERIFY.*[:=]\s*(false|0|no|off)` — verification disabled

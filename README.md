@@ -1,5 +1,7 @@
 # Full Audit
 
+> **Version 1.1.0** — 2026-03-24
+
 Universal codebase audit system for Claude Code. Works with any project, any stack, via GitHub reference.
 
 **Supported stacks:** Go, JavaScript/TypeScript (Vue, React, Svelte, Angular), Python (Django, Flask, FastAPI), Rust, Java/Kotlin (Spring Boot), C#/.NET (ASP.NET Core, Blazor).
@@ -20,12 +22,12 @@ Claude executes:
 
 ### Audit Levels
 
-| Level | Name | When | Time estimate |
-|-------|------|------|---------------|
-| 1 | Quick | Every release, CI | ~5 min |
-| 2 | Full | Per sprint | ~15-25 min |
-| 3 | Deep | Major release, quarterly | ~40-60 min |
-| S | Specialized | On demand (API request audit) | ~10-15 min |
+| Level | Name | When | Time estimate (single stack / monorepo) |
+|-------|------|------|----------------------------------------|
+| 1 | Quick | Every release, CI | ~5-10 min / ~10-15 min |
+| 2 | Full | Per sprint | ~20-35 min / ~40-60 min |
+| 3 | Deep | Major release, quarterly | ~60-90 min / ~2-3 hours |
+| S | Specialized | On demand (API request audit) | ~15-25 min |
 
 User can request: "level 1", "level 2", "full audit" (= level 2), "deep audit" (= level 3).
 Default if not specified: **level 2**.
@@ -58,6 +60,22 @@ Default if not specified: **level 2**.
 - Level 1: any branch. Level 2+: prefer `main` or release branch.
 - **Read project's `CLAUDE.md`** before any code review — it contains project-specific Code Rules.
 - **Static analysis by default.** Do not run the server unless the project or user explicitly requires runtime testing.
+
+## Conventions
+
+### `skip_if` blocks
+
+Throughout the playbooks, checks may include a `skip_if` annotation:
+
+```
+> skip_if: <condition>
+```
+
+When the condition is true, the agent should skip the check and note it in the report as "SKIPPED: reason". Common conditions:
+- `skip_if: windows` — command requires Unix-specific tools not available in Git Bash
+- `skip_if: no_tool(name)` — tool not installed (check via `which`/`command -v`)
+- `skip_if: no_ci` — project has no CI/CD pipeline
+- `skip_if: nightly_only` — requires Rust nightly toolchain
 
 ---
 
@@ -106,6 +124,14 @@ TeamCreate("audit-{level}")
 ### Orchestrator Steps
 
 0. **Planning** — Sequential Thinking MCP (if available): waves, dependencies, skippable tasks.
+0.5. **Preflight check** — verify required tools are installed before spawning CLI scanners. Run a quick check per detected stack:
+    ```bash
+    # Example for Go stack:
+    for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semgrep; do
+      command -v "$cmd" >/dev/null 2>&1 && echo "OK: $cmd" || echo "MISSING: $cmd"
+    done
+    ```
+    If critical tools are missing, fetch `tools.md` and install before proceeding. Report missing optional tools as "SKIPPED" in the final report.
 1. **Create team** — `TeamCreate(team_name="audit-{level}")`.
 2. **Create tasks** — `TaskCreate` per agent. Use `TaskUpdate(addBlockedBy=[...])` for wave dependencies. Set priority: CRITICAL tasks first.
 3. **Spawn teammates** — `Agent(team_name="audit-{level}", name=..., model=..., prompt=...)`. Each teammate:
@@ -211,9 +237,12 @@ MCP: Serena for code nav (if available). Fallback: Grep/Read/Glob.
 You are a teammate in audit team "{team_name}". Role: run CLI tools.
 
 1. TaskList -> claim task (TaskUpdate owner="{your_name}")
-2. Run CLI commands from task via Bash
-3. TaskUpdate(status="completed") with output summary
-4. TaskList -> next. None -> idle.
+2. Before running each command, verify the tool exists: `command -v <tool> >/dev/null 2>&1`
+   - If missing: report as "SKIPPED: <tool> not installed" and continue to next command
+   - Do NOT attempt to install tools unless explicitly instructed
+3. Run CLI commands from task via Bash
+4. TaskUpdate(status="completed") with output summary
+5. TaskList -> next. None -> idle.
 
 Do NOT edit files. Only run commands and report.
 ```

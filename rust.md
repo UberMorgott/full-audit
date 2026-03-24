@@ -15,7 +15,8 @@ cargo clippy -- -D warnings 2>&1
 ### Dependency vulnerabilities
 ```bash
 cargo audit 2>&1
-# Or universal: trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
+# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
 ### Tests
@@ -64,7 +65,8 @@ Check:
 
 ### Unused dependencies
 ```bash
-# Requires nightly
+# skip_if: nightly_only — requires Rust nightly toolchain
+rustup run nightly rustc --version >/dev/null 2>&1 || { echo "SKIP: nightly not installed"; exit 0; }
 cargo +nightly udeps --all-targets 2>&1
 ```
 
@@ -90,7 +92,7 @@ cargo bloat --release --crates 2>&1
 
 ### Fuzz testing
 ```bash
-# Requires cargo-fuzz (nightly)
+# skip_if: nightly_only
 cargo +nightly fuzz list 2>&1
 # Run each target for 30s:
 cargo +nightly fuzz run {target} -- -max_total_time=30 2>&1
@@ -98,6 +100,7 @@ cargo +nightly fuzz run {target} -- -max_total_time=30 2>&1
 
 ### Miri (undefined behavior detection)
 ```bash
+# skip_if: nightly_only + no_tool(miri component)
 cargo +nightly miri test 2>&1
 ```
 
@@ -166,6 +169,21 @@ gitleaks detect --source . --no-git -v 2>&1
 - `collect::<Vec<_>>()` immediately followed by iteration (skip collect)
 - Boxing where stack allocation works
 - `to_string()` / `to_owned()` where reference lifetime is sufficient
+
+### Quick reference: Rust vulnerability patterns
+
+| Vuln | Grep pattern | Fix |
+|------|-------------|-----|
+| Unsafe code | `unsafe\s*\{` | Minimize, wrap in safe API, add `// SAFETY:` comment |
+| Transmute | `transmute` | Use `from_*`, `TryFrom`, or `as` casts |
+| SQL Injection | `format!.*SELECT`, `&format!.*WHERE` | Use parameterized queries (sqlx `query!` macro) |
+| Command Injection | `Command::new.*` + user input | Whitelist commands, use `.arg()` not shell interpolation |
+| Path Traversal | `Path::new.*` + user input | Canonicalize + prefix check |
+| Unwrap in prod | `\.unwrap\(\)` (outside `_test.rs`) | Use `?`, `.expect("reason")`, or handle `Result` |
+| Blocking in async | `std::thread::sleep`, `std::fs::` in async fn | Use `tokio::time::sleep`, `tokio::fs::` |
+| Deadlock | `Mutex::lock.*Mutex::lock` (nested) | Consistent lock ordering, or use `parking_lot` |
+| Memory leak | `mem::forget`, `ManuallyDrop` without drop | Ensure explicit drop path |
+| Fire-and-forget | `tokio::spawn` without `JoinHandle` | Store handle, await or abort on shutdown |
 
 ---
 

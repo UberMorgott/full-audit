@@ -42,7 +42,8 @@ mvn pmd:check -q 2>&1
 mvn org.owasp:dependency-check-maven:check 2>&1
 # Or Gradle:
 ./gradlew dependencyCheckAnalyze 2>&1
-# Or universal:
+# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -144,6 +145,7 @@ gitleaks detect --source . --no-git -v 2>&1
 - `CompletableFuture` without `exceptionally()` or `handle()` (swallowed exceptions)
 - Mutable fields without `volatile` or `synchronized` in concurrent context
 - `SimpleDateFormat` shared between threads (not thread-safe)
+- **Kotlin coroutines (if applicable):** `GlobalScope.launch` (goroutine leak — use structured concurrency: `viewModelScope`, `lifecycleScope`, or custom `CoroutineScope`), `runBlocking` in production code (blocks thread pool)
 
 ### Resource leaks
 

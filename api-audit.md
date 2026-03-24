@@ -74,3 +74,14 @@ Trace request flows end-to-end to find amplification patterns:
 4. Calculate: `frontend_frequency * backend_fan_out * external_calls` = total external load
 5. Identify: which flows have highest amplification factor
 6. Recommend: caching, batching, or deduplication at the right layer
+
+### Example output table
+
+```markdown
+| Flow | Frontend freq | Backend fan-out | External calls | Amplification | Risk | Recommendation |
+|------|--------------|-----------------|----------------|--------------|------|----------------|
+| Device polling → /api/devices → AG API | 5s interval | 1 | 3 (status + config + telemetry) | 3x per user per 5s | HIGH | Cache AG responses 10s, batch into single call |
+| WS "device_update" → invalidateQueries(["devices"]) | On event | 1 | 0 (local cache) | Refetches 5 queries | MEDIUM | Narrow invalidation to specific device key |
+| Save settings → onSuccess → invalidateQueries() | On mutation | 1 | 0 | Refetches ALL queries | HIGH | Use specific query keys, not broad invalidation |
+| Login → /api/auth → LDAP bind + token gen | On submit | 1 | 1 (LDAP) | 1x | LOW (rate limited) | OK if rate limited |
+```

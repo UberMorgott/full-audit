@@ -12,3 +12,15 @@ desktop.ini
 
 # Claude
 .claude/
+
+# Test artifacts (if someone runs tools locally in this repo)
+*.log
+*.bak
+*.tmp
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+target/
+bin/
+obj/

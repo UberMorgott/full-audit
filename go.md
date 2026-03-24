@@ -81,6 +81,8 @@ run:
 
 **Option A — Trivy (covers vuln + secrets + licenses):**
 ```bash
+# IMPORTANT: verify Trivy version first — v0.69.4/v0.69.5/v0.69.6 are compromised (see tools.md)
+trivy version 2>&1 | head -1
 trivy fs --scanners vuln,secret,license --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -98,8 +100,13 @@ CGO_ENABLED=1 go test -race -timeout 60s -count=1 ./... 2>&1
 ```
 ```bash
 # Fuzz: find tests, run each 30s
-grep -r "func Fuzz" --include="*_test.go" -l .
-go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
+# skip_if: no fuzz tests found (grep returns empty)
+FUZZ_FILES=$(grep -r "func Fuzz" --include="*_test.go" -l . 2>/dev/null)
+if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
+  echo "$FUZZ_FILES"
+  # Replace FuzzXxx and path with actual values from grep output:
+  go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
+fi
 ```
 ```bash
 # Coverage

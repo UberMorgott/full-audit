@@ -104,7 +104,7 @@ Tools managed via build system (Gradle/Maven plugins). No separate install for m
 ```bash
 dotnet tool install -g dotnet-format           # Formatter
 dotnet tool install -g security-scan           # Vulnerability scanner
-dotnet tool install -g dotnet-outdated         # Dependency freshness
+dotnet tool install -g dotnet-outdated-tool     # Dependency freshness (note: package name is dotnet-outdated-tool)
 # Roslyn analyzers — via NuGet in .csproj
 ```
 
@@ -130,10 +130,17 @@ pip install --upgrade semgrep
 choco install gitleaks    # Windows
 # brew install gitleaks   # macOS
 
-# TruffleHog — deep secrets scanner (verifies live credentials via API)
+# TruffleHog v3 — deep secrets scanner (verifies live credentials via API)
 # More thorough than gitleaks for git history scanning
-pip install trufflehog
-# Or: docker run --rm -v "$(pwd):/src" trufflesecurity/trufflehog filesystem /src
+# WARNING: `pip install trufflehog` installs abandoned v2 (2021). Use Go binary:
+# Install script (recommended):
+curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+# Or via Go:
+go install github.com/trufflesecurity/trufflehog/v3@latest
+# Or via Homebrew:
+# brew install trufflehog
+# Or Docker:
+# docker run --rm -v "$(pwd):/src" trufflesecurity/trufflehog filesystem /src
 
 # OSV-Scanner (Google) — vulnerability scanner using OSV database
 # Natively supports go.sum, package-lock.json, requirements.txt, Cargo.lock
@@ -154,8 +161,20 @@ choco install syft       # Windows
 
 ### Trivy Security Notice
 
-> **Trivy v0.69.4** was compromised on 2026-03-19 by TeamPCP group (infostealer malware).
-> Compromised window: ~3 hours (18:22-21:42 UTC). Also affected: `trivy-action` (~12h), `setup-trivy` (~4h).
-> **Safe version: v0.69.3** (released 2026-03-03, before incident).
-> In CI: pin by immutable commit SHA, never by mutable tag.
-> Verify binary SHA before use.
+> **CRITICAL: Trivy v0.69.4, v0.69.5, and v0.69.6 are ALL compromised.**
+>
+> On 2026-03-19, TeamPCP (aka DeadCatx3/ShellForce) used compromised `aqua-bot` credentials to publish
+> malicious Trivy binaries containing an infostealer that exfiltrates Runner secrets (SSH, cloud, K8s).
+>
+> **Timeline:**
+> - v0.69.4: 2026-03-19 18:22–21:42 UTC (initial compromise)
+> - v0.69.5, v0.69.6: 2026-03-22 (secondary attack, also Docker Hub `latest` tag)
+> - `trivy-action`: 75/76 tags force-pushed (safe: v0.35.0)
+> - `setup-trivy`: all 7 tags force-pushed (safe: v0.2.6)
+>
+> **Safe version: v0.69.3** (protected by GitHub immutable releases since 2026-03-03).
+>
+> **In CI:** pin GitHub Actions by immutable commit SHA, never by mutable version tag.
+> **Locally:** verify binary checksum before use. Run `trivy version` to confirm.
+>
+> References: [GHSA-69fq-xp46-6x23](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23)

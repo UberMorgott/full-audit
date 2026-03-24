@@ -20,7 +20,8 @@ npm run build && npm run lint 2>&1
 ### Dependency vulnerabilities
 ```bash
 npm audit 2>&1
-# Or universal: trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
+# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
 ### Tests (if configured)

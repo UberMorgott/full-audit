@@ -19,7 +19,8 @@ ruff check . 2>&1
 ```bash
 pip-audit 2>&1
 # Or: safety check 2>&1
-# Or universal: trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
+# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
 ### Tests
@@ -137,6 +138,21 @@ gitleaks detect --source . --no-git -v 2>&1
 - Socket/connection not closed in finally/context manager
 - Generator not fully consumed or closed (resource held)
 
+### Quick reference: Python vulnerability patterns
+
+| Vuln | Grep pattern | Fix |
+|------|-------------|-----|
+| SQL Injection | `f"SELECT`, `"SELECT.*".format`, `%s.*execute` with `%` | Parameterized queries: `cursor.execute("... WHERE id = ?", (id,))` |
+| Command Injection | `os.system`, `subprocess.*shell=True` | `subprocess.run([...], shell=False)`, whitelist commands |
+| Path Traversal | `os.path.join.*request`, `open(.*request` | `os.path.realpath()` + prefix check |
+| Deserialization | `pickle.loads`, `yaml.load\(` (not `safe_load`) | `json`, `yaml.safe_load()` |
+| SSRF | `requests.get\(.*url`, `urllib.request.urlopen` | Validate URL scheme, block private IPs |
+| Eval / exec | `eval\(`, `exec\(`, `compile\(` | Never with user input; use AST or safe alternatives |
+| Weak RNG | `import random` (not `secrets`) for tokens | `secrets.token_hex()`, `secrets.token_urlsafe()` |
+| Debug in prod | `DEBUG\s*=\s*True`, `app.run(debug=True)` | Env-based config: `DEBUG = os.getenv("DEBUG") == "true"` |
+| Hardcoded secrets | `password\s*=\s*["']`, `api_key\s*=\s*["']` | Environment variables, secret manager |
+| Template injection | `render_template_string\(.*request` | Never pass user input to template rendering |
+
 ---
 
 ## Level 3: Deep (includes Level 2)
@@ -218,9 +234,9 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 - `DEBUG = True` in production settings
 - `SECRET_KEY` hardcoded (should be env var)
 - `ALLOWED_HOSTS = ['*']`
-- CSRF middleware disabled
+- CSRF middleware disabled or `@csrf_exempt` on POST endpoints
+- **Middleware order:** `MIDDLEWARE` list should follow: `SecurityMiddleware` → `SessionMiddleware` → `CommonMiddleware` → `CsrfViewMiddleware` → `AuthenticationMiddleware` → custom middleware → `MessageMiddleware`. Auth before CSRF = broken CSRF. Wrong order = silent security failures.
 - Raw SQL queries (`cursor.execute` with string formatting)
-- `@csrf_exempt` on POST endpoints
 - No rate limiting on auth endpoints
 - `FileField`/`ImageField` without upload validation
 - `JsonResponse` with internal error details
@@ -235,6 +251,7 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 - `send_file()` with user-controlled path
 - No rate limiting (Flask-Limiter)
 - `jsonify()` with internal error details
+- **Middleware / before_request order:** `@app.before_request` handlers execute in registration order. Auth check must come before any data-access handler. Rate limiting (`Flask-Limiter`) should be registered before route handlers.
 
 </details>
 
@@ -246,5 +263,6 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 - Sync functions in async router (blocking event loop)
 - No `response_model` on endpoints (leaking internal fields)
 - Background tasks without error handling
+- **Middleware order:** `app.add_middleware()` calls execute in reverse order (last added = first to run). Correct order of `add_middleware()` calls: routes-specific → auth → CORS → TrustedHost → HTTPS redirect. CORS must wrap auth, not the other way around.
 
 </details>

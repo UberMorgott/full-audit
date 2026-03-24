@@ -23,7 +23,8 @@ dotnet format --verify-no-changes 2>&1
 ### Dependency vulnerabilities
 ```bash
 dotnet list package --vulnerable --include-transitive 2>&1
-# Or universal:
+# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
