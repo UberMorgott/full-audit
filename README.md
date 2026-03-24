@@ -135,31 +135,26 @@ Only run CLI scanners and code review on changed files. Useful for:
 - Post-sprint quick check
 - Pre-release delta audit
 
-### Wave Example (Go + Vue monorepo, Level 2)
+### Wave Plan
 
-> This is a Level 2 example. For Level 3, add Wave 3 below.
+> Waves are generated dynamically based on detected stacks. `{stack}.md` = the stack-specific file (go.md, frontend.md, python.md, etc.). For monorepos with N stacks, spawn 1 cli-scanner + 1 code-reviewer per stack.
 
 ```
 Wave 1 — CLI + research (parallel, haiku + sonnet):
-  - cli-scanner-1 (haiku): [go.md L1+L2 CLI]
-      go build, go vet, staticcheck, golangci-lint,
-      trivy/gosec+govulncheck, race detector, dead code,
-      go mod verify, gitleaks, semgrep
-  - cli-scanner-2 (haiku): [frontend.md L1+L2 CLI]
-      npm run build, npm run lint, vue-tsc, knip,
-      npm audit, gitleaks, semgrep
-  - cli-scanner-3 (haiku): [universal.md L2 CLI]
+  - cli-scanner-{N} (haiku): [{stack}.md L1+L2 CLI commands]
+      Per detected stack: build, lint, vuln scan, tests,
+      SAST (semgrep), secrets (gitleaks), dead code, coverage
+      → 1 scanner per stack (e.g., cli-scanner-go, cli-scanner-frontend)
+  - cli-scanner-universal (haiku): [universal.md L2 CLI]
       git hygiene (large files, suspicious files, .gitignore)
   - web-researcher (sonnet): [universal.md Stack Currency]
       version checks, CVE search for all deps
 
 Wave 2 — code review (parallel, opus, after Wave 1):
-  - code-reviewer-1 (opus): [go.md L2 Code Review]
-      security (OWASP+STRIDE), concurrency, resource leaks
-  - code-reviewer-2 (opus): [frontend.md L2 Code Review]
-      security (XSS, prototype pollution, PostMessage),
-      state management, performance, WebSocket hygiene
-  - code-reviewer-3 (opus): [universal.md L2 Opus]
+  - code-reviewer-{N} (opus): [{stack}.md L2 Code Review]
+      Per detected stack: security, concurrency, resource leaks
+      → 1 reviewer per stack
+  - code-reviewer-universal (opus): [universal.md L2 Opus]
       HTTP headers, CSRF, rate limiting,
       insecure defaults, timing attacks, mass assignment
 ```
@@ -168,24 +163,20 @@ Wave 2 — code review (parallel, opus, after Wave 1):
 
 ```
 Wave 3 — deep review (parallel, opus):
-  - code-reviewer-1 (opus): [go.md L3]
-      type safety & language traps, error handling,
-      graceful shutdown, DB audit, complexity,
-      performance (pprof), overengineering
-  - code-reviewer-2 (opus): [universal.md L3 — security]
+  - code-reviewer-{N} (opus): [{stack}.md L3]
+      Per detected stack: all Level 3 checks from stack file
+      → 1 reviewer per stack
+  - code-reviewer-security (opus): [universal.md L3 — security]
       XSS, SSRF, deserialization, XXE, ReDoS,
       log injection, IDOR/BOLA/BFLA, session mgmt,
       JWT/auth, business logic abuse,
       webhook security, file upload hardening
-  - code-reviewer-3 (opus): [universal.md L3 — quality]
+  - code-reviewer-quality (opus): [universal.md L3 — quality]
       API contract consistency, logging & observability,
       error disclosure, overengineering, docs freshness,
       input validation, resilience, config mgmt,
       state mgmt, privacy/PII, supply chain, SBOM,
       sharp edges, variant analysis
-  - code-reviewer-4 (opus): [frontend.md L3]
-      a11y, error handling, SSR checks,
-      overengineering, license compliance
 ```
 
 </details>
