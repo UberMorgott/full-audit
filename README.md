@@ -45,7 +45,7 @@ Default if not specified: **level 2**.
 | `java.md` | `pom.xml` / `build.gradle` detected | Java/Kotlin: CLI + code review checks |
 | `csharp.md` | `*.csproj` / `*.sln` detected | C#/.NET: CLI + code review checks |
 | `universal.md` | Level 2+ | Language-agnostic reviews (security, concurrency, architecture...) |
-| `api-audit.md` | Specialized request | API request redundancy audit |
+| `api-audit.md` | Specialized request, or Level 3 with API-heavy apps | API request redundancy audit |
 
 > **Fetch pattern:** `https://raw.githubusercontent.com/{user}/full-audit/main/{file}`
 
@@ -107,15 +107,51 @@ TeamCreate("audit-{level}")
 
 0. **Planning** — Sequential Thinking MCP (if available): waves, dependencies, skippable tasks.
 1. **Create team** — `TeamCreate(team_name="audit-{level}")`.
-2. **Create tasks** — `TaskCreate` per agent. Use `TaskUpdate(addBlockedBy=[...])` for wave dependencies.
+2. **Create tasks** — `TaskCreate` per agent. Use `TaskUpdate(addBlockedBy=[...])` for wave dependencies. Set priority: CRITICAL tasks first.
 3. **Spawn teammates** — `Agent(team_name="audit-{level}", name=..., model=..., prompt=...)`. Each teammate:
-   - Reads `TaskList`, claims unblocked task via `TaskUpdate(owner="{name}")`
+   - Reads `TaskList`, claims highest-priority unblocked task via `TaskUpdate(owner="{name}")`
    - Executes -> `TaskUpdate(status="completed")` -> takes next
    - Goes idle when no tasks — this is normal
 4. **Coordination** — messages arrive automatically. On blockers — reassign via `SendMessage`.
-5. **Collect results** — compile summary + fix plan.
-6. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with `model="opus"` teammates.
-7. **Shutdown** — `SendMessage(message={type:"shutdown_request"})` per teammate -> `TeamDelete`.
+5. **Timeout recovery** — if agent reports no progress for >5 min, Lead reassigns task to another agent or investigates blocker.
+6. **Collect results** — compile summary + fix plan. **Deduplicate** findings from multiple agents (same issue found by different reviewers → merge, keep highest severity).
+7. **Post-fix verification** — after fixes, re-run the CLI commands that originally found the issue to confirm closure.
+8. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with `model="opus"` teammates. Create feature branch before fixing.
+9. **Shutdown** — `SendMessage(message={type:"shutdown_request"})` per teammate -> `TeamDelete`.
+
+### Diff Mode (CI / incremental)
+
+For auditing only changes since last audit (faster, ~3-5 min):
+
+```bash
+# Get changed files since last audit tag or main branch
+git diff --name-only main...HEAD
+# Or since last audit:
+git diff --name-only audit/last-run...HEAD
+```
+
+Only run CLI scanners and code review on changed files. Useful for:
+- CI pipeline integration (run on every PR)
+- Post-sprint quick check
+- Pre-release delta audit
+
+### Wave Example (Go + Vue monorepo)
+
+```
+Wave 1 (parallel):
+  - cli-scanner-1: go build, go vet, staticcheck, golangci-lint
+  - cli-scanner-2: npm run build, npm run lint, vue-tsc
+  - web-researcher: version checks
+
+Wave 2 (parallel, after Wave 1):
+  - code-reviewer-1: Go security review (OWASP + STRIDE)
+  - code-reviewer-2: Go concurrency + resource leaks
+  - code-reviewer-3: Frontend security + performance
+
+Wave 3 (after Wave 2, Level 3 only):
+  - code-reviewer-1: universal checks (business logic, sharp edges)
+  - code-reviewer-2: API contract consistency + cross-layer trace
+```
 
 ### MCP Servers (if available)
 
@@ -152,6 +188,21 @@ You are a teammate in audit team "{team_name}". Role: run CLI tools.
 4. TaskList -> next. None -> idle.
 
 Do NOT edit files. Only run commands and report.
+```
+
+**Web researcher:**
+```
+You are a teammate in audit team "{team_name}". Role: version & CVE research.
+
+1. TaskList -> claim task (TaskUpdate owner="{your_name}")
+2. Read manifest files (go.mod, package.json, etc.)
+3. For each dependency: web search latest version, known CVEs, EOL status
+4. Check runtime/framework versions against latest releases
+5. TaskUpdate(status="completed") with table:
+   | Dependency | Current | Latest | Status | CVEs | Notes |
+
+Rate each: Current / Behind / EOL / Vulnerability (see universal.md Stack Currency).
+Do NOT edit files. Only research and report.
 ```
 
 **Fixer:**
@@ -202,6 +253,7 @@ check TaskList for other active shared/ tasks. If conflict — wait or notify le
 | Build & Lint | PASS/FAIL | 0 errors / N errors |
 | Security (CLI) | PASS/WARN/FAIL | N vulns (H critical, M high) |
 | Security (manual) | PASS/WARN/FAIL | N findings |
+| Security (design) | PASS/WARN/FAIL | N sharp edges, N insecure defaults |
 | Concurrency | PASS/WARN/FAIL | N races / N patterns |
 | Dependencies | CURRENT/BEHIND/EOL | N outdated, N EOL |
 | Code Quality | PASS/WARN | complexity, dead code |

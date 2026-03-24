@@ -105,12 +105,15 @@ semgrep --config=auto . 2>&1
 ### Security review
 
 - **XSS:** `v-html` / `dangerouslySetInnerHTML` / `innerHTML` with user data
-- **Open redirect:** `window.location = userInput`
+- **Open redirect:** `window.location = userInput`, `window.open(userInput)`
 - **Sensitive data in localStorage:** tokens, passwords, PII (use httpOnly cookies or secure storage)
 - **Eval / Function constructor:** `eval()`, `new Function()`, `setTimeout(string)`
-- **PostMessage:** `window.postMessage` without origin check in listener
+- **PostMessage:** `window.postMessage` without origin check in listener — also check Web Workers' `postMessage`
 - **CORS:** frontend sending credentials to wrong origins
 - **Source maps:** disabled in production build
+- **Prototype pollution:** `_.merge()`, `$.extend()`, `Object.assign()`, spread with user-controlled keys — deep merge of user input into objects can overwrite `__proto__`
+- **Subresource Integrity (SRI):** CDN-loaded scripts/styles without `integrity` attribute
+- **`window.__STATE__` / SSR hydration:** server-rendered HTML injecting user data into global JS object without sanitization (XSS via hydration)
 
 ### State management
 

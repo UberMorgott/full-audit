@@ -15,6 +15,15 @@ go install golang.org/x/tools/cmd/deadcode@latest
 go install github.com/google/go-licenses/v2@latest
 go install github.com/gitleaks/gitleaks/v8@latest
 go install github.com/kisielk/errcheck@latest
+
+# Goroutine leak detector (for tests)
+go install go.uber.org/goleak/cmd/goleak@latest
+
+# Struct alignment optimizer
+go install github.com/dkorunic/betteralign/cmd/betteralign@latest
+
+# Dependency vulnerability (alternative to govulncheck)
+go install github.com/sonatype-nexus-community/nancy@latest
 ```
 
 > Windows: Go race detector requires MinGW-w64 (`gcc` in PATH).
@@ -32,7 +41,12 @@ Tools run via `npx` — no global install needed:
 Optional global:
 ```bash
 npm install -g npm-check-updates   # ncu — interactive dependency update
+npm install -g snyk                # Alternative vuln scanner with fix suggestions
 ```
+
+Additional `npx` tools (no install needed):
+- `npx depcheck` — find unused dependencies
+- `npx audit-ci` — CI-friendly npm audit wrapper with configurable severity thresholds
 
 ---
 
@@ -63,6 +77,8 @@ cargo install cargo-geiger         # Unsafe code counter
 cargo install cargo-tarpaulin      # Code coverage (Linux only)
 cargo install cargo-bloat          # Binary size analysis
 cargo install cargo-udeps          # Unused dependencies (nightly)
+cargo install cargo-supply-chain   # Shows who maintains each dependency
+cargo install cargo-vet            # Mozilla's code review tracking for deps
 ```
 
 ---
@@ -113,6 +129,27 @@ pip install --upgrade semgrep
 # Already in Go tools above, or:
 choco install gitleaks    # Windows
 # brew install gitleaks   # macOS
+
+# TruffleHog — deep secrets scanner (verifies live credentials via API)
+# More thorough than gitleaks for git history scanning
+pip install trufflehog
+# Or: docker run --rm -v "$(pwd):/src" trufflesecurity/trufflehog filesystem /src
+
+# OSV-Scanner (Google) — vulnerability scanner using OSV database
+# Natively supports go.sum, package-lock.json, requirements.txt, Cargo.lock
+go install github.com/google/osv-scanner/cmd/osv-scanner@latest
+# Or: npm install -g osv-scanner
+
+# Detect-Secrets (Yelp) — pre-commit secrets scanner with baseline
+pip install detect-secrets
+
+# Checkov — IaC security scanner (Terraform, Dockerfile, K8s, GitHub Actions)
+pip install checkov
+
+# Syft — SBOM generator (CycloneDX/SPDX)
+# Supports: Go, Node, Python, Rust, Java, C#, containers
+choco install syft       # Windows
+# brew install syft      # macOS
 ```
 
 ### Trivy Security Notice

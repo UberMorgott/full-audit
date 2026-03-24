@@ -63,6 +63,65 @@ Verify responses include:
 
 ---
 
+## Level 2: Insecure Defaults & Dangerous Configuration (Opus)
+
+> Source: Trail of Bits `insecure-defaults` methodology. Only check prod-reachable code paths.
+
+**Hardcoded secrets & fallback patterns — grep for these regex:**
+- `getenv\(.*\)\s*(or|OR|\|\|)\s*["']` — fallback secret after env var lookup
+- `DEFAULT_SECRET|default_password|changeme|password123` — well-known placeholder secrets
+- `DEBUG\s*[:=]\s*(true|1|yes|on)` — debug mode enabled
+- `AUTH.*[:=]\s*(false|0|no|off|disabled)` — auth disabled
+- `VERIFY.*[:=]\s*(false|0|no|off)` — verification disabled
+
+**Weak crypto defaults:**
+- MD5 / SHA1 / DES / RC4 / Blowfish in security contexts (auth, token generation, integrity)
+- `math/rand` (Go) / `random` (Python) / `Math.random()` (JS) for security-sensitive values — must use crypto-secure RNG
+- Static or predictable IV/nonce in encryption
+- ECB mode in block ciphers
+- Key sizes below current minimum (RSA <2048, AES <128, ECDSA <256)
+
+**Permissive access controls:**
+- `AllowAll` / `*` in CORS, firewall, permissions without justification
+- Default admin accounts or well-known credentials
+- Anonymous access to administrative functions
+- Default open permissions on file/directory creation
+
+**Silent security failures:**
+- Auth check that logs but doesn't block on failure
+- Validation that warns but continues processing
+- Rate limiter that counts but doesn't reject
+- Certificate validation disabled with TODO to re-enable
+
+---
+
+## Level 2: Timing Attacks (Opus)
+
+- Secret comparison (HMAC, tokens, API keys, passwords) must use constant-time comparison:
+  - Go: `subtle.ConstantTimeCompare()`
+  - Python: `hmac.compare_digest()`
+  - Node.js: `crypto.timingSafeEqual()`
+  - Java: `MessageDigest.isEqual()`
+  - C#: `CryptographicOperations.FixedTimeEquals()`
+  - Rust: `constant_time_eq` crate
+- Login/auth endpoints: response time should not reveal whether username exists (early return on "user not found" leaks info)
+- Rate-limited endpoints: constant-time rejection (don't short-circuit)
+
+---
+
+## Level 2: Mass Assignment / Over-Posting (Opus)
+
+- JSON/form deserialization into structs/objects: ensure user cannot set fields they shouldn't
+  - Go: only exported JSON fields user can modify; sensitive fields (`IsAdmin`, `Role`, `CreatedAt`) excluded from request binding
+  - Python/Django: `ModelForm.Meta.fields` whitelist (never `__all__`); DRF: `read_only_fields` for computed/admin fields
+  - Java/Spring: `@JsonIgnoreProperties` or DTO pattern (don't bind directly to entity)
+  - C#: `[Bind(Include="...")]` or separate ViewModel
+  - JS/TS: validate/pick only allowed fields from request body
+- Admin-only fields (role, permissions, internal IDs) never bindable from user input
+- Separate DTOs for create/update vs internal representation
+
+---
+
 ## Level 3: XSS Prevention (Opus)
 
 - All user input escaped before rendering in HTML context
@@ -78,7 +137,9 @@ Verify responses include:
 ## Level 3: SSRF Prevention (Opus)
 
 - User-supplied URLs validated: only `http://` and `https://` schemes allowed
-- Private/internal IP ranges blocked (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, ::1)
+- Private/internal IP ranges blocked:
+  - IPv4: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`
+  - IPv6: `::1`, `fc00::/7` (unique local), `fe80::/10` (link-local)
 - DNS rebinding protection (resolve hostname, check IP before request)
 - Redirect following limited or disabled for user-supplied URLs
 - Cloud metadata endpoints blocked (169.254.169.254, metadata.google.internal)
@@ -86,15 +147,126 @@ Verify responses include:
 
 ---
 
+## Level 3: Deserialization Safety (Opus)
+
+Unsafe deserialization = Remote Code Execution in many languages:
+
+| Language | Dangerous | Safe alternative |
+|----------|-----------|-----------------|
+| Go | `encoding/gob` with untrusted input, `yaml.v2` with arbitrary types, `encoding/json` into `interface{}` without depth limit | Typed structs, `yaml.v3`, limit JSON depth |
+| Python | `pickle.loads()`, `yaml.load()`, `marshal.loads()` | `json`, `yaml.safe_load()`, `msgpack` |
+| Java | `ObjectInputStream.readObject()`, `XMLDecoder` | JSON/Protobuf, `ObjectInputFilter` whitelist |
+| C# | `BinaryFormatter` (banned), `NetDataContractSerializer` | `System.Text.Json`, `[JsonSerializable]` source gen |
+| Rust | `bincode`/`serde` with `#[serde(deny_unknown_fields)]` missing | Typed deserialization with strict schemas |
+| JS/TS | `eval(JSON)`, custom deserializers without validation | `JSON.parse()` with schema validation (zod/joi) |
+
+Check:
+- No deserialization of untrusted data into arbitrary types
+- Input size limits on deserialization (prevent memory exhaustion)
+- Schema validation before or during deserialization
+- No polymorphic deserialization without type whitelist
+
+---
+
+## Level 3: XXE (XML External Entity) Injection (Opus)
+
+If project processes XML in any form:
+
+- XML parser configured to disable external entities and DTD processing
+- Go: `encoding/xml` — vulnerable by default; disable with `xml.NewDecoder` + `d.Strict = true`
+- Java: `DocumentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`
+- Python: `defusedxml` library instead of `xml.etree`, `lxml` with `resolve_entities=False`
+- C#: `XmlReaderSettings.DtdProcessing = DtdProcessing.Prohibit`
+- PHP: `libxml_disable_entity_loader(true)`
+- Check for: SOAP endpoints, RSS/Atom feeds, SAML, SVG uploads, Office file processing (OOXML = XML inside ZIP)
+
+---
+
+## Level 3: ReDoS (Regular Expression DoS) (Opus)
+
+- Regex patterns with nested quantifiers on overlapping groups: `(a+)+`, `(a|a)+`, `(.*a){10}`
+- User input used as regex pattern without sanitization (use `regexp.QuoteMeta` in Go, `re.escape()` in Python)
+- Regex applied to unbounded user input without length limit
+- Use RE2-compatible engines where possible (Go's `regexp` is safe by default — linear time; Python/Java/JS are not)
+- Tools: `vuln-regex-detector` (JS), `recheck` (Java), Semgrep has ReDoS rules
+
+---
+
+## Level 3: Log Injection (Opus)
+
+- User input logged without sanitization of newlines (`\n`, `\r`) — attacker can forge log entries
+- Structured logging (JSON) mitigates but still check for:
+  - Control characters in log values
+  - Log entries that could be interpreted as commands by log aggregators
+  - HTML/JS in logs viewed via web-based log viewers (XSS in log dashboards)
+- Prevention: strip/encode `\r\n` in user input before logging, use structured logging with separate fields
+
+---
+
+## Level 3: Business Logic Abuse (Opus)
+
+> Not detectable by scanners — requires manual review.
+
+- **Negative values:** can user submit negative prices, quantities, durations?
+- **Boundary bypass:** can user skip required steps (verification, payment, approval)?
+- **Race conditions in business logic:** double-spend, duplicate submission, TOCTOU (time-of-check-to-time-of-use)
+- **Privilege escalation via parameters:** can user change their role/permissions by modifying request body?
+- **Abuse of bulk operations:** can user enumerate resources via bulk endpoints?
+- **Referral/discount abuse:** can same code be applied multiple times, self-referral?
+- **Rate limiting bypass via business logic:** rotating accounts, parallel sessions
+
+---
+
+## Level 3: Webhook Security (Opus)
+
+> If the application receives or sends webhooks.
+
+**Incoming webhooks:**
+- Signature validation (HMAC) on every incoming webhook
+- Replay protection: timestamp check + nonce/idempotency key
+- Webhook URL not user-controlled (or validated against SSRF)
+- Payload size limit
+- Async processing (don't block on webhook handler)
+
+**Outgoing webhooks:**
+- TLS verification on target URL
+- Timeout on delivery attempts
+- Retry with exponential backoff
+- Dead letter queue for failed deliveries
+- Secrets not included in webhook payloads
+
+---
+
+## Level 3: File Upload Hardening (Opus)
+
+> Extends Input Validation section with upload-specific checks.
+
+- File size limit enforced **before** reading into memory (streaming validation)
+- MIME type validated by magic bytes, not Content-Type header or extension
+- Archive bombs: limit decompression ratio and total size for ZIP/GZIP uploads
+- Path traversal via filename: sanitize filename from ZIP entries, strip `../`
+- Polyglot files: file that is valid as multiple types (e.g., GIFAR = GIF + JAR)
+- Image processing: use library with CVE track record check (ImageMagick policy.xml, libvips preferred)
+- Virus scanning on uploaded files (ClamAV or cloud service)
+- Store uploads outside webroot, serve via handler with auth check
+- Generated filenames (UUID) — never use user-supplied filename for storage
+
+---
+
 ## Level 3: IDOR / Access Control (Opus)
 
+**BOLA (Broken Object Level Authorization):**
 - Every endpoint validates that the authenticated user has access to the requested resource
 - Object IDs in URLs/params checked against user's ownership/permissions (not just existence)
 - No sequential/predictable IDs exposed without access check (use UUIDs or verify ownership)
 - Bulk endpoints validate access for each item in the list
-- Admin endpoints have explicit role/permission checks
+
+**BFLA (Broken Function Level Authorization):**
+- Admin endpoints have explicit role/permission checks (not just authentication)
 - Privilege escalation paths checked: can a regular user access admin resources by changing IDs?
 - Horizontal access checked: can user A access user B's resources?
+- HTTP method override: does `X-HTTP-Method-Override` bypass method-based access control?
+- GraphQL/API: are mutations and sensitive queries restricted by role?
 
 ---
 
@@ -121,6 +293,9 @@ Verify responses include:
 - Token stored securely (httpOnly cookie, not localStorage for sensitive apps)
 - CSRF protection if using cookies for auth
 - Password hashing: bcrypt/Argon2/scrypt (not MD5/SHA)
+- Account enumeration prevention: login/register/reset responses don't reveal if account exists
+- MFA bypass: if MFA enabled, ensure no fallback path that skips it
+- Credential stuffing protection: CAPTCHA, device fingerprint, progressive delays
 
 ---
 
@@ -148,6 +323,9 @@ Verify responses include:
 - Log rotation configured (not growing unbounded)
 - Request ID / correlation ID for tracing across services
 - Debug endpoints disabled in production (`/debug/pprof`, `/actuator`, `/__debug__`, `/swagger` if not public API)
+- **Log injection prevention:** user input sanitized before logging (strip `\r\n`, encode control characters). See also "Log Injection" section above
+- **Audit log integrity:** audit logs protected from modification by the application itself (append-only, separate permissions)
+- **Sensitive data in error context:** stack traces, request bodies, query parameters not logged if they may contain secrets
 
 ---
 
@@ -208,6 +386,8 @@ Verify responses include:
 - JSON deserialized into explicit structs/classes (not raw dict/map)
 - Array/list inputs: size limits (prevent memory exhaustion)
 - Path traversal: user input in file paths validated (canonical path check, prefix validation)
+- Symlink resolution: `filepath.EvalSymlinks` (Go), `os.path.realpath` (Python) before prefix check
+- Regex with user input: escape or validate (ReDoS risk — see ReDoS section)
 
 ---
 
@@ -220,6 +400,8 @@ Verify responses include:
 - Fallback behavior defined (what happens when dependency is down?)
 - Timeout cascade: external call timeout < handler timeout < server timeout
 - Bulkhead: failure in one subsystem doesn't cascade to others
+- Singleflight / dedup: concurrent identical requests coalesced (Go: `singleflight`, JS: `p-limit` / `p-queue`)
+- Thundering herd prevention: cache stampede protection (lock + populate, or probabilistic early expiration)
 
 ---
 
@@ -232,6 +414,8 @@ Verify responses include:
 - Secrets in env vars / secret manager (not in config files committed to git)
 - Config files have comments/documentation for non-obvious values
 - Debug endpoints disabled in production
+- **Config cliffs:** small config change causes catastrophic behavior shift (e.g., pool size 10→0 = unlimited, timeout 0 = no timeout vs infinite)
+- **Feature flags:** cannot be manipulated via request parameters by end users
 
 ---
 
@@ -271,8 +455,64 @@ Verify responses include:
 - Minimal dependency count (each dependency justified)
 - Sub-dependency audit: transitive deps checked for known vulns
 - Dependency confusion: private package names don't conflict with public registries
+- **Single-maintainer risk:** critical dependencies with 1 maintainer and no org backing
+- **Unmaintained dependencies:** no commits >2 years, no response to issues
+- **High-risk features in deps:** FFI, deserialization, network access, native code — justify each
+- **SBOM:** generated for releases (see SBOM section below)
+- **Binary provenance:** release binaries have reproducible builds or signed checksums
 
 > `skip_if` no CI/CD: check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines.yml` first.
+
+---
+
+## Level 3: SBOM & Software Composition (Opus)
+
+> Software Bill of Materials — increasingly required for enterprise and regulated industries.
+
+- SBOM generated for release artifacts:
+  - Go: `cyclonedx-gomod` or `syft`
+  - Node.js: `syft` or `@cyclonedx/cyclonedx-npm`
+  - Python: `cyclonedx-py` or `syft`
+  - Rust: `cargo-cyclonedx`
+  - Java: `cyclonedx-maven-plugin` / `cyclonedx-gradle-plugin`
+  - C#: `CycloneDX` NuGet package
+- Format: CycloneDX or SPDX (machine-readable)
+- SBOM includes transitive dependencies
+- SBOM stored alongside release artifacts
+- CI pipeline generates SBOM automatically on release
+
+---
+
+## Level 3: Sharp Edges & Footgun Design (Opus)
+
+> Source: Trail of Bits `sharp-edges` methodology. Review API design for footgun potential.
+
+**How to execute:** For each public API/function/config in the codebase, ask: "What happens if a developer uses this wrong?" Grep for the patterns below and assess each match.
+
+Evaluate against 3 developer archetypes: **malicious** (actively exploiting), **lazy** (skipping docs, using defaults), **confused** (misunderstanding semantics).
+
+**Categories — grep for and assess:**
+1. **Algorithm selection pitfalls** — API offers multiple algorithms/modes, wrong choice = vulnerability. Grep: `ECB`, `MD5`, `SHA1`, `DES`, `RC4` in non-test code
+2. **Dangerous defaults** — default configuration is insecure, security requires opt-in. Grep: `default`, `Default`, constructor calls without security params
+3. **Primitive vs semantic types** — accepting `string` where typed value needed. Grep: function signatures taking `string` for URLs, SQL, emails, file paths
+4. **Config cliffs** — small config change causes catastrophic behavior shift. Review: config files, constructor defaults, zero-value behavior
+5. **Silent failures** — operation appears to succeed but security property not enforced. Grep: `log` + `continue`/`return nil` in auth/validation code
+6. **Stringly-typed security** — security decisions based on string matching. Grep: role/permission checks using string literals (`"admin"`, `"user"`)
+
+---
+
+## Level 3: Variant Analysis (Opus)
+
+> Source: Trail of Bits `variant-analysis` methodology. Run AFTER code review — not standalone. When a vulnerability is found during review, search for similar patterns before closing the task.
+
+After finding any CRITICAL or HIGH vulnerability:
+1. **Understand** the root cause pattern (not just the instance)
+2. **Exact match** — `grep -rn` codebase for identical pattern
+3. **Identify abstraction points** — what makes this pattern generalizable? (same API misuse, same developer mistake, same library)
+4. **Generalize** — broaden grep pattern to catch near-misses
+5. **Triage** — assess each variant for exploitability
+
+Output: append variants to the same finding with `[VARIANT]` prefix.
 
 ---
 
