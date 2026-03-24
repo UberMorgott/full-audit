@@ -115,8 +115,8 @@ TeamCreate("audit-{level}")
 4. **Coordination** — messages arrive automatically. On blockers — reassign via `SendMessage`.
 5. **Timeout recovery** — if agent reports no progress for >5 min, Lead reassigns task to another agent or investigates blocker.
 6. **Collect results** — compile summary + fix plan. **Deduplicate** findings from multiple agents (same issue found by different reviewers → merge, keep highest severity).
-7. **Post-fix verification** — after fixes, re-run the CLI commands that originally found the issue to confirm closure.
-8. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with `model="opus"` teammates. Create feature branch before fixing.
+7. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with `model="opus"` teammates. Create feature branch before fixing.
+8. **Post-fix verification** — re-run the CLI commands that originally found each issue to confirm closure.
 9. **Shutdown** — `SendMessage(message={type:"shutdown_request"})` per teammate -> `TeamDelete`.
 
 ### Diff Mode (CI / incremental)
@@ -135,23 +135,60 @@ Only run CLI scanners and code review on changed files. Useful for:
 - Post-sprint quick check
 - Pre-release delta audit
 
-### Wave Example (Go + Vue monorepo)
+### Wave Example (Go + Vue monorepo, Level 2)
+
+> This is a Level 2 example. For Level 3, add Wave 3 below.
 
 ```
-Wave 1 (parallel):
-  - cli-scanner-1: go build, go vet, staticcheck, golangci-lint
-  - cli-scanner-2: npm run build, npm run lint, vue-tsc
-  - web-researcher: version checks
+Wave 1 — CLI + research (parallel, haiku + sonnet):
+  - cli-scanner-1 (haiku): [go.md L1+L2 CLI]
+      go build, go vet, staticcheck, golangci-lint,
+      trivy/gosec+govulncheck, race detector, dead code,
+      go mod verify, gitleaks, semgrep
+  - cli-scanner-2 (haiku): [frontend.md L1+L2 CLI]
+      npm run build, npm run lint, vue-tsc, knip,
+      npm audit, gitleaks, semgrep
+  - cli-scanner-3 (haiku): [universal.md L2 CLI]
+      git hygiene (large files, suspicious files, .gitignore)
+  - web-researcher (sonnet): [universal.md Stack Currency]
+      version checks, CVE search for all deps
 
-Wave 2 (parallel, after Wave 1):
-  - code-reviewer-1: Go security review (OWASP + STRIDE)
-  - code-reviewer-2: Go concurrency + resource leaks
-  - code-reviewer-3: Frontend security + performance
-
-Wave 3 (after Wave 2, Level 3 only):
-  - code-reviewer-1: universal checks (business logic, sharp edges)
-  - code-reviewer-2: API contract consistency + cross-layer trace
+Wave 2 — code review (parallel, opus, after Wave 1):
+  - code-reviewer-1 (opus): [go.md L2 Code Review]
+      security (OWASP+STRIDE), concurrency, resource leaks
+  - code-reviewer-2 (opus): [frontend.md L2 Code Review]
+      security (XSS, prototype pollution, PostMessage),
+      state management, performance, WebSocket hygiene
+  - code-reviewer-3 (opus): [universal.md L2 Opus]
+      HTTP headers, CSRF, rate limiting,
+      insecure defaults, timing attacks, mass assignment
 ```
+
+<details><summary>Wave 3 — Level 3 only (after Wave 2)</summary>
+
+```
+Wave 3 — deep review (parallel, opus):
+  - code-reviewer-1 (opus): [go.md L3]
+      type safety & language traps, error handling,
+      graceful shutdown, DB audit, complexity,
+      performance (pprof), overengineering
+  - code-reviewer-2 (opus): [universal.md L3 — security]
+      XSS, SSRF, deserialization, XXE, ReDoS,
+      log injection, IDOR/BOLA/BFLA, session mgmt,
+      JWT/auth, business logic abuse,
+      webhook security, file upload hardening
+  - code-reviewer-3 (opus): [universal.md L3 — quality]
+      API contract consistency, logging & observability,
+      error disclosure, overengineering, docs freshness,
+      input validation, resilience, config mgmt,
+      state mgmt, privacy/PII, supply chain, SBOM,
+      sharp edges, variant analysis
+  - code-reviewer-4 (opus): [frontend.md L3]
+      a11y, error handling, SSR checks,
+      overengineering, license compliance
+```
+
+</details>
 
 ### MCP Servers (if available)
 
