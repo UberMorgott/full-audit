@@ -51,6 +51,8 @@ Verify responses include:
 - GET requests do not cause side effects (safe methods)
 - AJAX requests include CSRF header if required by framework
 
+> See also: YAGNI Check — verify CSRF protection is needed before including findings (e.g., token-based auth doesn't need CSRF).
+
 ---
 
 ## Level 2: Rate Limiting (Opus)
@@ -61,6 +63,8 @@ Verify responses include:
 - Login/auth endpoints have stricter limits (prevent brute force)
 - Rate limits documented for API consumers
 - No rate limit bypass via header manipulation (X-Forwarded-For spoofing)
+
+> See also: YAGNI Check — verify rate limiting is needed before including findings (e.g., internal service behind API gateway).
 
 ---
 
@@ -123,6 +127,172 @@ Verify responses include:
 
 ---
 
+## Level 2: False Positive Detection (All agents)
+
+> **When to apply:** AFTER running checks and collecting raw findings. These filters reduce noise in the final report — they do NOT mean "skip the check entirely."
+
+Before including any finding in the report, apply these filters:
+
+### Auto-discard (Score = 0)
+
+| Pattern | Why it's a false positive |
+|---------|--------------------------|
+| Issue on non-modified line (Diff Mode) | Pre-existing, not introduced by recent changes |
+| Pattern explicitly allowed in CLAUDE.md | Project convention, not a bug |
+| `// nolint`, `# noqa`, `@SuppressWarnings` with explanation | Intentional suppression with documented reason |
+| Code in `vendor/`, `node_modules/`, `third_party/` | Not project's responsibility |
+| Generated code (protobuf `.pb.go`, swagger, ORM migrations) | Will be overwritten on regeneration |
+| Test code intentionally using anti-patterns | Testing error handling, edge cases |
+| TODO/FIXME in test files | Test improvement notes, not production issues |
+
+### Requires verification before including (Score = 25-50)
+
+| Pattern | Verify by |
+|---------|----------|
+| "Potential SQL injection" from SAST | Trace data flow — is input actually user-controlled? |
+| "Unused variable/function" | Check if used via reflection, templates, or dynamic dispatch |
+| "Hardcoded credential" | Is it a test fixture, example, or actual secret? Check git history |
+| "Insecure random" | Is it used for security (tokens, keys) or non-security (IDs, shuffling)? |
+| "Missing error handling" | Does the caller handle it? Is it a fatal-on-error context? |
+| "Deprecated function" | Is there a migration path? Is the replacement available in project's min version? |
+
+### Stack-specific false positives
+
+**Go:**
+- `shadow: declaration of "err"` in nested scopes — often intentional
+- `G104: Errors unhandled` on `defer file.Close()` — acceptable in read-only contexts
+- `SA1019: deprecated` on stdlib functions still supported for 2+ versions
+
+**Python:**
+- `B101: assert` in test files — assert IS the test mechanism
+- `S101: hardcoded password` on test fixtures — intentional
+- `C901: complexity` on CLI argument parsing — often unavoidable
+
+**JavaScript/TypeScript:**
+- `no-explicit-any` in type assertion bridges — sometimes necessary
+- `@ts-ignore` with comment explaining why — documented workaround
+- `console.log` in CLI tools — that IS the output mechanism
+
+**Rust:**
+- `clippy::too_many_arguments` on FFI bindings — must match C API
+- `unsafe` in well-tested low-level code with safety comments — acceptable if justified
+- `unwrap()` in tests and examples — standard practice
+
+**Java:**
+- `SpotBugs: NP_NULL_ON_SOME_PATH` from Optional.get() after isPresent() check — false positive
+- `Error Prone: MissingSummary` on private methods — style, not bug
+- `PMD: LooseCoupling` on internal implementation classes — coupling is intentional for non-public APIs
+- `EI_EXPOSE_REP` (SpotBugs) on DTOs/records — these ARE data carriers by design
+
+**C#:**
+- `CA1062: null check` on parameters with `[NotNull]` attribute — already validated
+- `IDE0060: unused parameter` in interface implementations — must match signature
+- `CS8618: Non-nullable field` in EF Core entities — set by ORM, not constructor
+- `CA1822: Mark members as static` on methods that need to be virtual for testing/mocking
+
+---
+
+## Level 2: CLI Finding Verification Protocol (All agents)
+
+Every finding from CLI tools (gosec, bandit, semgrep, trivy, etc.) must pass 5 verification steps before inclusion:
+
+| Step | Question | Action if NO |
+|------|----------|-------------|
+| 1. **Technically correct?** | Is this a real issue in THIS code, not a generic warning? | Discard (score=0) |
+| 2. **Not pre-existing?** | Is this a pre-existing issue? (`git blame` check) | Full Audit: note age but keep at original severity. Diff Mode: downgrade to LOW or discard |
+| 3. **No justification?** | Is there a documented reason for the current implementation? (comment, ADR, CLAUDE.md) | Discard if justified |
+| 4. **Platform-relevant?** | Does this apply to the project's target platform/runtime? | Discard if platform mismatch |
+| 5. **Full context?** | Does the tool understand cross-file dependencies? (e.g., validation in middleware, not endpoint) | Verify manually before including |
+
+### Verification examples
+
+**Tool says: "SQL injection in `query.go:45`"**
+1. ✅ Uses string concatenation with user input → technically correct
+2. ✅ `git blame` shows recent commit → not pre-existing
+3. ✅ No comment explaining why → no justification
+4. ✅ Web server, not CLI tool → platform relevant
+5. ❌ Input is validated in middleware `auth.go:20` → **FALSE POSITIVE** — discard
+
+**Tool says: "Hardcoded password in `config_test.go:12`"**
+1. ❌ Test file with fixture data → **FALSE POSITIVE** — discard immediately
+
+> **Important:** If a CLI tool is not installed, report as BLOCKER per Anti-Rationalization Rules — do not silently skip.
+
+---
+
+## Level 2: YAGNI Check for Recommendations (All agents)
+
+Before recommending "add X" or "implement Y", verify it's actually needed:
+
+### Mandatory checks
+
+| Recommendation | Verify before suggesting |
+|---------------|------------------------|
+| "Add rate limiting" | Does the app have public endpoints? Is it behind an API gateway that already rate-limits? |
+| "Add CSRF protection" | Does the app use cookies for auth? (Token-based auth doesn't need CSRF) |
+| "Add input validation" | Is it already validated upstream? (middleware, framework, database constraints) |
+| "Add error handling" | Is the caller handling it? Is this a crash-is-correct context? |
+| "Add logging" | Is there structured logging elsewhere? Don't add inconsistent logging |
+| "Add tests" | Is this code already tested via integration tests? Don't suggest unit tests for trivially tested code |
+| "Use X library instead" | Is the current approach working, maintained, and understood by the team? |
+| "Add authentication" | Is this an internal service behind a service mesh? |
+
+### The YAGNI test
+
+For each recommendation, grep the codebase:
+1. Is the recommended feature actually used/needed anywhere?
+2. Are there existing patterns that already solve this?
+3. Would implementing this require changes to other parts of the codebase?
+4. Is the risk being mitigated actually reachable in this project's context?
+
+If any answer suggests the recommendation is unnecessary, **do not include it** or downgrade to LOW with a note: "Consider if applicable to your deployment context."
+
+---
+
+## Audit Discipline: Anti-Rationalization Rules (All agents)
+
+> These rules prevent agents from skipping checks or softening findings.
+
+### Red Flags — if you think this, STOP and reconsider
+
+| Agent thought | Reality | Correct action |
+|--------------|---------|---------------|
+| "This file is too simple to audit" | Simple files often contain hardcoded secrets, default configs | Audit it — simple ≠ safe |
+| "Tool not installed, skip this check" | Missing tool = missing coverage = risk | Report as **BLOCKER**, not SKIP |
+| "This is legacy code, no point checking" | Legacy = highest vulnerability density | Prioritize it — legacy ≠ exempt |
+| "The framework handles this" | Frameworks have defaults, configs, and escape hatches | Verify the framework IS handling it |
+| "This is just a style issue" | Style issues can mask bugs (shadowed variables, confusing names) | Evaluate impact, don't dismiss |
+| "Only 1 user hits this path" | 1 user with admin access = max impact | Assess by impact, not frequency |
+| "They probably know about this" | Audit exists because they want fresh eyes | Report it — assumption ≠ knowledge |
+| "This would be hard to exploit" | Attackers are creative, chained exploits exist | Report with realistic severity |
+| "I already checked something similar" | Each instance can have unique context | Check each instance individually |
+| "This is covered by other checks" | Overlapping checks catch different aspects | Don't skip — verify coverage |
+| "The deadline is tight, skip deep checks" | Skipping checks = shipping vulnerabilities | Report time constraint, don't skip silently |
+| "This is an internal tool, security doesn't matter" | Internal tools get compromised too (supply chain, lateral movement) | Apply same standards |
+
+### Enforcement
+
+- Orchestrator reviews agent outputs for signs of rationalization (unusual SKIP counts, LOW-only findings, empty sections)
+- If an agent produces 0 findings for a complex codebase → flag for re-review by different agent
+- SKIP count >30% of total checks → investigate why
+
+### Proactive Self-Check (Before Claiming Completion)
+
+Every agent MUST run this checklist before marking any task as completed:
+
+- [ ] Every finding has file:line reference
+- [ ] Every finding has evidence (tool output, code snippet, or manual trace)
+- [ ] Every PASS/SKIP has justification (command output or documented reason)
+- [ ] No hedging language: "should", "probably", "seems to", "appears to", "likely"
+- [ ] No performative claims: "Great!", "Perfect!", "All clear!", "Looks good!"
+- [ ] Confidence score assigned to every finding
+- [ ] SKIP count is reasonable (<30% of total checks for this section)
+- [ ] If 0 findings for a section with >10 checks — re-review or flag to orchestrator
+
+This is proactive (agent self-checks) not just reactive (orchestrator reviews).
+
+---
+
 ## Level 3: XSS Prevention (Opus)
 
 - All user input escaped before rendering in HTML context
@@ -174,7 +344,7 @@ Check:
 If project processes XML in any form:
 
 - XML parser configured to disable external entities and DTD processing
-- Go: `encoding/xml` — vulnerable by default; disable with `xml.NewDecoder` + `d.Strict = true`
+- Go: `encoding/xml` does not resolve external entities by default, but lacks DTD processing controls. Use `d.Strict = true` for stricter parsing. The real risk is third-party XML libraries (`libxml2` bindings, `etree`). Always verify against your Go version.
 - Java: `DocumentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`
 - Python: `defusedxml` library instead of `xml.etree`, `lxml` with `resolve_entities=False`
 - C#: `XmlReaderSettings.DtdProcessing = DtdProcessing.Prohibit`
@@ -446,6 +616,70 @@ If project processes XML in any form:
 
 ---
 
+## Level 3: Container & Image Security (Opus)
+
+> If the project uses Docker, Podman, or container orchestration.
+
+**Dockerfile audit:**
+- Base image pinned by digest, not just tag (`FROM node:20@sha256:abc...` not `FROM node:latest`)
+- Multi-stage builds: final image has no build tools, source code, or test fixtures
+- No `RUN` as root in final stage — use `USER nonroot` or equivalent
+- No secrets in build args or environment variables in Dockerfile
+- `.dockerignore` exists and excludes: `.git`, `.env`, `node_modules`, `__pycache__`, test fixtures
+- `COPY` uses specific paths, not `COPY . .` (which may include secrets)
+- Health check defined (`HEALTHCHECK` instruction or orchestrator probe)
+
+**Image scanning:**
+- `trivy image <image>` or equivalent scanner in CI
+- No CRITICAL/HIGH CVEs in base image
+- Image size reasonable (not shipping full OS when distroless/alpine suffices)
+
+**Runtime security:**
+- Containers run as non-root user
+- Read-only filesystem where possible (`--read-only`)
+- No privileged mode (`--privileged`) without justification
+- Network policies restrict container-to-container communication
+- Secrets injected via secret manager, not environment variables in compose files
+- Resource limits set (CPU, memory) to prevent DoS
+
+**Orchestration (if K8s/Docker Compose):**
+- No `hostPath` mounts to sensitive directories
+- Pod security standards enforced (restricted profile)
+- Service accounts have minimal permissions
+- Ingress/egress network policies defined
+
+---
+
+## Level 3: CI/CD Pipeline Security (Opus)
+
+> If the project has CI/CD configuration files.
+
+**Secret management:**
+- No hardcoded secrets in CI config files (`.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`)
+- Secrets stored in CI platform's secret manager (GitHub Secrets, GitLab CI Variables)
+- Secrets not logged in CI output (mask sensitive values)
+- Secrets not passed as command-line arguments (visible in process list)
+
+**Action/plugin security:**
+- GitHub Actions pinned by full SHA, not mutable tag (`uses: actions/checkout@abc123` not `@v4`)
+- Third-party actions reviewed for supply chain risk (see Trivy v0.69.4 incident)
+- Self-hosted runners: isolated, not shared across untrusted repos
+- Minimal permissions: `permissions:` block restricts token scope
+
+**Branch protection:**
+- Main/release branches require PR review before merge
+- Status checks (build, test, lint) required to pass
+- Force-push disabled on protected branches
+- Signed commits required (if applicable)
+
+**Build integrity:**
+- Build artifacts have checksums or signatures
+- Reproducible builds where possible
+- No arbitrary code execution from PR content (e.g., `pull_request_target` with checkout of PR head)
+- Cache poisoning: CI cache keys include dependency lock file hashes
+
+---
+
 ## Level 3: Supply Chain (Opus)
 
 - Lock files committed (e.g., `package-lock.json`, `go.sum`, `Cargo.lock`, `poetry.lock`, `packages.lock.json`)
@@ -484,6 +718,48 @@ If project processes XML in any form:
 
 ---
 
+## Level 3: Cryptographic Key Management (Opus)
+
+- **Key storage:** Keys in environment variables, secret manager, or HSM — never in source code or config files committed to git
+- **Key rotation:** mechanism exists, documented schedule (at minimum: on compromise, on employee departure, annually)
+- **Key derivation:** PBKDF2 (≥600,000 iterations), bcrypt (cost ≥12), Argon2id for password-derived keys
+- **Asymmetric keys:** RSA ≥2048 bits, ECDSA ≥P-256, Ed25519 preferred for new implementations
+- **Symmetric keys:** AES-128 minimum, AES-256 preferred. Generated via crypto-secure RNG
+- **TLS configuration:** TLS 1.2 minimum, TLS 1.3 preferred. No SSLv3, TLS 1.0, TLS 1.1
+- **Certificate management:** automated renewal (Let's Encrypt / ACME), no expired certs in production
+- **Key separation:** different keys for different purposes (signing vs encryption vs auth)
+- **Backup keys:** encrypted backup exists, tested restoration procedure
+
+---
+
+## Level 3: Concurrency Safety (Opus)
+
+> Language-agnostic concurrency patterns. Stack files provide language-specific details.
+
+**Data races:**
+- Shared mutable state protected by mutex/lock or made immutable
+- No concurrent reads and writes to maps/dicts/collections without synchronization
+- Atomic operations used for simple counters/flags instead of full mutex
+
+**Deadlocks:**
+- Lock ordering: when acquiring multiple locks, always in consistent order
+- No lock held while calling external services or performing I/O (risk of indefinite blocking)
+- Timeout on lock acquisition where possible
+
+**Resource lifecycle:**
+- Goroutines/threads/tasks have clear ownership and shutdown mechanism
+- No fire-and-forget goroutines/threads that leak on error
+- Context/cancellation propagated through async call chains
+- Worker pools have bounded size (prevent thread/goroutine explosion under load)
+
+**Concurrency patterns:**
+- Producer-consumer: bounded channel/queue to prevent memory exhaustion
+- Fan-out/fan-in: proper error propagation from workers to coordinator
+- Singleton initialization: thread-safe (sync.Once, std::once_flag, Lazy<T>, etc.)
+- Shutdown: graceful drain of in-flight requests before process exit
+
+---
+
 ## Level 3: Sharp Edges & Footgun Design (Opus)
 
 > Source: Trail of Bits `sharp-edges` methodology. Review API design for footgun potential.
@@ -502,12 +778,70 @@ Evaluate against 3 developer archetypes: **malicious** (actively exploiting), **
 
 ---
 
+## Level 3: Root Cause Analysis (Opus)
+
+> For CRITICAL and HIGH findings, go beyond "what's wrong" to "why it happened."
+
+### 4-Phase Root Cause Protocol
+
+**Phase 1: Investigation**
+1. Read the error/vulnerability in full context (not just the line — 20+ lines around it)
+2. Trace the data flow: where does the input come from? Where does it go?
+3. Check git history: when was this introduced? By what change? Was it a regression?
+
+**Phase 2: Pattern Analysis**
+1. Find working examples of the same pattern elsewhere in the codebase
+2. Compare broken vs working: what's different?
+3. Identify the root cause category:
+   - **Missing validation** — input not checked
+   - **Wrong abstraction** — API makes incorrect usage easy
+   - **Configuration drift** — dev/prod divergence
+   - **Incomplete migration** — partially updated pattern
+   - **Knowledge gap** — developer didn't know about the risk
+
+**Phase 3: Impact Assessment**
+1. Is this a one-off mistake or systemic pattern?
+2. How many code paths are affected? (→ feeds into Variant Analysis)
+3. What's the blast radius if exploited?
+
+**Phase 4: Recommendation**
+1. Fix for this specific instance
+2. Prevention for future instances (linter rule, code review checklist, architectural change)
+3. Detection for similar existing issues (→ Variant Analysis grep patterns)
+
+### Root Cause STOP Rule
+
+**After 3 failed root cause hypotheses — STOP and escalate.**
+
+1. First hypothesis fails: refine based on new data
+2. Second hypothesis fails: step back, question assumptions, try different layer
+3. Third hypothesis fails: **STOP.** Report to orchestrator:
+   - What was investigated
+   - What was ruled out
+   - Remaining hypotheses ranked by likelihood
+   - Recommended next step (different agent, user input, external expertise)
+
+Do NOT continue guessing. Systematic analysis that concludes "unknown" is more valuable than a wrong root cause.
+
+### Output format
+
+```
+Root Cause: [category from Phase 2]
+Introduced: [commit SHA or "original code"]
+Pattern: [systemic / isolated]
+Fix: [specific fix for this instance]
+Prevention: [systemic fix to prevent recurrence]
+Variants: [grep pattern for Variant Analysis]
+```
+
+---
+
 ## Level 3: Variant Analysis (Opus)
 
 > Source: Trail of Bits `variant-analysis` methodology. Run AFTER code review — not standalone. When a vulnerability is found during review, search for similar patterns before closing the task.
 
 After finding any CRITICAL or HIGH vulnerability:
-1. **Understand** the root cause pattern (not just the instance)
+1. **Understand** the root cause pattern, not just the instance (see Root Cause Analysis section above)
 2. **Exact match** — `grep -rn` codebase for identical pattern
 3. **Identify abstraction points** — what makes this pattern generalizable? (same API misuse, same developer mistake, same library)
 4. **Generalize** — broaden grep pattern to catch near-misses
@@ -529,3 +863,16 @@ Rate each as:
 | **Behind** | 2+ minor versions behind |
 | **EOL** | End of life / no security patches |
 | **Vulnerability** | Known unpatched CVE |
+
+Output table:
+
+| Dependency | Current | Latest | Status | CVEs | Notes |
+|-----------|---------|--------|--------|------|-------|
+
+Include runtime version (Go 1.x, Node.js x, Python 3.x, etc.) as first row.
+
+**Action thresholds:**
+- **Current:** no action needed
+- **Behind:** create LOW finding, recommend update plan
+- **EOL:** create HIGH finding, migration plan needed
+- **Vulnerability:** create CRITICAL/HIGH finding based on CVE severity, immediate patch required

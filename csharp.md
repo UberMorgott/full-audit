@@ -1,5 +1,14 @@
 # C# / .NET Audit Checks
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Applies when `*.csproj`, `*.sln`, or `global.json` detected.
 All commands assume `cd {solution_root}`.
 
@@ -39,14 +48,14 @@ trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 # .NET security analyzers (if referenced in csproj)
 dotnet build /p:EnableNETAnalyzers=true /p:AnalysisLevel=latest 2>&1
 
-# Or Semgrep:
+# Also recommended: semgrep (catches different patterns than Roslyn analyzers)
 semgrep --config=auto . 2>&1
 ```
 
 ### Outdated packages
 ```bash
 dotnet list package --outdated 2>&1
-dotnet-outdated 2>&1
+dotnet-outdated-tool 2>&1
 ```
 
 ### Deprecated packages
@@ -76,6 +85,8 @@ gitleaks detect --source . --no-git -v 2>&1
 ---
 
 ## Level 2: Code Review (Opus agents)
+
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
 
 ### Security review
 
@@ -127,9 +138,28 @@ gitleaks detect --source . --no-git -v 2>&1
 - Business logic in catch blocks
 - `Task` without exception observation (unobserved task exception)
 
+### Quick reference: vulnerability grep patterns
+
+| Pattern | Risk | Severity |
+|---------|------|----------|
+| `BinaryFormatter` | Deserialization RCE (banned) | CRITICAL |
+| `Process.Start` with user input | Command injection | CRITICAL |
+| `[AllowAnonymous]` on sensitive endpoints | Missing auth | HIGH |
+| `async void` (non-event-handler) | Unhandled exceptions | HIGH |
+| `.Result` / `.Wait()` | Deadlock risk | HIGH |
+| `new HttpClient()` in loop | Socket exhaustion | HIGH |
+| `SqlCommand` with string concat | SQL injection | CRITICAL |
+| `Html.Raw()` with user data | XSS | HIGH |
+| `TempData` with sensitive info | Data exposure | MEDIUM |
+| `AddCors(o => o.AllowAnyOrigin())` | Permissive CORS | HIGH |
+
 ---
 
 ## Level 3: Deep (includes Level 2)
+
+> .NET 8+ NativeAOT: If project uses AOT compilation, verify [JsonSerializable] source generators are used (reflection-based serialization breaks in AOT). Check for dynamic type loading patterns.
+
+> .NET 8+ Minimal APIs: Verify endpoint filters for auth/validation (no automatic [Authorize] like controllers). Check for missing .RequireAuthorization() on sensitive endpoints.
 
 ### Architecture
 

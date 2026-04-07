@@ -1,5 +1,14 @@
 # Python Audit Checks
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Applies when `pyproject.toml`, `requirements.txt`, `setup.py`, or `Pipfile` detected.
 All commands assume `cd {project_root}`.
 
@@ -22,6 +31,8 @@ pip-audit 2>&1
 # Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
+
+> Note: For projects using uv as package manager, replace pip-audit with uv-based dependency checking.
 
 ### Tests
 ```bash
@@ -105,6 +116,8 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+
 ### Security review
 
 - **SQL injection:** string formatting in SQL queries (`f"SELECT ... {user_input}"`, `%` formatting, `.format()`)
@@ -119,6 +132,8 @@ gitleaks detect --source . --no-git -v 2>&1
 - **Debug mode:** `DEBUG=True` in production config
 
 ### Concurrency (if async/threading used)
+
+> Python 3.11+: Check for TaskGroup usage (structured concurrency). Python 3.12+: Check ExceptionGroup handling patterns.
 
 - `threading.Thread` without daemon flag or join (zombie threads)
 - Shared mutable state without `threading.Lock`

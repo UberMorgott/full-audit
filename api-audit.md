@@ -1,5 +1,14 @@
 # Specialized: API Request Audit
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Not part of the Level 1-2-3 hierarchy. Run independently when:
 - Adding polling or WebSocket handlers
 - Refactoring data-fetching layer
@@ -11,6 +20,8 @@ Not part of the Level 1-2-3 hierarchy. Run independently when:
 ---
 
 ## Agent 1: Backend — External API Calls
+
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
 
 Check for:
 - **Unbounded loops with HTTP requests** — must have semaphore/throttle
@@ -80,8 +91,30 @@ Trace request flows end-to-end to find amplification patterns:
 ```markdown
 | Flow | Frontend freq | Backend fan-out | External calls | Amplification | Risk | Recommendation |
 |------|--------------|-----------------|----------------|--------------|------|----------------|
-| Device polling → /api/devices → AG API | 5s interval | 1 | 3 (status + config + telemetry) | 3x per user per 5s | HIGH | Cache AG responses 10s, batch into single call |
+| Device polling → /api/devices → External Device API | 5s interval | 1 | 3 (status + config + telemetry) | 3x per user per 5s | HIGH | Cache external API responses 10s, batch into single call |
 | WS "device_update" → invalidateQueries(["devices"]) | On event | 1 | 0 (local cache) | Refetches 5 queries | MEDIUM | Narrow invalidation to specific device key |
 | Save settings → onSuccess → invalidateQueries() | On mutation | 1 | 0 | Refetches ALL queries | HIGH | Use specific query keys, not broad invalidation |
 | Login → /api/auth → LDAP bind + token gen | On submit | 1 | 1 (LDAP) | 1x | LOW (rate limited) | OK if rate limited |
 ```
+
+---
+
+### GraphQL-Specific Patterns
+
+If the project uses GraphQL:
+- **Query depth limiting:** unbounded nested queries can cause exponential DB load
+- **Query complexity analysis:** assign cost to fields, reject queries exceeding budget
+- **Introspection disabled in production:** `__schema` and `__type` queries leak API structure
+- **N+1 in resolvers:** use DataLoader pattern or equivalent batching
+- **Persisted queries:** consider allowing only pre-approved query hashes in production
+- **Field-level authorization:** not just type-level — sensitive fields need per-field auth checks
+
+### gRPC-Specific Patterns
+
+If the project uses gRPC:
+- **Deadline propagation:** every RPC call should set and propagate deadlines to prevent cascade timeouts
+- **Streaming backpressure:** server/client streaming must handle slow consumers (bounded buffers)
+- **Interceptors for auth:** authentication via metadata interceptors, not per-method checks
+- **Reflection disabled in production:** gRPC server reflection exposes service definitions
+- **Load balancing:** client-side load balancing for direct pod-to-pod communication
+- **Error codes:** use canonical gRPC status codes, not generic UNKNOWN for everything

@@ -1,5 +1,14 @@
 # Java / Kotlin (JVM) Audit Checks
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Applies when `pom.xml` (Maven), `build.gradle` / `build.gradle.kts` (Gradle), or `*.java`/`*.kt` detected.
 All commands assume `cd {project_root}`.
 
@@ -114,6 +123,8 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+
 ### Security review
 
 - **SQL injection:** string concatenation in SQL (`"SELECT * FROM users WHERE id = " + id`)
@@ -165,9 +176,30 @@ gitleaks detect --source . --no-git -v 2>&1
 - Business logic in catch blocks
 - Checked exceptions wrapped in `RuntimeException` without reason
 
+### Quick reference: vulnerability grep patterns
+
+| Pattern | Risk | Severity |
+|---------|------|----------|
+| `ObjectInputStream` | Deserialization RCE | CRITICAL |
+| `Runtime.getRuntime().exec` | Command injection | CRITICAL |
+| `@CrossOrigin("*")` | Permissive CORS | HIGH |
+| `@Transactional` missing on service methods | Data inconsistency | HIGH |
+| `GlobalScope.launch` (Kotlin) | Unstructured concurrency | HIGH |
+| `runBlocking` in coroutine context (Kotlin) | Thread starvation | HIGH |
+| `new Random()` for security | Predictable values | HIGH |
+| `catch (Exception e) {}` | Swallowed exceptions | MEDIUM |
+| `.password` in properties files | Hardcoded credentials | CRITICAL |
+| `spring.jpa.show-sql=true` | SQL in production logs | MEDIUM |
+
 ---
 
 ## Level 3: Deep (includes Level 2)
+
+> Java 21+: Check for Virtual Threads usage. Virtual threads should NOT hold locks during blocking I/O. synchronized blocks pin virtual threads to platform threads.
+
+> GraalVM Native Image: If project uses native compilation, verify reflection configuration, serialization registration, and resource inclusion in native-image.properties.
+
+> Verify log4j version is ≥2.17.1 (CVE-2021-44228 Log4Shell + follow-ups). Check for JNDI lookup patterns in logging configuration.
 
 ### Architecture
 

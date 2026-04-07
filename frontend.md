@@ -1,5 +1,14 @@
 # Frontend Audit Checks
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Applies when `package.json` detected. Framework-specific checks auto-selected by detecting:
 - `vue` / `nuxt` in dependencies -> Vue checks
 - `react` / `next` in dependencies -> React checks
@@ -103,6 +112,8 @@ semgrep --config=auto . 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+
 ### Security review
 
 - **XSS:** `v-html` / `dangerouslySetInnerHTML` / `innerHTML` with user data
@@ -131,6 +142,12 @@ semgrep --config=auto . 2>&1
 - Large arrays/objects in reactive state (should be shallowRef/shallowReactive in Vue)
 - Images without dimensions (CLS)
 - No virtualization for long lists (>100 items)
+
+> React Server Components / Nuxt server components: Verify server-only code is not accidentally bundled to client. Check for 'use server' / 'use client' boundary correctness. Server-only secrets must not leak to client bundle.
+
+> Service Workers: If project registers SW, verify update mechanism (stale SW = cached vulnerabilities). Check SW scope — overly broad scope can intercept requests to other origins.
+
+> Bun runtime: If project uses Bun, replace npm commands with bun equivalents. Check bun.lockb instead of package-lock.json.
 
 ### WebSocket hygiene
 
@@ -202,3 +219,18 @@ npm outdated 2>&1
 - Custom hook/composable used in exactly 1 place (inline it)
 - Abstraction layer over small utility (just use the utility)
 - Multiple state management solutions in same app
+
+### Quick reference: vulnerability grep patterns
+
+| Pattern | Risk | Severity |
+|---------|------|----------|
+| `dangerouslySetInnerHTML` / `v-html` / `innerHTML` | XSS | HIGH |
+| `eval(` / `new Function(` | Code injection | CRITICAL |
+| `document.location` / `window.location` with user input | Open redirect | HIGH |
+| `localStorage.setItem` with tokens/secrets | Token theft via XSS | HIGH |
+| `fetch(userInput)` / `axios(userInput)` | SSRF | HIGH |
+| `postMessage("*")` / `addEventListener("message")` without origin check | Cross-origin data leak | HIGH |
+| `__proto__` / `constructor.prototype` | Prototype pollution | HIGH |
+| `console.log` with sensitive data | Information disclosure | MEDIUM |
+| `cors: { origin: '*' }` | Permissive CORS | HIGH |
+| `process.env.` in client bundle | Secret exposure | CRITICAL |

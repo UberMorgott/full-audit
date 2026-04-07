@@ -1,5 +1,7 @@
 # Tool Installation
 
+> **Version pinning:** When installing tools, pin to specific versions in CI to ensure reproducible results. The versions below are recommendations as of 2026-04.
+
 First-time only. Install per detected stack. Check if tool exists before installing.
 
 ---
@@ -61,6 +63,8 @@ pip install vulture        # Dead code finder
 pip install radon          # Complexity metrics
 pip install safety         # Dependency vulnerability check (alternative to pip-audit)
 ```
+
+- **uv** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh` — faster alternative to pip, handles dependency resolution
 
 ---
 

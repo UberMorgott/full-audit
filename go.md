@@ -1,5 +1,14 @@
 # Go Audit Checks
 
+> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+>
+> **Required reading for all agents using this file:**
+> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
+> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+
 Applies when `go.mod` detected. All commands assume `cd {go_module_root}` (e.g., `cd backend`).
 
 ---
@@ -144,6 +153,8 @@ semgrep --config=auto . 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
+> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+
 These are manual code review tasks for Opus agents using Serena/Grep.
 
 ### Security review (OWASP + STRIDE)
@@ -243,6 +254,10 @@ What scanners miss — check manually:
 ---
 
 ## Level 3: Deep (includes Level 2)
+
+> CRITICAL/HIGH findings trigger Variant Analysis (universal.md) — search for similar patterns across codebase.
+
+> Consider recommending log/slog (structured logging, standard since Go 1.21) for projects not yet using it.
 
 ### Type safety & language traps
 
