@@ -23,7 +23,10 @@ All commands assume `cd {frontend_root}` (e.g., `cd frontend`).
 
 ### Build + lint
 ```bash
-npm run build && npm run lint 2>&1
+npm run build 2>&1
+```
+```bash
+npm run lint 2>&1
 ```
 
 ### Dependency vulnerabilities

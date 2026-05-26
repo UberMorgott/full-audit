@@ -17,7 +17,13 @@ Applies when `go.mod` detected. All commands assume `cd {go_module_root}` (e.g.,
 
 ### Build + vet + lint
 ```bash
-go build ./... && go vet ./... && staticcheck ./... 2>&1
+go build ./... 2>&1
+```
+```bash
+go vet ./... 2>&1
+```
+```bash
+staticcheck ./... 2>&1  # requires: go install honnef.co/go/tools/cmd/staticcheck@latest
 ```
 
 ### Dependency vulnerabilities
@@ -135,7 +141,10 @@ go test -count=1 ./... 2>&1
 ### Dead code + modules
 ```bash
 deadcode ./... 2>&1
-go mod verify && go mod tidy -diff 2>&1
+go mod verify 2>&1
+```
+```bash
+go mod tidy -diff 2>&1
 ```
 
 ### Secrets scan
