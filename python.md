@@ -34,6 +34,8 @@ pip-audit 2>&1
 
 > Note: For projects using uv as package manager, replace pip-audit with uv-based dependency checking.
 
+> Tip: If tools aren't globally installed, prefix with `uv tool run` (e.g., `uv tool run ruff check .`, `uv tool run pip-audit`).
+
 ### Tests
 ```bash
 # Detect test runner
@@ -53,6 +55,12 @@ if grep -q "mypy" pyproject.toml 2>/dev/null || [ -f "mypy.ini" ] || [ -f ".mypy
   mypy . 2>&1
 fi
 ```
+
+### Python runtime currency
+```bash
+python --version 2>&1
+```
+> If pip-audit or safety reports stdlib/CPython vulnerabilities, update Python runtime. Check python.org/downloads for latest patch release of your minor version.
 
 **Pass criteria:** 0 errors in all commands.
 

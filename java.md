@@ -56,6 +56,12 @@ trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
+### JDK currency
+```bash
+java --version 2>&1
+```
+> If dependency-check or govulncheck-equivalent reports JDK vulnerabilities, update JDK. Check adoptium.net for latest LTS patch.
+
 **Pass criteria:** 0 errors, 0 critical/high vulnerabilities.
 
 ---

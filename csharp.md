@@ -37,6 +37,12 @@ trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
+### .NET SDK currency
+```bash
+dotnet --version 2>&1
+```
+> If `dotnet list package --vulnerable` reports SDK-level issues, update .NET SDK. Check dotnet.microsoft.com/download for latest patch.
+
 **Pass criteria:** 0 errors, 0 critical/high vulnerabilities.
 
 ---

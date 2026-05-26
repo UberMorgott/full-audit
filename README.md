@@ -10,7 +10,7 @@ Universal codebase audit system for Claude Code. Works with any project, any sta
 
 User says:
 ```
-сделай полный аудит проекта инструкции на github.com/UberMorgott/full-audit
+run full audit of this project, instructions at github.com/UberMorgott/full-audit
 ```
 
 <!-- Fork users: replace UberMorgott with your GitHub username in the URL below -->

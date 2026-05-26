@@ -879,3 +879,8 @@ Include runtime version (Go 1.x, Node.js x, Python 3.x, etc.) as first row.
 - **EOL:** create HIGH finding, migration plan needed
 - **Vulnerability:** create CRITICAL/HIGH finding based on CVE severity, immediate patch required
 - `Go: check govulncheck stdlib findings — if stdlib vuln reported, update go directive in go.mod to fixed version`
+- `Python: check python --version against python.org; if pip-audit reports CPython vuln, update runtime`
+- `Node.js: check node --version against nodejs.org; if npm audit reports core vuln, update runtime`
+- `Rust: check rustc --version; run rustup update if cargo audit reports stdlib vuln`
+- `Java: check java --version against adoptium.net LTS releases`
+- `.NET: check dotnet --version against dotnet.microsoft.com patch releases`

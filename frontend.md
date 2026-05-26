@@ -36,6 +36,8 @@ npm audit 2>&1
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
+> If vulnerabilities found, run `npm audit fix`. For breaking changes: `npm audit fix --force` (review changes). Report unfixable vulns as findings.
+
 ### Tests (if configured)
 ```bash
 # Detect test runner
@@ -47,6 +49,12 @@ elif grep -q '"test"' package.json; then
   npm test 2>&1
 fi
 ```
+
+### Node.js runtime currency
+```bash
+node --version 2>&1
+```
+> If `npm audit` reports Node.js core vulnerabilities, update Node.js. Use `nvm install --lts` or download from nodejs.org.
 
 **Pass criteria:** 0 errors in all commands.
 

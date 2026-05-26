@@ -38,6 +38,12 @@ cargo test 2>&1
 cargo fmt --check 2>&1
 ```
 
+### Rust toolchain currency
+```bash
+rustc --version 2>&1
+```
+> If `cargo audit` reports stdlib vulnerabilities, run `rustup update stable`. Check if `rust-version` in Cargo.toml needs updating.
+
 **Pass criteria:** 0 errors, 0 warnings from clippy.
 
 ---
