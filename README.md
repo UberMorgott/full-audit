@@ -31,7 +31,7 @@ Claude executes:
 | S | Specialized | On demand (API request audit) | ~15-25 min |
 
 User can request: "level 1", "level 2", "full audit" (= level 2), "deep audit" (= level 3).
-Default if not specified: **level 2**.
+Default: **ask the user** (see Phase 0, step 1.5). If user explicitly specified level in their request, skip the prompt.
 
 ---
 
@@ -96,7 +96,169 @@ Dispatch a haiku agent to verify the project is auditable:
 
 If project fails eligibility → report to user with reasons, do not proceed.
 
-### 2. Scope Planning (sequential-thinking)
+### 2. Scan & Brief (Stack + MCP + CLI → unified report to user)
+
+This step silently gathers all environment info, then presents ONE consolidated briefing. The user should not see intermediate scan output — only the final summary.
+
+**Step 2a: Stack Detection (silent)**
+
+1. Look for manifest files: `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `*.csproj`, `*.sln`, `pom.xml`, `build.gradle`, `build.gradle.kts`
+2. Determine structure: monorepo? `backend/` + `frontend/`? single app?
+3. Fetch applicable stack files from this repo
+
+**Step 2b: MCP Server Health Check (silent, parallel)**
+
+For each MCP server, execute a real test call. A server may be configured but crashed, misconfigured, or have expired auth. The test call verifies end-to-end functionality.
+
+> **Timeout:** 10 seconds per call. No response → unavailable. Do NOT retry.
+
+Execute all 4 in parallel:
+
+1. **Serena (connection + LSP check):**
+   ```
+   Step A — Connection:
+   Call: mcp__serena__initial_instructions()
+   Expected: returns instruction text (any non-error response)
+   Error → ❌ Serena not running. Save error.
+
+   Step B — LSP languages (only if Step A passed):
+   Read: {project_root}/.serena/project.yml → check `languages:` field
+   If .serena/project.yml not found → Serena has no project config for this repo.
+   
+   Compare `languages:` list against detected stack. Mapping:
+     go.mod          → need "go" in languages
+     package.json    → need "typescript" (covers JS too)
+     Vue project     → need "vue" (or "typescript" as fallback)
+     Angular project → need "angular"
+     Svelte project  → need "svelte"
+     pyproject.toml  → need "python" (or "python_jedi" / "python_ty")
+     Cargo.toml      → need "rust"
+     pom.xml / gradle→ need "java" (or "kotlin" if Kotlin)
+     *.csproj / *.sln→ need "csharp" (or "csharp_omnisharp")
+   
+   If languages: [] (empty) or missing required language:
+     → Serena connected but LSP not configured for {stack}.
+     → Symbol navigation, go-to-definition, find-references will NOT work.
+     → Status: ⚠️ (partial — Serena works for memory/files but not code intelligence)
+   
+   If all required languages present:
+     → ✅ Serena — full code intelligence available
+   ```
+
+2. **Playwright:**
+   ```
+   Call: mcp__playwright__browser_navigate(url="about:blank")
+   Then: mcp__playwright__browser_snapshot()
+   Expected: returns DOM snapshot of blank page
+   OK → ✅    Error → ❌ + save error message
+   ```
+
+3. **Context7:**
+   ```
+   Call: mcp__context7__resolve-library-id(libraryName="react")
+   Expected: returns library ID
+   OK → ✅    Error → ❌ + save error message
+   ```
+
+4. **Sequential Thinking:**
+   ```
+   Call: mcp__sequential-thinking__sequentialthinking(thought="test", thoughtNumber=1, totalThoughts=1, nextThoughtNeeded=false)
+   Expected: returns acknowledgment
+   OK → ✅    Error → ⚠️ (non-critical)
+   ```
+
+**Step 2c: CLI Tools Check (silent)**
+
+Verify required CLI tools per detected stack:
+```bash
+# Example for Go stack:
+for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semgrep; do
+  command -v "$cmd" >/dev/null 2>&1 && echo "OK: $cmd" || echo "MISSING: $cmd"
+done
+```
+
+---
+
+### 3. Project Briefing + Depth Selection (MANDATORY — present to user)
+
+After all scans complete, present **one consolidated message** to the user. This is the first thing the user sees after asking for an audit.
+
+The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. **Example:**
+
+---
+
+## 📋 Предварительный отчёт
+
+**Ваш проект:** `{project_name}` (`{project_root}`)
+**Структура:** {monorepo / single app / backend + frontend}
+**Стек:** {Go 1.22, Vue 3 + TypeScript, PostgreSQL — или что обнаружено}
+
+### Инструменты аудита
+
+**MCP серверы:**
+| Сервер | Статус | Для чего нужен |
+|--------|--------|---------------|
+| Serena | ✅ Подключена, LSP: `go` ✅, `typescript` ❌ не настроен | Навигация по коду, поиск символов, cross-references |
+| Playwright | ❌ Не отвечает: `{error}` | Тестирование UI: клики по кнопкам, проверка ссылок, формы |
+| Context7 | ✅ Работает | Актуальная документация библиотек при фиксах |
+| Seq. Thinking | ⚠️ Не установлен | Продвинутое планирование (некритично) |
+
+> **Serena LSP:** Для полноценной навигации по коду (go-to-definition, find-references, rename) нужны LSP-серверы для каждого стека. Без LSP Serena работает как файловый менеджер — чтение/запись, но без code intelligence.
+> В `.serena/project.yml` → `languages:` должны быть перечислены нужные языки.
+
+**CLI инструменты:**
+| Инструмент | Статус | Для чего |
+|-----------|--------|----------|
+| staticcheck | ✅ | Статический анализ Go |
+| govulncheck | ✅ | Проверка уязвимостей Go |
+| gitleaks | ❌ Не найден | Поиск секретов в коде |
+| semgrep | ❌ Не найден | SAST-анализ |
+
+### Что нужно для полного аудита
+
+> **Требуют установки/починки:**
+> - ❌ **Playwright** — без него Level 3 теряет функциональное тестирование UI (битые ссылки, неактивные кнопки, нерабочие функции). Останется только статический анализ.
+> - ⚠️ **Serena LSP: `typescript`** — не настроен для frontend-стека. Без него: go-to-definition, find-references, rename для JS/TS кода недоступны. Serena будет работать как Grep/Read.
+> - ❌ **gitleaks** — без него поиск секретов в коде будет пропущен.
+> - ❌ **semgrep** — без него SAST-анализ будет пропущен.
+>
+> **Будут настроены/установлены автоматически:**
+> - Serena LSP — добавлю недостающие языки в `.serena/project.yml` (без перезапуска Serena не подхватит — потребуется рестарт MCP)
+> - gitleaks, semgrep — установка через пакетный менеджер, ~1-2 мин.
+>
+> **Требуют ручной установки** (MCP серверы):
+> - Playwright — нужна настройка MCP. Установить сейчас? (да/нет)
+> - Serena restart — после настройки LSP нужен перезапуск (пользователь должен перезапустить Claude Code или MCP)
+
+### Выберите глубину аудита
+
+| Уровень | Что включает | Ограничения | Время |
+|---------|-------------|-------------|-------|
+| **1 — Quick** | CLI: сборка, линтер, уязвимости, тесты | — | ~5-10 мин |
+| **2 — Full** | L1 + код-ревью (5 агентов), SAST, покрытие, HTTP-заголовки, CSRF, rate limiting | ⚠️ semgrep не установлен — SAST пропущен | ~20-35 мин |
+| **3 — Deep** | L2 + security-аудит, accessibility, лицензии, UI-тестирование, архитектура | ⚠️ Playwright недоступен — UI-тестирование пропущено | ~60-90 мин |
+| **S — API** | Только API-запросы: дублирование, N+1, GraphQL/gRPC, кэш | — | ~15-25 мин |
+
+> Для монорепо время ×1.5-2.
+
+**Введите номер (1, 2, 3 или S).**
+Или: **"установить всё"** — установлю недостающее и покажу обновлённую таблицу.
+
+---
+
+**Dynamic rules for building this briefing:**
+- Stack info: fill from manifest detection results
+- MCP table: fill from health check results. Show exact error messages for failed servers.
+- CLI table: show only tools relevant to detected stack (don't show Go tools for JS project)
+- "Требуют установки" section: only show if something is missing. If all available → replace with "✅ Все инструменты доступны, ограничений нет."
+- "Будут установлены автоматически": CLI tools that can be installed via `tools.md` commands
+- "Требуют ручной установки": MCP servers (need user config)
+- Depth table "Ограничения" column: fill dynamically. If everything available → "—" for all levels
+- If user says "установить всё" → install CLI tools, guide MCP setup, re-scan, rebuild briefing
+- After user selects level → proceed to Scope Planning
+- **Save all scan results** — they feed into Audit Limitations section of final report
+
+### 4. Scope Planning (sequential-thinking)
 
 Before creating audit tasks, clarify scope with the user:
 
@@ -110,7 +272,7 @@ Output: focused checklist that feeds into Wave 1+ task creation.
 
 ### Approach Proposal
 
-Based on scope answers, present 2-3 audit strategies to the user:
+Based on scope answers and environment scan, present 2-3 audit strategies to the user:
 
 | Approach | Focus | Agents | Estimated Time | Best For |
 |----------|-------|--------|---------------|----------|
@@ -119,15 +281,6 @@ Based on scope answers, present 2-3 audit strategies to the user:
 | **Targeted Audit** | User-specified modules/packages only | Scoped agents | L2: 15-30 min | Known problem areas, post-incident |
 
 Present approaches with trade-offs. User selects one. Selected approach determines which agents spawn and which checks run.
-
-### 3. Stack Detection
-
-Before creating tasks, detect the project stack:
-
-1. Look for manifest files: `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `*.csproj`, `*.sln`, `pom.xml`, `build.gradle`, `build.gradle.kts`
-2. Determine structure: monorepo? `backend/` + `frontend/`? single app?
-3. Fetch applicable stack files from this repo
-4. If MCP servers available (Serena, Context7) — use them. If not — fallback to Grep/Read/Glob.
 
 **Stack command mapping:**
 
@@ -181,14 +334,7 @@ TeamCreate("audit-{level}")
 ### Orchestrator Steps
 
 0. **Planning** — Sequential Thinking MCP (if available): waves, dependencies, skippable tasks.
-0.5. **Preflight check** — verify required tools are installed before spawning CLI scanners. Run a quick check per detected stack:
-    ```bash
-    # Example for Go stack:
-    for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semgrep; do
-      command -v "$cmd" >/dev/null 2>&1 && echo "OK: $cmd" || echo "MISSING: $cmd"
-    done
-    ```
-    If critical tools are missing, fetch `tools.md` and install before proceeding. Report missing optional tools as "SKIPPED" in the final report.
+0.5. **Preflight complete** — MCP + CLI checks already done in Phase 0, Steps 2-3. Proceed with team creation.
 1. **Create team** — `TeamCreate(team_name="audit-{level}")`.
 2. **Create tasks** — `TaskCreate` per agent. Use `TaskUpdate(addBlockedBy=[...])` for wave dependencies. Set priority: CRITICAL tasks first.
    Tasks MUST be self-contained: each TaskCreate description includes ALL file paths, context, checklist items, and instructions needed. Agents must NOT need to read other tasks, prior conversation, or external documents to complete a task. Embed relevant sections from stack files and universal.md directly in the task description.
@@ -332,15 +478,19 @@ Formalized protocol for wave-based parallel execution:
 4. **Gap analysis** — any files/packages in scope not covered by any agent?
 5. Integrate into unified findings list before next wave
 
-### MCP Servers (if available)
+### MCP Servers
 
-| MCP | Who | Notes |
-|-----|-----|-------|
-| **Serena** | Lead, reviewers, fixers | `read_memory("project_overview", "code_style")` at start |
-| **Context7** | Fixers | `resolve-library-id` -> `query-docs` before coding with libraries |
-| **Seq. Thinking** | Lead | Wave planning, fix strategy |
+> **All MCP servers are checked in Step 0.5 Part A (Preflight).** User is warned about missing servers before audit starts. See degradation table there.
 
-> **If Serena unavailable:** use Grep for code search, Glob for file search, Read for file contents. All code review agents switch from Serena to Grep/Read.
+| MCP | Who | What it enables | Fallback without it |
+|-----|-----|----------------|-------------------|
+| **Serena** | Lead, reviewers, fixers | Symbol-level navigation, cross-references, `read_memory("project_overview", "code_style")` | Grep/Read/Glob (slower, no symbol semantics) |
+| **Playwright** | UI testing agents | DOM-based functional testing: click buttons, fill forms, check links, console errors | Static analysis only — ~70% UI bugs missed |
+| **Context7** | Fixers | Current library docs via `resolve-library-id` → `query-docs` | Code without docs reference — higher error risk |
+| **Seq. Thinking** | Lead | Multi-hypothesis planning, mid-course revision | Linear planning (adequate for most audits) |
+
+> **If Serena unavailable:** all code review agents switch from Serena to Grep/Read/Glob.
+> **If Playwright unavailable:** all runtime UI checks in `frontend.md` and `universal.md` are SKIPPED. Report as "Audit Limitation" in final report.
 
 ### Teammate Prompts
 
@@ -541,6 +691,14 @@ Common false positives to auto-filter (score = 0):
 
 ### What's Good (don't touch)
 - ...
+
+### Audit Limitations
+> Include this section if any MCP servers were unavailable or CLI tools missing.
+
+| Capability | Status | Impact |
+|-----------|--------|--------|
+| e.g. Playwright MCP | ❌ Not installed | Functional UI testing skipped — broken links, dead buttons not checked |
+| e.g. semgrep | ❌ Not installed | SAST analysis skipped |
 ```
 
 > **Note:** Only include findings with confidence score >= threshold for the audit level (see Confidence Scoring). Each finding must show its confidence score.

@@ -212,6 +212,84 @@ Check:
 - Global error boundary exists (Vue: `app.config.errorHandler`, React: ErrorBoundary)
 - Network failure graceful degradation
 
+### Functional UI Testing (Playwright DOM mode)
+
+> Requires: running dev server. If project has no dev server or `skip_if: no_server`, skip with note.
+> This section addresses the #1 user complaint: audits finding code issues but missing broken UI.
+>
+> **IMPORTANT: DOM mode only — NO screenshots.** Use `browser_snapshot` (accessibility tree, text) instead of `browser_take_screenshot` (image, expensive). Snapshots return structured DOM text — fast, cheap, zero vision tokens. Only use screenshots if user explicitly requests visual regression testing.
+
+**Step 1: Detect and start dev server**
+```bash
+# Detect dev server command
+if grep -q '"dev"' package.json; then
+  npm run dev &
+  DEV_PID=$!
+  sleep 5  # wait for server startup
+elif grep -q '"start"' package.json; then
+  npm start &
+  DEV_PID=$!
+  sleep 5
+fi
+```
+
+**Step 2: Broken links & dead navigation**
+```bash
+# CLI check (fast, no Playwright needed):
+npx broken-link-checker http://localhost:3000 --ordered --recursive 2>&1
+```
+
+Playwright DOM audit (use `browser_snapshot` after each action):
+1. `browser_navigate` to each route from router config
+2. `browser_snapshot` — verify page has content (not blank/error)
+3. `browser_console_messages` — collect JS errors
+4. For each `<a>` in snapshot with internal href → `browser_click` → `browser_snapshot` → verify new page loaded, no error state
+5. Check all navigation menu items lead to real pages
+6. Verify breadcrumbs link to correct pages
+
+**Step 3: Interactive elements (DOM crawl)**
+
+For each page/route, take `browser_snapshot`, then for each interactive element in the accessibility tree:
+
+- **Buttons:** `browser_click` each button → `browser_snapshot` → verify DOM changed (new content, modal opened, form submitted, etc.). If DOM identical before/after click → dead button, report it.
+- **Forms:** `browser_fill_form` with test data → submit → `browser_snapshot` → verify success message or validation errors appear
+- **Modals/Dialogs:** `browser_click` trigger → `browser_snapshot` → verify modal in DOM → close → `browser_snapshot` → verify modal gone
+- **Dropdowns/Select:** `browser_select_option` → `browser_snapshot` → verify selection applied
+- **Tabs:** `browser_click` each tab → `browser_snapshot` → verify content changed
+- **Accordions/Collapsibles:** `browser_click` toggle → `browser_snapshot` → verify content appeared/disappeared
+- **Search:** `browser_fill_form` search input → submit → `browser_snapshot` → verify results
+- **Pagination:** `browser_click` next/prev → `browser_snapshot` → verify content changed
+
+> **Speed optimization:** batch-process pages. Per page: 1 snapshot to enumerate elements, N clicks with snapshots. Typical page = 1 + N snapshots. Skip elements already verified on other pages (shared nav, footer).
+
+**Step 4: Feature completeness**
+- **404 page:** `browser_navigate` to `/nonexistent-route-test` → `browser_snapshot` → verify custom 404 content, not blank
+- **Auth flows:** if login exists — fill credentials → submit → verify redirect/state change via DOM
+- **CRUD operations:** if app has create/read/update/delete — verify each via DOM snapshots
+- **File upload:** if upload exists — `browser_file_upload` → verify acceptance
+- **Notifications/Toasts:** trigger action → `browser_snapshot` → verify toast/notification in DOM
+- **Loading states:** `browser_snapshot` during fetch → verify skeleton/spinner in DOM (use `browser_wait_for` with short timeout)
+- **Empty states:** navigate to list page with no data → `browser_snapshot` → verify "no data" message
+- **Responsive:** `browser_resize` to 375px, 768px, 1024px → `browser_snapshot` per breakpoint → verify content accessible (no truncated text, no missing elements)
+
+**Step 5: Console & network errors**
+After each `browser_navigate`:
+1. `browser_console_messages` — collect all errors
+2. `browser_network_requests` — collect failed requests
+
+Fail criteria:
+- Any `console.error` on page load (excluding known third-party)
+- Any failed network request (4xx, 5xx) on page load
+- CORS errors
+- Mixed content warnings
+
+**Reporting format per broken element:**
+
+| Page/Route | Element (ref from snapshot) | Expected | Actual | Console errors |
+|------------|---------------------------|----------|--------|----------------|
+
+> **Cleanup:** after testing, kill dev server: `kill $DEV_PID 2>/dev/null`
+
 ### License compliance
 ```bash
 npx license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0" 2>&1

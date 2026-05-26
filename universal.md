@@ -853,6 +853,96 @@ Output: append variants to the same finding with `[VARIANT]` prefix.
 
 ---
 
+## Level 3: Functional UI/UX Testing (Opus)
+
+> Addresses #1 user complaint: "audits find code issues but miss ~70% of broken UI — dead links, inactive buttons, non-working features."
+> This section applies to ANY project with a web UI. For frontend-specific details, see `frontend.md → Functional UI Testing (Playwright)`.
+> **Static analysis by default.** Start dev server ONLY if user explicitly requested runtime testing or project CLAUDE.md requires it. Otherwise — static analysis of routes, links, and handler wiring.
+
+### Static analysis (no server required)
+
+**Dead routes & orphan pages:**
+```bash
+# Find route definitions
+grep -rn 'path:.*/' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.vue' --include='*.svelte' 2>&1
+# Find all internal link targets
+grep -rn 'href="/' --include='*.html' --include='*.vue' --include='*.tsx' --include='*.jsx' --include='*.svelte' 2>&1
+# Cross-reference: every href target should match a defined route
+```
+
+Check:
+- Every route in router config has a corresponding component file
+- Every `<a href="/...">` points to a defined route
+- No orphan pages (component exists but no route points to it)
+- Route guards/middleware reference existing auth functions
+- Dynamic route params (`:id`, `[slug]`) have fallback for invalid values
+
+**Button & handler wiring:**
+```bash
+# Buttons without click handlers (potential dead buttons)
+grep -rn '<button' --include='*.vue' --include='*.tsx' --include='*.jsx' --include='*.svelte' | grep -v '@click\|onClick\|on:click\|disabled\|type="submit"' 2>&1
+# Links with href="#" or href="" (placeholder links)
+grep -rn 'href=["'"'"']#\?["'"'"']' --include='*.vue' --include='*.tsx' --include='*.html' --include='*.svelte' 2>&1
+```
+
+Check:
+- Every `<button>` has a click handler, is a submit button, or is explicitly `disabled` with reason
+- No `href="#"` or `href=""` placeholder links
+- Event handlers reference existing functions (not typos)
+- Conditional rendering (`v-if`, `{condition &&}`) conditions are reachable
+- `disabled` attributes have matching enable conditions
+
+**Form validation completeness:**
+- Every `<form>` has submit handler
+- Required fields have validation (client-side at minimum)
+- Error messages defined for each validation rule
+- Form submit button is not permanently disabled
+
+**API integration wiring:**
+- Every API call function is actually invoked from UI
+- Response handlers cover success, error, and loading states
+- No orphan API functions (defined but never called)
+- API base URL is configurable (not hardcoded localhost)
+
+### Runtime checks — DOM mode (requires dev server — ask user permission first)
+
+> Only run if: user requested runtime testing, project has dev server, and Playwright MCP is available.
+>
+> **IMPORTANT: DOM snapshots only — NO screenshots.** Use `browser_snapshot` (returns accessibility tree as text — fast, zero vision tokens) instead of `browser_take_screenshot` (returns image — slow, expensive). Screenshots only if user explicitly requests visual regression.
+
+**Navigation audit:**
+Per route from router config:
+1. `browser_navigate(url)` → `browser_snapshot` → verify page has content (not blank/error)
+2. `browser_console_messages` → collect JS errors
+3. `browser_network_requests` → collect failed requests (4xx, 5xx)
+4. For each internal link in snapshot → `browser_click` → `browser_snapshot` → verify navigation worked
+
+**Interactive elements (DOM diff method):**
+Per page: take `browser_snapshot` (= baseline), then for each interactive element:
+1. `browser_click` element → `browser_snapshot` → compare with baseline
+2. If DOM unchanged after click → **dead element**, report it
+3. If DOM changed → element works, record what changed
+
+Specific checks:
+- Buttons: click → DOM must change (new content, modal, state change)
+- Forms: `browser_fill_form` → submit → verify success/validation in DOM
+- Modals: click trigger → verify modal appears in snapshot → close → verify gone
+- Dropdowns: `browser_select_option` → verify selection in snapshot
+- Tabs: click → verify content swap in snapshot
+
+**Console health:**
+- Zero `console.error` on page load per route (excluding known third-party)
+- Zero failed network requests on page load
+- No CORS errors
+- No mixed content warnings
+
+**Reporting format per broken element:**
+
+| Page/Route | Element (snapshot ref) | Expected | Actual | Console errors |
+|------------|----------------------|----------|--------|----------------|
+
+---
+
 ## Level 2+: Stack Currency (Web search, Sonnet)
 
 Read manifest files -> extract runtime/framework/library versions -> web search latest for each.
