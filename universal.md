@@ -3,6 +3,8 @@
 Language-agnostic checks. Apply to ANY project regardless of stack.
 These are code review tasks for Opus agents.
 
+> **Note:** universal.md applies from Level 2 onwards. Level 1 (Quick) uses only stack-specific files for fast CLI scans.
+
 > **Note:** Stack-specific files (`go.md`, `python.md`, etc.) extend but do not repeat these checks. If a check here overlaps with a stack file, the stack file provides language-specific details.
 
 ---

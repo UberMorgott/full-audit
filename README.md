@@ -13,6 +13,7 @@ User says:
 сделай полный аудит проекта инструкции на github.com/UberMorgott/full-audit
 ```
 
+<!-- Fork users: replace UberMorgott with your GitHub username in the URL below -->
 Claude executes:
 1. **Fetch this README** via WebFetch (`https://raw.githubusercontent.com/UberMorgott/full-audit/main/README.md`)
 2. **Read project's `CLAUDE.md`** — project-specific code rules override generic checks
@@ -297,7 +298,7 @@ Wave N is complete when ALL tasks tagged wave-N have status=completed (any outco
 | cli-scanner-{N} | ✅ | ✅ | ✅ |
 | cli-scanner-universal | — | ✅ | ✅ |
 | web-researcher | — | ✅ | ✅ |
-| diff-scanner-{N} | ✅ | ✅ | ✅ |
+| diff-scanner-{N} | — | ✅ | ✅ |
 | history-reviewer-{N} | — | ✅ | ✅ |
 | comment-checker | — | ✅ | ✅ |
 | convention-checker | — | ✅ | ✅ |

@@ -70,7 +70,7 @@
 
 ### Security
 - **Trivy:** Updated security notice — v0.69.5 and v0.69.6 also compromised (secondary attack 2026-03-22). Added timeline, safe versions for trivy-action and setup-trivy, GHSA reference.
-- **Trivy version check:** Added `trivy version` verification comment before every `trivy fs` command across all stack files (go.md, frontend.md, python.md, rust.md, java.md, csharp.md).
+- **Trivy version check:** Added `trivy version` verification before active `trivy fs` commands (go.md, java.md, csharp.md). Files using trivy as a commented-out alternative (frontend.md, python.md, rust.md) noted but not actively checked.
 - **TruffleHog:** Fixed install instructions — `pip install trufflehog` installs abandoned v2 (2021). Updated to Go binary install via install script, `go install`, or Homebrew.
 
 ### Added
