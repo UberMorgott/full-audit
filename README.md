@@ -1,6 +1,6 @@
 # Full Audit
 
-> **Version 1.3.0** — 2026-04-07
+> **Version 1.4.0** — 2026-05-26
 
 Universal codebase audit system for Claude Code. Works with any project, any stack, via GitHub reference.
 
@@ -480,11 +480,12 @@ Every finding goes through a confidence scoring gate before inclusion in the rep
 
 1. Each reviewer agent produces raw findings with severity
 2. Orchestrator dispatches **scoring agents** (haiku) — one per batch of findings
-3. Scoring agent evaluates each finding against:
+3. Scoring agent **independently re-reads the relevant code** (not relying on reviewer's description) and evaluates each finding against:
    - Is this verified against actual code? (not hypothetical)
    - Is this a pre-existing issue or introduced recently?
    - Does the CLAUDE.md mention this pattern as acceptable?
    - Can the finding be reproduced by running a specific command?
+   - If flagged due to CLAUDE.md, does the CLAUDE.md **actually** call out this issue specifically?
 4. Findings are filtered based on **per-level minimum thresholds**:
 
    | Level | Minimum Score | Rationale |

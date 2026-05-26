@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.0] — 2026-05-26
+
+### Added
+- **Runtime/toolchain currency checks** — Level 1 now includes version checks for all 6 stacks: Go (`go version`), Python (`python --version`), Node.js (`node --version`), Rust (`rustc --version`), Java (`java --version`), .NET (`dotnet --version`). Each includes remediation guidance when stdlib/runtime vulns are found.
+- **Stack Currency runtime bullets** (universal.md) — runtime update guidance for all stacks in Level 2+ section.
+- **`uv tool run` fallback** (python.md) — tip for running audit tools via uv when not globally installed.
+- **`npm audit fix` remediation** (frontend.md) — guidance on fixing npm vulnerabilities after scan.
+- **Independent scoring verification** (README.md) — scoring agents now explicitly re-read code independently and verify CLAUDE.md claims, not just trust reviewer descriptions.
+
+### Fixed
+- **28 technical issues** found via ultrareview (5-agent parallel code review):
+  - `tools.md`: removed npm osv-scanner typosquatting risk, fixed Trivy WARNING scope (v0.69.4→v0.69.4/5/6), noted security-scan deprecation, added missing tools (pip-licenses, pipreqs, dotnet-project-licenses).
+  - `go.md`: corrected XXE advice (`d.Strict` is syntax-only, not security), fixed golangci-lint v2 `-E` flag removal, unified Quick reference section name, added fuzz target listing.
+  - `frontend.md`: fixed `@axe-core/cli` package name and URL argument, moved Quick reference table to Level 2.
+  - `csharp.md`: fixed `dotnet-outdated` CLI command name.
+  - `universal.md`: JWT access ≤15min-1h (was ≤24h), PHP libxml updated for PHP 8+, bcrypt cost ≥13, PBKDF2 hash-specific iterations, yaml.v2/v3 deserialization clarified, MessageDigest.isEqual length caveat, Stack Currency relabeled Level 2+.
+  - `python.md`: added Performance section to Level 3.
+- **Command chaining bug** — `&&` chains in go.md and frontend.md Level 1 caused silent skipping when any tool found issues. Split into independent command blocks. Found during live audit of GOwebserver.
+- **4 structural issues** — scoring-agent missing from Level-to-Wave table, undefined `{sha_before}/{sha_after}` placeholders, deprecated `code-reviewer` role reference, diff-scanner removed from Level 1.
+- **Docs accuracy** — CHANGELOG trivy version check claim corrected, fork-friendly comment added, universal.md Level 1 absence noted.
+- **Quick Start** — translated user command from Russian to English.
+
+### Validated
+- Live-tested Level 1 commands on Go project (GOwebserver) — all tools executed correctly.
+- Live-tested Level 1+2 commands on Python project (chatbot) — ruff, pip-audit, bandit all functional via `uv tool run`.
+- Verified govulncheck + staticcheck + go build + npm build/lint/audit on real codebases.
+
 ## [1.3.0] — 2026-04-07
 
 ### Added
