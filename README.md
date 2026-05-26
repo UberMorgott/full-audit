@@ -132,11 +132,14 @@ Before creating tasks, detect the project stack:
 
 | Detected | Build | Lint | Vuln scan | Tests |
 |----------|-------|------|-----------|-------|
-| `go.mod` | `go build ./...` | `go vet && staticcheck ./...` | `govulncheck ./...` | `go test ./...` |
+| `go.mod` | `go build ./...` | `go vet ./... && staticcheck ./...` | `govulncheck ./...` | `go test ./...` |
+
+> **Note:** `staticcheck` requires separate install: `go install honnef.co/go/tools/cmd/staticcheck@latest`
+
 | `package.json` | `npm run build` | `npm run lint` | `npm audit` | `npm test` / `npx vitest run` |
 | `pyproject.toml` / `requirements.txt` | `python -m py_compile` | `ruff check .` | `pip-audit` | `pytest` |
 | `Cargo.toml` | `cargo build` | `cargo clippy` | `cargo audit` | `cargo test` |
-| `pom.xml` | `mvn compile` | `mvn checkstyle:check` | `mvn dependency-check:check` | `mvn test` |
+| `pom.xml` | `mvn compile` | `mvn checkstyle:check` | `mvn org.owasp:dependency-check-maven:check` | `mvn test` |
 | `build.gradle` / `build.gradle.kts` | `./gradlew build` | `./gradlew check` | `./gradlew dependencyCheckAnalyze` | `./gradlew test` |
 | `*.csproj` / `*.sln` | `dotnet build` | `dotnet format --verify-no-changes` | `dotnet list package --vulnerable` | `dotnet test` |
 
@@ -226,7 +229,7 @@ Only run CLI scanners and code review on changed files. Useful for:
 
 ### Wave Plan
 
-> Waves are generated dynamically based on detected stacks. `{stack}.md` = the stack-specific file (go.md, frontend.md, python.md, etc.). For monorepos with N stacks, spawn 1 cli-scanner + 1 code-reviewer per stack.
+> Waves are generated dynamically based on detected stacks. `{stack}.md` = the stack-specific file (go.md, frontend.md, python.md, etc.). For monorepos with N stacks, spawn 1 cli-scanner + review agents (diff-scanner, history-reviewer, comment-checker, convention-checker, impact-reviewer) per stack.
 
 ```
 Wave 1 — CLI + research (parallel, haiku + sonnet):
@@ -252,7 +255,7 @@ Wave 2 — code review (parallel, opus, after Wave 1):
       Changes break dependent code? API contracts maintained? Import chains valid?
 
 Scoring Phase (after final review wave, before report assembly):
-  - scoring-agent-{N} (haiku): [batch of findings from Wave 2/3]
+  - scoring-agent-{N} (haiku): [batch of findings from after final review wave (Wave 2 at Level 2, Wave 3 at Level 3)]
       Score each finding 0-100, filter by level threshold
       → 1 scoring agent per ~20 findings
 ```
@@ -299,6 +302,7 @@ Wave N is complete when ALL tasks tagged wave-N have status=completed (any outco
 | comment-checker | — | ✅ | ✅ |
 | convention-checker | — | ✅ | ✅ |
 | impact-reviewer-{N} | — | ✅ | ✅ |
+| scoring-agent-{N} | ✅ | ✅ | ✅ |
 | Wave 3 deep reviewers | — | — | ✅ |
 
 Level 1 (Quick): minimal agents for fast results. Level 2: full coverage. Level 3: everything including deep review.
@@ -681,6 +685,11 @@ If a fixer believes an assigned finding is incorrect or not applicable:
 **Never challenge to avoid work.** Anti-Rationalization Rules apply.
 
 ### Fix Review Protocol (Two-Stage)
+
+> **SHA capture (required before spawning fix-reviewers):**
+> Before spawning fixers: `sha_before=$(git rev-parse HEAD)`.
+> After fixers complete: `sha_after=$(git rev-parse HEAD)`.
+> Pass these values into the `{sha_before}` / `{sha_after}` template variables in the fix-reviewer prompts below.
 
 **Stage 1 — Spec Compliance** (after every 3 fixes or immediately for CRITICAL):
 ```

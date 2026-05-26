@@ -38,10 +38,10 @@ go test -timeout 60s -count=1 ./... 2>&1
 
 ### Static analysis — golangci-lint v2
 
-> v2: `--enable`/`-E` works. `enable-all`/`disable-all` removed (replaced by `linters.default`).
+> v2: `-E` removed — use `--enable` or config file. `enable-all`/`disable-all` removed (replaced by `linters.default`).
 
 ```bash
-golangci-lint run ./... -E bodyclose,sqlclosecheck,nilerr,nilnil,errcheck,errchkjson,ineffassign,gocognit,gocyclo,funlen,nestif,goconst,dupl,unconvert,unparam,prealloc,rowserrcheck,forcetypeassert,wrapcheck,contextcheck,noctx --timeout 5m 2>&1
+golangci-lint run ./... --enable bodyclose,sqlclosecheck,nilerr,nilnil,errcheck,errchkjson,ineffassign,gocognit,gocyclo,funlen,nestif,goconst,dupl,unconvert,unparam,prealloc,rowserrcheck,forcetypeassert,wrapcheck,contextcheck,noctx --timeout 5m 2>&1
 ```
 
 <details><summary>Recommended .golangci.yml</summary>
@@ -113,6 +113,7 @@ CGO_ENABLED=1 go test -race -timeout 60s -count=1 ./... 2>&1
 FUZZ_FILES=$(grep -r "func Fuzz" --include="*_test.go" -l . 2>/dev/null)
 if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
   echo "$FUZZ_FILES"
+  # List fuzz targets: grep -r "func Fuzz" --include="*_test.go" -l
   # Replace FuzzXxx and path with actual values from grep output:
   go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
 fi
@@ -170,7 +171,7 @@ What scanners miss — check manually:
 - Path traversal (`filepath.Join` with user input without validation — use `SafeJoinPath` + `filepath.EvalSymlinks`)
 - SSRF (HTTP request with user-supplied URL without scheme check)
 - CSV injection (user data in CSV export with `=`, `+`, `-`, `@` prefixes — prepend `'` or validate)
-- XXE in `encoding/xml` — use `xml.NewDecoder` with `d.Strict = true`
+- XXE in `encoding/xml` — safe by default (no external entity resolution). Real risk: third-party libs with libxml2 bindings. `d.Strict = true` controls syntax strictness only, not XXE
 
 **Crypto & Secrets:**
 - `math/rand` used for security-sensitive values (tokens, secrets, IDs) — must use `crypto/rand`
@@ -236,7 +237,7 @@ What scanners miss — check manually:
 
 ---
 
-### Quick reference: Go vulnerability patterns
+### Quick reference: vulnerability grep patterns
 
 | Vuln | Grep pattern | Fix |
 |------|-------------|-----|
@@ -249,7 +250,7 @@ What scanners miss — check manually:
 | Crypto | `md5.New()`, `sha1.New()` for auth | `sha256`, `bcrypt`, `argon2` |
 | Race | global `var m map` without `sync.Mutex` | `sync.RWMutex` or `sync.Map` |
 | Goroutine Leak | `go func` without cancel/WaitGroup | Context cancellation, `goleak` in tests |
-| XXE | `xml.NewDecoder` defaults | `d.Strict = true`, disable entities |
+| XXE | third-party XML libs with libxml2 | `encoding/xml` safe by default; audit CGO XML bindings |
 
 ---
 

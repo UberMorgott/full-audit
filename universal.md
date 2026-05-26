@@ -106,7 +106,7 @@ Verify responses include:
   - Go: `subtle.ConstantTimeCompare()`
   - Python: `hmac.compare_digest()`
   - Node.js: `crypto.timingSafeEqual()`
-  - Java: `MessageDigest.isEqual()`
+  - Java: `MessageDigest.isEqual(byte[], byte[])` — constant-time for equal-length arrays only; length difference leaks timing info
   - C#: `CryptographicOperations.FixedTimeEquals()`
   - Rust: `constant_time_eq` crate
 - Login/auth endpoints: response time should not reveal whether username exists (early return on "user not found" leaks info)
@@ -324,7 +324,7 @@ Unsafe deserialization = Remote Code Execution in many languages:
 
 | Language | Dangerous | Safe alternative |
 |----------|-----------|-----------------|
-| Go | `encoding/gob` with untrusted input, `yaml.v2` with arbitrary types, `encoding/json` into `interface{}` without depth limit | Typed structs, `yaml.v3`, limit JSON depth |
+| Go | `encoding/gob` with untrusted input, `yaml.v2/v3` with `interface{}` target, `encoding/json` into `interface{}` without depth limit | Typed structs with `KnownFields(true)` in `yaml.v3`, limit JSON depth |
 | Python | `pickle.loads()`, `yaml.load()`, `marshal.loads()` | `json`, `yaml.safe_load()`, `msgpack` |
 | Java | `ObjectInputStream.readObject()`, `XMLDecoder` | JSON/Protobuf, `ObjectInputFilter` whitelist |
 | C# | `BinaryFormatter` (banned), `NetDataContractSerializer` | `System.Text.Json`, `[JsonSerializable]` source gen |
@@ -344,11 +344,11 @@ Check:
 If project processes XML in any form:
 
 - XML parser configured to disable external entities and DTD processing
-- Go: `encoding/xml` does not resolve external entities by default, but lacks DTD processing controls. Use `d.Strict = true` for stricter parsing. The real risk is third-party XML libraries (`libxml2` bindings, `etree`). Always verify against your Go version.
+- Go: `encoding/xml` is safe by default — does not resolve external entities or process DTDs. `d.Strict = true` enforces syntax correctness only (not a security control). The real risk is third-party XML libraries (`libxml2` bindings, `etree`). Always verify against your Go version.
 - Java: `DocumentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`
 - Python: `defusedxml` library instead of `xml.etree`, `lxml` with `resolve_entities=False`
 - C#: `XmlReaderSettings.DtdProcessing = DtdProcessing.Prohibit`
-- PHP: `libxml_disable_entity_loader(true)`
+- PHP 7.x: `libxml_disable_entity_loader(true)`; PHP 8.0+: safe by default (function deprecated), use `LIBXML_NOENT` flag avoidance or `libxml_set_external_entity_loader(null)` if needed
 - Check for: SOAP endpoints, RSS/Atom feeds, SAML, SVG uploads, Office file processing (OOXML = XML inside ZIP)
 
 ---
@@ -456,7 +456,7 @@ If project processes XML in any form:
 ## Level 3: JWT / Auth Audit (Opus)
 
 - Algorithm validation (no `alg: none` acceptance, no RS256/HS256 confusion)
-- Token expiry: access <=24h, refresh <=30d
+- Token expiry: access <=15min (sensitive) to <=1h (low-risk), refresh <=30d
 - Refresh token rotation (old token invalidated on use)
 - Rate limit on login endpoint (prevent brute force)
 - Secret/key not hardcoded or predictable
@@ -662,7 +662,7 @@ If project processes XML in any form:
 
 **Action/plugin security:**
 - GitHub Actions pinned by full SHA, not mutable tag (`uses: actions/checkout@abc123` not `@v4`)
-- Third-party actions reviewed for supply chain risk (see Trivy v0.69.4 incident)
+- Third-party actions reviewed for supply chain risk (see Trivy v0.69.4/v0.69.5/v0.69.6 incident)
 - Self-hosted runners: isolated, not shared across untrusted repos
 - Minimal permissions: `permissions:` block restricts token scope
 
@@ -685,7 +685,7 @@ If project processes XML in any form:
 - Lock files committed (e.g., `package-lock.json`, `go.sum`, `Cargo.lock`, `poetry.lock`, `packages.lock.json`)
 - No `latest` / `*` / unbounded versions in manifests
 - Binaries in repo have provenance documentation
-- CI actions pinned by SHA, not by mutable tag (see Trivy v0.69.4 incident)
+- CI actions pinned by SHA, not by mutable tag (see Trivy v0.69.4/v0.69.5/v0.69.6 incident)
 - Dependencies from trusted registries (not random git URLs)
 - Minimal dependency count (each dependency justified)
 - Sub-dependency audit: transitive deps checked for known vulns
@@ -722,7 +722,7 @@ If project processes XML in any form:
 
 - **Key storage:** Keys in environment variables, secret manager, or HSM — never in source code or config files committed to git
 - **Key rotation:** mechanism exists, documented schedule (at minimum: on compromise, on employee departure, annually)
-- **Key derivation:** PBKDF2 (≥600,000 iterations), bcrypt (cost ≥12), Argon2id for password-derived keys
+- **Key derivation:** PBKDF2-HMAC-SHA256 (≥600,000 iterations) or PBKDF2-HMAC-SHA1 (≥1,300,000 iterations), bcrypt (cost ≥13 new systems; ≥12 minimum legacy), Argon2id for password-derived keys
 - **Asymmetric keys:** RSA ≥2048 bits, ECDSA ≥P-256, Ed25519 preferred for new implementations
 - **Symmetric keys:** AES-128 minimum, AES-256 preferred. Generated via crypto-secure RNG
 - **TLS configuration:** TLS 1.2 minimum, TLS 1.3 preferred. No SSLv3, TLS 1.0, TLS 1.1
@@ -851,7 +851,7 @@ Output: append variants to the same finding with `[VARIANT]` prefix.
 
 ---
 
-## Level 3: Stack Currency (Web search, Sonnet)
+## Level 2+: Stack Currency (Web search, Sonnet)
 
 Read manifest files -> extract runtime/framework/library versions -> web search latest for each.
 

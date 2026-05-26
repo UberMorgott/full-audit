@@ -62,6 +62,8 @@ pip install mypy           # Type checker
 pip install vulture        # Dead code finder
 pip install radon          # Complexity metrics
 pip install safety         # Dependency vulnerability check (alternative to pip-audit)
+pip install pip-licenses   # License compliance checker
+pip install pipreqs        # Generate requirements.txt from imports
 ```
 
 - **uv** (Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh` — faster alternative to pip, handles dependency resolution
@@ -107,8 +109,9 @@ Tools managed via build system (Gradle/Maven plugins). No separate install for m
 
 ```bash
 dotnet tool install -g dotnet-format           # Formatter
-dotnet tool install -g security-scan           # Vulnerability scanner
+dotnet tool install -g security-scan           # Vulnerability scanner (archived ~2020; consider Puma.Security.Rules or built-in Roslyn analyzers for .NET 6+)
 dotnet tool install -g dotnet-outdated-tool     # Dependency freshness (note: package name is dotnet-outdated-tool)
+dotnet tool install -g dotnet-project-licenses  # License compliance checker
 # Roslyn analyzers — via NuGet in .csproj
 ```
 
@@ -118,7 +121,7 @@ dotnet tool install -g dotnet-outdated-tool     # Dependency freshness (note: pa
 
 ```bash
 # Trivy — CVE + secrets + licenses (all package managers)
-# WARNING: v0.69.4 compromised (TeamPCP, 2026-03-19). Pin to safe version!
+# WARNING: v0.69.4, v0.69.5, v0.69.6 ALL compromised (TeamPCP, 2026-03-19). Pin to v0.69.3!
 choco install trivy --version=0.69.3    # Windows
 # brew install trivy                     # macOS
 # apt install trivy                      # Linux
@@ -149,7 +152,7 @@ go install github.com/trufflesecurity/trufflehog/v3@latest
 # OSV-Scanner (Google) — vulnerability scanner using OSV database
 # Natively supports go.sum, package-lock.json, requirements.txt, Cargo.lock
 go install github.com/google/osv-scanner/cmd/osv-scanner@latest
-# Or: npm install -g osv-scanner
+
 
 # Detect-Secrets (Yelp) — pre-commit secrets scanner with baseline
 pip install detect-secrets

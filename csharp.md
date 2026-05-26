@@ -55,7 +55,7 @@ semgrep --config=auto . 2>&1
 ### Outdated packages
 ```bash
 dotnet list package --outdated 2>&1
-dotnet-outdated-tool 2>&1
+dotnet-outdated 2>&1
 ```
 
 ### Deprecated packages

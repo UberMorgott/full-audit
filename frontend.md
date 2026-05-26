@@ -157,6 +157,21 @@ semgrep --config=auto . 2>&1
 - No connection status in UI
 - WS messages not validated/typed
 
+### Quick reference: vulnerability grep patterns
+
+| Pattern | Risk | Severity |
+|---------|------|----------|
+| `dangerouslySetInnerHTML` / `v-html` / `innerHTML` | XSS | HIGH |
+| `eval(` / `new Function(` | Code injection | CRITICAL |
+| `document.location` / `window.location` with user input | Open redirect | HIGH |
+| `localStorage.setItem` with tokens/secrets | Token theft via XSS | HIGH |
+| `fetch(userInput)` / `axios(userInput)` | SSRF | HIGH |
+| `postMessage("*")` / `addEventListener("message")` without origin check | Cross-origin data leak | HIGH |
+| `__proto__` / `constructor.prototype` | Prototype pollution | HIGH |
+| `console.log` with sensitive data | Information disclosure | MEDIUM |
+| `cors: { origin: '*' }` | Permissive CORS | HIGH |
+| `process.env.` in client bundle | Secret exposure | CRITICAL |
+
 ---
 
 ## Level 3: Deep (includes Level 2)
@@ -165,7 +180,7 @@ semgrep --config=auto . 2>&1
 
 ```bash
 # Automated check
-npx axe-core-cli . 2>&1
+npx @axe-core/cli http://localhost:3000 2>&1  # takes URL, not filesystem path
 # Or in build:
 # eslint-plugin-vuejs-accessibility / eslint-plugin-jsx-a11y
 ```
@@ -219,18 +234,3 @@ npm outdated 2>&1
 - Custom hook/composable used in exactly 1 place (inline it)
 - Abstraction layer over small utility (just use the utility)
 - Multiple state management solutions in same app
-
-### Quick reference: vulnerability grep patterns
-
-| Pattern | Risk | Severity |
-|---------|------|----------|
-| `dangerouslySetInnerHTML` / `v-html` / `innerHTML` | XSS | HIGH |
-| `eval(` / `new Function(` | Code injection | CRITICAL |
-| `document.location` / `window.location` with user input | Open redirect | HIGH |
-| `localStorage.setItem` with tokens/secrets | Token theft via XSS | HIGH |
-| `fetch(userInput)` / `axios(userInput)` | SSRF | HIGH |
-| `postMessage("*")` / `addEventListener("message")` without origin check | Cross-origin data leak | HIGH |
-| `__proto__` / `constructor.prototype` | Prototype pollution | HIGH |
-| `console.log` with sensitive data | Information disclosure | MEDIUM |
-| `cors: { origin: '*' }` | Permissive CORS | HIGH |
-| `process.env.` in client bundle | Secret exposure | CRITICAL |

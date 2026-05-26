@@ -227,6 +227,16 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 - No `__init__.py` structure (flat package, hard to navigate)
 - Test files not mirroring source structure
 
+### Performance
+
+- N+1 query patterns in ORM (`select_related`/`prefetch_related` missing in Django ORM, eager loading missing in SQLAlchemy)
+- Sync blocking calls in async context (`time.sleep`, sync I/O, `requests.*` inside `async def` — use `asyncio.sleep`, `httpx.AsyncClient`)
+- GIL-bound CPU work in hot paths — offload to `ProcessPoolExecutor` or C extension
+- Inefficient serialization in hot loops (`json.dumps`/`json.loads` per iteration — use `orjson` or `msgpack`)
+- Unbounded list/dict growth in long-running processes (caches, accumulators without eviction)
+- Missing database connection pooling (`SQLAlchemy` `pool_size`, Django `CONN_MAX_AGE`)
+- Large queryset iteration without `.iterator()` (loads all rows into memory)
+
 ### Task queue checks (Celery, RQ, Dramatiq)
 
 <details><summary>Celery / task queue</summary>
