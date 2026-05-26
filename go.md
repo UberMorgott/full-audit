@@ -204,7 +204,7 @@ What scanners miss — check manually:
 
 **Deserialization:**
 - `encoding/gob` with untrusted input (arbitrary type instantiation)
-- `gopkg.in/yaml.v2` with `yaml.Unmarshal` into `interface{}` (can instantiate arbitrary types — use `yaml.v3`)
+- `gopkg.in/yaml.v2` / `yaml.v3` with `yaml.Unmarshal` into `interface{}` (type confusion — use typed structs with `KnownFields(true)` in yaml.v3)
 - `encoding/json` into `interface{}` without depth limit (hash collision DoS)
 - Unbounded `json.Decoder` — use `d.DisallowUnknownFields()`, limit `MaxBytes`
 

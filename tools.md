@@ -18,8 +18,9 @@ go install github.com/google/go-licenses/v2@latest
 go install github.com/gitleaks/gitleaks/v8@latest
 go install github.com/kisielk/errcheck@latest
 
-# Goroutine leak detector (for tests)
-go install go.uber.org/goleak/cmd/goleak@latest
+# Goroutine leak detector (test dependency, not a CLI binary)
+# Add per-project: go get go.uber.org/goleak
+# Usage: goleak.VerifyTestMain(m) in TestMain — see go.md
 
 # Struct alignment optimizer
 go install github.com/dkorunic/betteralign/cmd/betteralign@latest
@@ -152,6 +153,9 @@ go install github.com/trufflesecurity/trufflehog/v3@latest
 # OSV-Scanner (Google) — vulnerability scanner using OSV database
 # Natively supports go.sum, package-lock.json, requirements.txt, Cargo.lock
 go install github.com/google/osv-scanner/cmd/osv-scanner@latest
+# Or via package manager:
+# brew install osv-scanner
+# Or download binary from https://github.com/google/osv-scanner/releases
 
 
 # Detect-Secrets (Yelp) — pre-commit secrets scanner with baseline

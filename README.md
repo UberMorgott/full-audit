@@ -189,78 +189,79 @@ The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. 
 
 ---
 
-## 📋 Предварительный отчёт
+## 📋 Preliminary Report
 
-**Ваш проект:** `{project_name}` (`{project_root}`)
-**Структура:** {monorepo / single app / backend + frontend}
-**Стек:** {Go 1.22, Vue 3 + TypeScript, PostgreSQL — или что обнаружено}
+**Your project:** `{project_name}` (`{project_root}`)
+**Structure:** {monorepo / single app / backend + frontend}
+**Stack:** {Go 1.22, Vue 3 + TypeScript, PostgreSQL — or whatever detected}
 
-### Инструменты аудита
+### Audit Tools
 
-**MCP серверы:**
-| Сервер | Статус | Для чего нужен |
-|--------|--------|---------------|
-| Serena | ✅ Подключена, LSP: `go` ✅, `typescript` ❌ не настроен | Навигация по коду, поиск символов, cross-references |
-| Playwright | ❌ Не отвечает: `{error}` | Тестирование UI: клики по кнопкам, проверка ссылок, формы |
-| Context7 | ✅ Работает | Актуальная документация библиотек при фиксах |
-| Seq. Thinking | ⚠️ Не установлен | Продвинутое планирование (некритично) |
+**MCP Servers:**
+| Server | Status | Purpose |
+|--------|--------|---------|
+| Serena | ✅ Connected, LSP: `go` ✅, `typescript` ❌ not configured | Code navigation, symbol search, cross-references |
+| Playwright | ❌ Not responding: `{error}` | UI testing: button clicks, link verification, forms |
+| Context7 | ✅ Working | Up-to-date library docs for fixes |
+| Seq. Thinking | ⚠️ Not installed | Advanced planning (non-critical) |
 
-> **Serena LSP:** Для полноценной навигации по коду (go-to-definition, find-references, rename) нужны LSP-серверы для каждого стека. Без LSP Serena работает как файловый менеджер — чтение/запись, но без code intelligence.
-> В `.serena/project.yml` → `languages:` должны быть перечислены нужные языки.
+> **Serena LSP:** For full code navigation (go-to-definition, find-references, rename), LSP servers are needed for each stack. Without LSP, Serena works as a file manager — read/write, but without code intelligence.
+> In `.serena/project.yml` → `languages:` should list the required languages.
 
-**CLI инструменты:**
-| Инструмент | Статус | Для чего |
-|-----------|--------|----------|
-| staticcheck | ✅ | Статический анализ Go |
-| govulncheck | ✅ | Проверка уязвимостей Go |
-| gitleaks | ❌ Не найден | Поиск секретов в коде |
-| semgrep | ❌ Не найден | SAST-анализ |
+**CLI Tools:**
+| Tool | Status | Purpose |
+|------|--------|---------|
+| staticcheck | ✅ | Go static analysis |
+| govulncheck | ✅ | Go vulnerability check |
+| gitleaks | ❌ Not found | Secrets detection in code |
+| semgrep | ❌ Not found | SAST analysis |
 
-### Не установлено
+### Not Installed
 
-> Показать только если что-то отсутствует. Если всё на месте → "✅ Все инструменты доступны, ограничений нет."
+> Show only if something is missing. If all available → "✅ All tools available, no limitations."
 
-**Недоступные MCP серверы** (не могут быть установлены автоматически):
-| Сервер | Проблема | Что теряется |
-|--------|---------|-------------|
-| Playwright | ❌ Не отвечает: `{error}` | Level 3: функциональное тестирование UI пропущено |
-| Serena LSP: `typescript` | ⚠️ Не настроен | Code intelligence для JS/TS: go-to-definition, find-references |
+**Unavailable MCP Servers** (cannot be auto-installed):
+| Server | Issue | Impact |
+|--------|-------|--------|
+| Playwright | ❌ Not responding: `{error}` | Level 3: functional UI testing skipped |
+| Serena LSP: `typescript` | ⚠️ Not configured | Code intelligence for JS/TS: go-to-definition, find-references |
 
-**Недоступные CLI утилиты** (будут установлены автоматически при выборе уровня):
-| Утилита | Нужна для | Уровень |
-|---------|----------|---------|
-| gitleaks | Поиск секретов в коде | L1+ |
-| semgrep | SAST-анализ | L2+ |
+**Unavailable CLI Tools** (will be auto-installed when level is selected):
+| Tool | Needed for | Level |
+|------|-----------|-------|
+| gitleaks | Secrets detection in code | L1+ |
+| semgrep | SAST analysis | L2+ |
 
-### Выберите глубину аудита
+### Select Audit Depth
 
-| Уровень | Что включает | Ограничения | Время |
-|---------|-------------|-------------|-------|
-| **1 — Quick** | CLI: сборка, линтер, уязвимости, тесты | — | ~5-10 мин |
-| **2 — Full** | L1 + код-ревью (5 агентов), SAST, покрытие, HTTP-заголовки, CSRF, rate limiting | — | ~20-35 мин |
-| **3 — Deep** | L2 + security-аудит, accessibility, лицензии, UI-тестирование, архитектура | ⚠️ Playwright недоступен — UI-тестирование пропущено | ~60-90 мин |
-| **S — API** | Только API-запросы: дублирование, N+1, GraphQL/gRPC, кэш | — | ~15-25 мин |
+| Level | Includes | Limitations | Time |
+|-------|----------|-------------|------|
+| **1 — Quick** | CLI: build, linter, vulnerabilities, tests | — | ~5-10 min |
+| **2 — Full** | L1 + code review (5 agents), SAST, coverage, HTTP headers, CSRF, rate limiting | — | ~20-35 min |
+| **3 — Deep** | L2 + security audit, accessibility, licenses, UI testing, architecture | ⚠️ Playwright unavailable — UI testing skipped | ~60-90 min |
+| **S — API** | API requests only: duplication, N+1, GraphQL/gRPC, cache | — | ~15-25 min |
 
-> Для монорепо время ×1.5-2.
+> For monorepos, time ×1.5-2.
 >
-> ⚙️ **Выбирая уровень, вы соглашаетесь на автоматическую установку недостающих CLI-утилит** (gitleaks, semgrep и т.д.), необходимых для выбранного уровня. MCP серверы автоматически не устанавливаются — их ограничения указаны в таблице.
+> ⚙️ **By selecting a level, you agree to auto-install missing CLI tools** (gitleaks, semgrep, etc.) required for the selected level. MCP servers are not auto-installed — their limitations are listed in the table above.
 
-**Введите номер (1, 2, 3 или S):**
+**Enter number (1, 2, 3 or S):**
 
 ---
 
 **Dynamic rules for building this briefing:**
+- **Language:** present the briefing in the user's language (match the language they used when requesting the audit). The template above is in English as a reference; adapt all labels, headers, and messages to the user's language at runtime.
 - Stack info: fill from manifest detection results
 - MCP table: fill from health check results. Show exact error messages for failed servers.
 - CLI table: show only tools relevant to detected stack (don't show Go tools for JS project)
-- "Не установлено" section: only show if something is missing. If all available → replace with "✅ Все инструменты доступны, ограничений нет."
-- "Недоступные CLI утилиты" table: show which level needs each tool — so user knows what gets installed for their choice
-- Depth table "Ограничения" column: only show MCP limitations (CLI will be auto-installed). If all MCP available → "—"
+- "Not Installed" section: only show if something is missing. If all available → replace with "✅ All tools available, no limitations."
+- "Unavailable CLI Tools" table: show which level needs each tool — so user knows what gets installed for their choice
+- Depth table "Limitations" column: only show MCP limitations (CLI will be auto-installed). If all MCP available → "—"
 - **After user selects level:**
   1. Fetch `tools.md` from this repo
   2. Install all missing CLI tools required for the selected level and below
   3. Re-verify each installed tool (`command -v`)
-  4. Report install results: "✅ gitleaks установлен" / "❌ semgrep: установка не удалась — {error}"
+  4. Report install results: "✅ gitleaks installed" / "❌ semgrep: installation failed — {error}"
   5. Proceed to Scope Planning — do NOT re-show the briefing
 - **Save all scan results** — they feed into Audit Limitations section of final report
 
@@ -336,6 +337,9 @@ TeamCreate("audit-{level}")
 | Fixer | `general-purpose` | `opus` | `fixer-backend` |
 | Fix reviewer | `general-purpose` | `opus` | `fix-reviewer` |
 | Scoring agent | `general-purpose` | `haiku` | `scoring-agent-1` |
+| Deep reviewer (stack) | `general-purpose` | `opus` | `code-reviewer-go` |
+| Deep reviewer (security) | `general-purpose` | `opus` | `code-reviewer-security` |
+| Deep reviewer (quality) | `general-purpose` | `opus` | `code-reviewer-quality` |
 
 ### Orchestrator Steps
 
@@ -386,9 +390,9 @@ Only run CLI scanners and code review on changed files. Useful for:
 
 ```
 Wave 1 — CLI + research (parallel, haiku + sonnet):
-  - cli-scanner-{N} (haiku): [{stack}.md L1+L2 CLI commands]
-      Per detected stack: build, lint, vuln scan, tests,
-      SAST (semgrep), secrets (gitleaks), dead code, coverage
+  - cli-scanner-{N} (haiku): [{stack}.md CLI commands for current level]
+      Per detected stack: L1: build, lint, vuln scan, tests
+      L2+: adds SAST (semgrep), secrets (gitleaks), dead code, coverage
       → 1 scanner per stack (e.g., cli-scanner-go, cli-scanner-frontend)
   - cli-scanner-universal (haiku): [universal.md L2 CLI]
       git hygiene (large files, suspicious files, .gitignore)
@@ -455,7 +459,7 @@ Wave N is complete when ALL tasks tagged wave-N have status=completed (any outco
 | comment-checker | — | ✅ | ✅ |
 | convention-checker | — | ✅ | ✅ |
 | impact-reviewer-{N} | — | ✅ | ✅ |
-| scoring-agent-{N} | ✅ | ✅ | ✅ |
+| scoring-agent-{N} | — | ✅ | ✅ |
 | Wave 3 deep reviewers | — | — | ✅ |
 
 Level 1 (Quick): minimal agents for fast results. Level 2: full coverage. Level 3: everything including deep review.
@@ -511,6 +515,7 @@ You are a teammate in audit team "{team_name}". Role: code review.
 
 Read the project CLAUDE.md first — it has project-specific Code Rules.
 MCP: Serena for code nav (if available). Fallback: Grep/Read/Glob.
+When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
 ```
 
 **CLI scanner:**
@@ -526,6 +531,7 @@ You are a teammate in audit team "{team_name}". Role: run CLI tools.
 5. TaskList -> next. None -> idle.
 
 Do NOT edit files. Only run commands and report.
+When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
 ```
 
 **Web researcher:**
@@ -541,6 +547,7 @@ You are a teammate in audit team "{team_name}". Role: version & CVE research.
 
 Rate each: Current / Behind / EOL / Vulnerability (see universal.md Stack Currency).
 Do NOT edit files. Only research and report.
+When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
 ```
 
 **Fixer:**
@@ -566,6 +573,7 @@ Work only in assigned directory/package to avoid conflicts.
 IMPORTANT: shared/ and common packages — only ONE fixer at a time. If your task touches shared/,
 check TaskList for other active shared/ tasks. If conflict — wait or notify lead.
 Your fixes are reviewed in batches of 3. CRITICAL fixes get immediate review. Commit each fix separately with message: fix(audit): [SEVERITY] description
+When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
 ```
 
 **Scoring agent:**
@@ -585,6 +593,7 @@ You are a teammate in audit team "{team_name}". Role: score findings.
 
 Discard findings scoring below the level threshold (L1: <75, L2: <60, L3: <40).
 Do NOT edit files. Only evaluate and score.
+When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
 ```
 
 ### Agent Completion Statuses
@@ -854,7 +863,8 @@ If a fixer believes an assigned finding is incorrect or not applicable:
 
 > **SHA capture (required before spawning fix-reviewers):**
 > Before spawning fixers: `sha_before=$(git rev-parse HEAD)`.
-> After fixers complete: `sha_after=$(git rev-parse HEAD)`.
+> At each review checkpoint (every 3 fixes, on CRITICAL fix, or after all fixers complete): `sha_after=$(git rev-parse HEAD)`.
+> After dispatching the fix-reviewer, update: `sha_before=$sha_after` for the next batch.
 > Pass these values into the `{sha_before}` / `{sha_after}` template variables in the fix-reviewer prompts below.
 
 **Stage 1 — Spec Compliance** (after every 3 fixes or immediately for CRITICAL):

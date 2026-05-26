@@ -106,7 +106,7 @@ ruff format --check . 2>&1         # formatting
 ```bash
 pytest --cov=. --cov-report=term-missing 2>&1
 # Or:
-coverage run -m pytest && coverage report --show-missing 2>&1
+coverage run -m pytest; coverage report --show-missing 2>&1
 ```
 
 ### Semgrep SAST

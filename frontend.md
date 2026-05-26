@@ -189,6 +189,8 @@ semgrep --config=auto . 2>&1
 
 ### Accessibility (a11y)
 
+> Requires: running dev server. If project has no dev server or `skip_if: no_server`, skip with note.
+
 ```bash
 # Automated check
 npx @axe-core/cli http://localhost:3000 2>&1  # takes URL, not filesystem path
@@ -225,11 +227,13 @@ Check:
 if grep -q '"dev"' package.json; then
   npm run dev &
   DEV_PID=$!
-  sleep 5  # wait for server startup
+  # Wait for server readiness (up to 30s)
+  for i in $(seq 1 30); do curl -sf http://localhost:3000 >/dev/null && break; sleep 1; done
 elif grep -q '"start"' package.json; then
   npm start &
   DEV_PID=$!
-  sleep 5
+  # Wait for server readiness (up to 30s)
+  for i in $(seq 1 30); do curl -sf http://localhost:3000 >/dev/null && break; sleep 1; done
 fi
 ```
 
@@ -289,6 +293,7 @@ Fail criteria:
 |------------|---------------------------|----------|--------|----------------|
 
 > **Cleanup:** after testing, kill dev server: `kill $DEV_PID 2>/dev/null`
+> # Note: may need 'kill $(lsof -ti:3000)' if npm child process persists
 
 ### License compliance
 ```bash
