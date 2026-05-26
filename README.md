@@ -167,7 +167,7 @@ Execute all 4 in parallel:
    OK → ✅    Error → ⚠️ (non-critical)
    ```
 
-**Step 2c: CLI Tools Check (silent)**
+**Step 2c: CLI Tools Check + Auto-Install (silent)**
 
 Verify required CLI tools per detected stack:
 ```bash
@@ -176,6 +176,19 @@ for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semg
   command -v "$cmd" >/dev/null 2>&1 && echo "OK: $cmd" || echo "MISSING: $cmd"
 done
 ```
+
+**Auto-install missing CLI tools:**
+If any tools are missing, fetch `tools.md` from this repo and install them automatically BEFORE showing the briefing. This way the user sees the final state, not intermediate.
+
+```
+1. Fetch tools.md: WebFetch https://raw.githubusercontent.com/{user}/full-audit/main/tools.md
+2. For each missing tool → find install command in tools.md → execute
+3. Re-check after install → update status (✅ installed / ❌ install failed: {error})
+4. Only tools that FAILED to install appear as ❌ in the briefing
+```
+
+> **Do not ask permission for CLI tools** — these are local dev tools (linters, scanners), safe to install. MCP servers require user action — those are shown as "Требуют ручной установки".
+> **If install fails** — save error, show in briefing as "❌ {tool}: установка не удалась — {error}". Do not retry.
 
 ---
 
@@ -514,7 +527,7 @@ You are a teammate in audit team "{team_name}". Role: run CLI tools.
 1. TaskList -> claim task (TaskUpdate owner="{your_name}")
 2. Before running each command, verify the tool exists: `command -v <tool> >/dev/null 2>&1`
    - If missing: report as "SKIPPED: <tool> not installed" and continue to next command
-   - Do NOT attempt to install tools unless explicitly instructed
+   - CLI tools should already be installed during Phase 0 preflight. If something is still missing, report it — do not install mid-audit.
 3. Run CLI commands from task via Bash
 4. TaskUpdate(status="completed") with output summary
 5. TaskList -> next. None -> idle.
