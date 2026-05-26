@@ -878,3 +878,4 @@ Include runtime version (Go 1.x, Node.js x, Python 3.x, etc.) as first row.
 - **Behind:** create LOW finding, recommend update plan
 - **EOL:** create HIGH finding, migration plan needed
 - **Vulnerability:** create CRITICAL/HIGH finding based on CVE severity, immediate patch required
+- `Go: check govulncheck stdlib findings — if stdlib vuln reported, update go directive in go.mod to fixed version`

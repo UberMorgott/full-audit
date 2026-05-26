@@ -31,6 +31,12 @@ staticcheck ./... 2>&1  # requires: go install honnef.co/go/tools/cmd/staticchec
 govulncheck ./... 2>&1
 ```
 
+### Go toolchain currency
+```bash
+go version 2>&1
+```
+> If `govulncheck` reports stdlib vulnerabilities (e.g., `Found in: net@go1.25.8, Fixed in: net@go1.25.10`), the Go toolchain must be updated. Update `go.mod` directive: `go mod edit -go=<fixed_version>`, run `go mod tidy`, rebuild and re-check.
+
 ### Unit tests
 ```bash
 go test -timeout 60s -count=1 ./... 2>&1
