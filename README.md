@@ -167,7 +167,7 @@ Execute all 4 in parallel:
    OK → ✅    Error → ⚠️ (non-critical)
    ```
 
-**Step 2c: CLI Tools Check + Auto-Install (silent)**
+**Step 2c: CLI Tools Check (silent, NO install yet)**
 
 Verify required CLI tools per detected stack:
 ```bash
@@ -177,18 +177,7 @@ for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semg
 done
 ```
 
-**Auto-install missing CLI tools:**
-If any tools are missing, fetch `tools.md` from this repo and install them automatically BEFORE showing the briefing. This way the user sees the final state, not intermediate.
-
-```
-1. Fetch tools.md: WebFetch https://raw.githubusercontent.com/{user}/full-audit/main/tools.md
-2. For each missing tool → find install command in tools.md → execute
-3. Re-check after install → update status (✅ installed / ❌ install failed: {error})
-4. Only tools that FAILED to install appear as ❌ in the briefing
-```
-
-> **Do not ask permission for CLI tools** — these are local dev tools (linters, scanners), safe to install. MCP servers require user action — those are shown as "Требуют ручной установки".
-> **If install fails** — save error, show in briefing as "❌ {tool}: установка не удалась — {error}". Do not retry.
+> Do NOT install anything at this step. Only collect status. Installation happens after user picks a level (Step 3).
 
 ---
 
@@ -227,35 +216,36 @@ The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. 
 | gitleaks | ❌ Не найден | Поиск секретов в коде |
 | semgrep | ❌ Не найден | SAST-анализ |
 
-### Что нужно для полного аудита
+### Не установлено
 
-> **Требуют установки/починки:**
-> - ❌ **Playwright** — без него Level 3 теряет функциональное тестирование UI (битые ссылки, неактивные кнопки, нерабочие функции). Останется только статический анализ.
-> - ⚠️ **Serena LSP: `typescript`** — не настроен для frontend-стека. Без него: go-to-definition, find-references, rename для JS/TS кода недоступны. Serena будет работать как Grep/Read.
-> - ❌ **gitleaks** — без него поиск секретов в коде будет пропущен.
-> - ❌ **semgrep** — без него SAST-анализ будет пропущен.
->
-> **Будут настроены/установлены автоматически:**
-> - Serena LSP — добавлю недостающие языки в `.serena/project.yml` (без перезапуска Serena не подхватит — потребуется рестарт MCP)
-> - gitleaks, semgrep — установка через пакетный менеджер, ~1-2 мин.
->
-> **Требуют ручной установки** (MCP серверы):
-> - Playwright — нужна настройка MCP. Установить сейчас? (да/нет)
-> - Serena restart — после настройки LSP нужен перезапуск (пользователь должен перезапустить Claude Code или MCP)
+> Показать только если что-то отсутствует. Если всё на месте → "✅ Все инструменты доступны, ограничений нет."
+
+**Недоступные MCP серверы** (не могут быть установлены автоматически):
+| Сервер | Проблема | Что теряется |
+|--------|---------|-------------|
+| Playwright | ❌ Не отвечает: `{error}` | Level 3: функциональное тестирование UI пропущено |
+| Serena LSP: `typescript` | ⚠️ Не настроен | Code intelligence для JS/TS: go-to-definition, find-references |
+
+**Недоступные CLI утилиты** (будут установлены автоматически при выборе уровня):
+| Утилита | Нужна для | Уровень |
+|---------|----------|---------|
+| gitleaks | Поиск секретов в коде | L1+ |
+| semgrep | SAST-анализ | L2+ |
 
 ### Выберите глубину аудита
 
 | Уровень | Что включает | Ограничения | Время |
 |---------|-------------|-------------|-------|
 | **1 — Quick** | CLI: сборка, линтер, уязвимости, тесты | — | ~5-10 мин |
-| **2 — Full** | L1 + код-ревью (5 агентов), SAST, покрытие, HTTP-заголовки, CSRF, rate limiting | ⚠️ semgrep не установлен — SAST пропущен | ~20-35 мин |
+| **2 — Full** | L1 + код-ревью (5 агентов), SAST, покрытие, HTTP-заголовки, CSRF, rate limiting | — | ~20-35 мин |
 | **3 — Deep** | L2 + security-аудит, accessibility, лицензии, UI-тестирование, архитектура | ⚠️ Playwright недоступен — UI-тестирование пропущено | ~60-90 мин |
 | **S — API** | Только API-запросы: дублирование, N+1, GraphQL/gRPC, кэш | — | ~15-25 мин |
 
 > Для монорепо время ×1.5-2.
+>
+> ⚙️ **Выбирая уровень, вы соглашаетесь на автоматическую установку недостающих CLI-утилит** (gitleaks, semgrep и т.д.), необходимых для выбранного уровня. MCP серверы автоматически не устанавливаются — их ограничения указаны в таблице.
 
-**Введите номер (1, 2, 3 или S).**
-Или: **"установить всё"** — установлю недостающее и покажу обновлённую таблицу.
+**Введите номер (1, 2, 3 или S):**
 
 ---
 
@@ -263,12 +253,15 @@ The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. 
 - Stack info: fill from manifest detection results
 - MCP table: fill from health check results. Show exact error messages for failed servers.
 - CLI table: show only tools relevant to detected stack (don't show Go tools for JS project)
-- "Требуют установки" section: only show if something is missing. If all available → replace with "✅ Все инструменты доступны, ограничений нет."
-- "Будут установлены автоматически": CLI tools that can be installed via `tools.md` commands
-- "Требуют ручной установки": MCP servers (need user config)
-- Depth table "Ограничения" column: fill dynamically. If everything available → "—" for all levels
-- If user says "установить всё" → install CLI tools, guide MCP setup, re-scan, rebuild briefing
-- After user selects level → proceed to Scope Planning
+- "Не установлено" section: only show if something is missing. If all available → replace with "✅ Все инструменты доступны, ограничений нет."
+- "Недоступные CLI утилиты" table: show which level needs each tool — so user knows what gets installed for their choice
+- Depth table "Ограничения" column: only show MCP limitations (CLI will be auto-installed). If all MCP available → "—"
+- **After user selects level:**
+  1. Fetch `tools.md` from this repo
+  2. Install all missing CLI tools required for the selected level and below
+  3. Re-verify each installed tool (`command -v`)
+  4. Report install results: "✅ gitleaks установлен" / "❌ semgrep: установка не удалась — {error}"
+  5. Proceed to Scope Planning — do NOT re-show the briefing
 - **Save all scan results** — they feed into Audit Limitations section of final report
 
 ### 4. Scope Planning (sequential-thinking)
