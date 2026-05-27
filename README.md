@@ -1,6 +1,6 @@
 # Full Audit
 
-> **Version 1.4.0** — 2026-05-26
+> **Version 1.5.0** — 2026-05-27
 
 Universal codebase audit system for Claude Code. Works with any project, any stack, via GitHub reference.
 
@@ -238,7 +238,7 @@ The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. 
 |-------|----------|-------------|------|
 | **1 — Quick** | CLI: build, linter, vulnerabilities, tests | — | ~5-10 min |
 | **2 — Full** | L1 + code review (5 agents), SAST, coverage, HTTP headers, CSRF, rate limiting | — | ~20-35 min |
-| **3 — Deep** | L2 + security audit, accessibility, licenses, UI testing, architecture | ⚠️ Playwright unavailable — UI testing skipped | ~60-90 min |
+| **3 — Deep** | L2 + security audit, accessibility, licenses, UI testing, **business logic, architecture review** | ⚠️ Playwright unavailable — UI testing skipped | ~60-90 min |
 | **S — API** | API requests only: duplication, N+1, GraphQL/gRPC, cache | — | ~15-25 min |
 
 > For monorepos, time ×1.5-2.
@@ -340,6 +340,9 @@ TeamCreate("audit-{level}")
 | Deep reviewer (stack) | `general-purpose` | `opus` | `code-reviewer-go` |
 | Deep reviewer (security) | `general-purpose` | `opus` | `code-reviewer-security` |
 | Deep reviewer (quality) | `general-purpose` | `opus` | `code-reviewer-quality` |
+| Logic reviewer (domain) | `general-purpose` | `opus` | `logic-reviewer-go` |
+| UI/UX reviewer | `general-purpose` | `opus` | `ui-reviewer` |
+| Architecture reviewer | `general-purpose` | `opus` | `arch-reviewer` |
 
 ### Orchestrator Steps
 
@@ -435,6 +438,20 @@ Wave 3 — deep review (parallel, opus):
       input validation, resilience, config mgmt,
       state mgmt, privacy/PII, supply chain, SBOM,
       sharp edges, variant analysis
+  - logic-reviewer-{N} (opus): [universal.md L3 — business logic]
+      Domain logic correctness, edge cases, heuristic accuracy
+      Race conditions in concurrent code paths
+      Error handling gaps, resource leaks, tool invocation safety
+      → 1 reviewer per stack
+  - ui-reviewer (opus): [universal.md L3 — UI/UX (Playwright DOM)]
+      Live DOM audit via Playwright browser_snapshot (not screenshots)
+      Navigation, interactive elements, empty/error/loading states
+      Responsive layouts, keyboard accessibility, console errors
+      Requires: running dev server
+  - arch-reviewer (opus): [universal.md L3 — architecture]
+      Design decisions evaluation, trade-offs, alternatives
+      Communication patterns, scalability, extensibility
+      Dead config fields, missing implementations
 ```
 
 </details>
@@ -446,6 +463,11 @@ Wave N is complete when ALL tasks tagged wave-N have status=completed (any outco
 - If an agent is idle >5 minutes with incomplete tasks → investigate or reassign
 - If a wave exceeds 2x estimated time → notify user, offer to proceed with partial results
 - Wave N+1 tasks are automatically unblocked when Wave N completes
+
+**Wave 3 additional completion criteria:**
+- Logic reviewer: all domain-specific logic paths reviewed, edge cases documented
+- UI reviewer: all pages visited, interactive elements tested, states verified
+- Architecture reviewer: all major decisions evaluated with trade-offs
 
 ### Level-to-Wave Agent Mapping
 

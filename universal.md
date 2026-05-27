@@ -941,6 +941,154 @@ Specific checks:
 | Page/Route | Element (snapshot ref) | Expected | Actual | Console errors |
 |------------|----------------------|----------|--------|----------------|
 
+
+---
+
+## Level 3: Business Logic & Domain Correctness (Opus)
+
+> Source: Deep pipeline/workflow review. Not detectable by static analysis or SAST tools.
+
+**Scope:** Review ALL domain-specific logic, not just security. Focus on correctness.
+
+**Pipeline/Workflow Logic:**
+- State machine correctness: all transitions valid, no stuck states
+- Cancellation/pause/resume semantics: clean shutdown, no orphaned goroutines
+- Progress tracking accuracy: counters match actual work done
+- File processing: correct handling of groups/batches vs individual items
+- Error propagation: errors from sub-operations surface correctly to user
+
+**Heuristic & Classification Logic:**
+- Detection heuristics: false positive rate, false negative rate
+- Feature extraction: are all relevant signals actually used? (dead parameters = dead detection)
+- Fallback behavior: when primary detection fails, is fallback reasonable?
+- Priority/ordering: when multiple matches, is the right one selected?
+
+**Edge Cases:**
+- Empty input (zero files, empty directories, zero-byte files)
+- Malformed input (corrupted files, wrong extensions, unexpected formats)
+- Large input (memory-bounded? streaming? or load-all-at-once?)
+- Permission errors (read-only dirs, locked files, Windows ACLs)
+- Path edge cases (spaces, unicode, very long paths, dotfiles, symlinks)
+- Concurrent operations (parallel requests, race conditions, TOCTOU)
+
+**Tool Invocation Safety:**
+- External process construction: no shell interpolation, proper quoting
+- Timeout enforcement: subprocesses bounded by context/timeout
+- Output capture: bounded memory (streaming vs ReadAll)
+- Cleanup: temp files, child processes terminated on cancel
+- Partial results: what happens when tool fails mid-operation?
+
+**Config Consistency:**
+- Config fields that exist but are never read (dead config = misleading)
+- Config fields that are read but never set (missing defaults)
+- Config validated on startup? (fail-fast vs silent bad config)
+
+**Report format:** File:line, Category (logic bug / edge case / robustness / heuristic), Severity, Evidence, Root Cause, Fix.
+
+---
+
+## Level 3: UI/UX Functional Audit — Playwright DOM Mode (Opus)
+
+> Requires: running dev server. If project has no dev server, skip with note.
+> **IMPORTANT: DOM mode only — NO screenshots.** Use `browser_snapshot` (accessibility tree, text) instead of `browser_take_screenshot` (image, expensive).
+
+Extends the existing Functional UI Testing section with structured methodology.
+
+**Pre-flight:**
+1. Start dev server (detect from package.json scripts or project CLAUDE.md)
+2. Wait for server readiness (curl loop, max 30s)
+3. Navigate to root URL, take initial snapshot
+
+**Per-page audit protocol:**
+1. `browser_navigate` → `browser_snapshot` → verify content renders (not blank/error)
+2. `browser_console_messages` → collect JS errors (fail on any console.error on load)
+3. `browser_network_requests` → collect failed requests (4xx, 5xx)
+
+**Interactive element testing:**
+For each interactive element in DOM snapshot:
+- Buttons: click → snapshot → verify DOM changed. Unchanged = dead button.
+- Forms: fill → submit → verify success/validation feedback
+- Navigation: click each nav item → verify page content changes
+- Toggles/switches: click → verify aria-checked/state flipped
+- Modals: trigger → verify appears → close → verify gone
+
+**State verification:**
+- Empty state: navigate with no data → verify user-friendly message (not blank)
+- Loading state: snapshot during async operation → verify spinner/skeleton
+- Error state: trigger error condition → verify user-friendly error (not raw exception)
+- Version/status displays: verify show valid data (not raw HTML, not undefined)
+
+**Responsive check:**
+- `browser_resize` to 3 breakpoints: mobile (375px), tablet (768px), desktop (1920px)
+- Per breakpoint: snapshot → verify no content cut off, no overlapping elements
+
+**Keyboard accessibility:**
+- Tab through all interactive elements → verify focus order makes sense
+- Enter/Space on focused buttons → verify activation
+- Escape on modals → verify dismissal
+
+**i18n consistency (if multilingual):**
+- Switch language → snapshot → verify ALL visible strings changed
+- Report any hardcoded strings that don't change with locale
+
+**Poll/timer behavior:**
+- Check for console error flooding (repeated errors without backoff)
+- Verify cleanup on page navigation (no orphaned timers/intervals)
+
+**Report format:**
+| Page/Route | Element | Expected | Actual | Severity | Console errors |
+|------------|---------|----------|--------|----------|----------------|
+
+---
+
+## Level 3: Architecture Decision Review (Opus)
+
+Evaluate design decisions, not just code quality. Focus on trade-offs and alternatives.
+
+**Communication Patterns:**
+- How do components communicate? (HTTP, RPC, events, polling, WebSocket)
+- Is the chosen pattern appropriate for the use case?
+- Silent failures: messages dropped without feedback? Queue overflow handling?
+- Event delivery guarantees: at-least-once? at-most-once? exactly-once?
+- Latency: is polling acceptable or should push be used?
+
+**Data Flow:**
+- State ownership: who owns each piece of state? Clear boundaries?
+- Event shape stability: are event payloads typed/versioned?
+- Parsing: structured fields or regex/string parsing of messages?
+- State object size: flat vs nested? Maintainable at current field count?
+
+**External Dependencies:**
+- Download integrity: checksums/signatures verified?
+- API rate limits: handled? Cached? Graceful degradation?
+- Version checking: sequential or parallel? Blocking or background?
+- Retry logic: exists in config? Actually implemented?
+
+**Configuration:**
+- Dead config fields: defined but never read?
+- Missing implementations: config promises features that don't work?
+- Validation: fail-fast on invalid config or silent defaults?
+- Migration: what happens when schema changes?
+
+**Scalability:**
+- Memory: bounded or load-all-at-once?
+- CPU: O(n²) patterns? Unnecessary re-scans?
+- Concurrency: sequential where parallel would help? Config exists but unused?
+- I/O: streaming or buffered? Appropriate for expected data sizes?
+
+**Extensibility:**
+- Plugin/extension interface: clean contract? Boilerplate duplication?
+- Registration pattern: how to add new X? (X = recipe, tool, handler, etc.)
+- Composition: can features be combined? Or monolithic?
+
+**Report format per decision:**
+| Decision | What was chosen | Alternatives | Trade-offs | Rating (Good/Acceptable/Needs Improvement) | Recommendation |
+|----------|----------------|--------------|------------|---------------------------------------------|----------------|
+
+**Rating criteria:**
+- **Good:** Appropriate for the use case, well-implemented, minimal friction for changes
+- **Acceptable:** Works but has known limitations or tech debt
+- **Needs Improvement:** Causes real problems (bugs, UX issues, maintenance burden)
 ---
 
 ## Level 2+: Stack Currency (Web search, Sonnet)
