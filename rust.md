@@ -1,13 +1,13 @@
 # Rust Audit Checks
 
-> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+> **Cross-references:** Works with [README.md](README.md) (orchestration), [universal.md](universal.md) (language-agnostic checks).
 >
-> **Required reading for all agents using this file:**
-> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
-> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
-> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
-> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
-> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+> **Required reading:**
+> - **Confidence Scoring** (README.md) — assign 0-100 per finding. Thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns first.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol per CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify need before suggesting additions.
+> - **Anti-Rationalization Rules** (universal.md) — never skip checks or soften findings.
 
 Applies when `Cargo.toml` detected. All commands assume `cd {project_root}`.
 
@@ -24,7 +24,7 @@ cargo clippy -- -D warnings 2>&1
 ### Dependency vulnerabilities
 ```bash
 cargo audit 2>&1
-# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# Or universal (verify version — v0.69.4-6 compromised, see tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -38,28 +38,26 @@ cargo test 2>&1
 cargo fmt --check 2>&1
 ```
 
-### Rust toolchain currency
+### Toolchain currency
 ```bash
 rustc --version 2>&1
 ```
-> If `cargo audit` reports stdlib vulnerabilities, run `rustup update stable`. Check if `rust-version` in Cargo.toml needs updating.
+> If `cargo audit` reports stdlib vulns, run `rustup update stable`. Check `rust-version` in Cargo.toml.
 
-**Pass criteria:** 0 errors, 0 warnings from clippy.
+**Pass criteria:** 0 errors, 0 clippy warnings.
 
 ---
 
-## Level 2: Full (includes Level 1)
+## Level 2: Full (includes L1)
 
-### Comprehensive lint — cargo-deny
-
-Covers: vulnerabilities, licenses, banned crates, duplicate deps.
+### cargo-deny (vulns, licenses, bans, duplicates)
 
 ```bash
-# Requires deny.toml config (generate default: cargo deny init)
+# Requires deny.toml (generate: cargo deny init)
 cargo deny check 2>&1
 ```
 
-If no `deny.toml`:
+Without `deny.toml`:
 ```bash
 cargo deny check advisories 2>&1
 cargo deny check licenses 2>&1
@@ -74,13 +72,13 @@ cargo geiger --all-features 2>&1
 
 Check:
 - `unsafe` blocks justified with `// SAFETY:` comment
-- `unsafe` count minimized — wrapper functions isolate unsafe
-- No `unsafe` in public API without documentation
-- `transmute` usage (almost always wrong — use `from_*` or `TryFrom`)
+- `unsafe` count minimized — isolated in wrapper functions
+- No `unsafe` in public API without docs
+- `transmute` usage (almost always wrong — use `from_*`/`TryFrom`)
 
 ### Unused dependencies
 ```bash
-# skip_if: nightly_only — requires Rust nightly toolchain
+# skip_if: nightly_only
 rustup run nightly rustc --version >/dev/null 2>&1 || { echo "SKIP: nightly not installed"; exit 0; }
 cargo +nightly udeps --all-targets 2>&1
 ```
@@ -95,12 +93,12 @@ cargo outdated -R 2>&1
 # Linux only (tarpaulin)
 cargo tarpaulin --out Html --skip-clean 2>&1
 
-# Cross-platform alternative via llvm-cov
+# Cross-platform via llvm-cov
 cargo install cargo-llvm-cov
 cargo llvm-cov --summary-only 2>&1
 ```
 
-### Binary size analysis (for binaries)
+### Binary size analysis
 ```bash
 cargo bloat --release --crates 2>&1
 ```
@@ -109,11 +107,10 @@ cargo bloat --release --crates 2>&1
 ```bash
 # skip_if: nightly_only
 cargo +nightly fuzz list 2>&1
-# Run each target for 30s:
 cargo +nightly fuzz run {target} -- -max_total_time=30 2>&1
 ```
 
-### Miri (undefined behavior detection)
+### Miri (UB detection)
 ```bash
 # skip_if: nightly_only + no_tool(miri component)
 cargo +nightly miri test 2>&1
@@ -134,142 +131,139 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
-> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+> **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
 
 ### Memory safety (beyond borrow checker)
 
-- `unsafe` blocks: each must have `// SAFETY:` comment explaining invariants
-- `std::mem::transmute` — almost always wrong, prefer safe alternatives
-- `std::ptr::read`/`write` — ensure alignment and validity
-- `Box::from_raw` without matching `Box::into_raw` (double-free or leak)
+- `unsafe`: each block needs `// SAFETY:` comment with invariants
+- `std::mem::transmute` — prefer safe alternatives
+- `std::ptr::read`/`write` — ensure alignment + validity
+- `Box::from_raw` without matching `Box::into_raw` (double-free/leak)
 - `ManuallyDrop` without explicit drop path
 - `Pin` misuse (moving pinned data)
-- FFI boundaries: all `extern "C"` functions validate inputs
-- `Send`/`Sync` manual implementations — require careful review
+- FFI: all `extern "C"` functions validate inputs
+- Manual `Send`/`Sync` impls — require careful review
 
 ### Concurrency
 
-- `Arc<Mutex<T>>` with long-held locks (potential deadlock)
-- Lock ordering inconsistency (A->B in one place, B->A in another)
-- `Mutex::lock().unwrap()` — panics on poisoned mutex (use `lock().expect("reason")` or handle)
+- `Arc<Mutex<T>>` with long-held locks (deadlock risk)
+- Inconsistent lock ordering (A→B vs B→A)
+- `Mutex::lock().unwrap()` — panics on poison (use `.expect("reason")` or handle)
 - `tokio::spawn` without `.await` on handle (fire-and-forget, lost errors)
 - Blocking in async context (`std::thread::sleep`, sync I/O in async fn)
 - `async_trait` overhead in hot paths
-- Channel (`mpsc`) without bounded capacity (unbounded memory growth)
-- `RwLock` with write-heavy pattern (consider `Mutex` instead)
+- Unbounded `mpsc` channel (unbounded memory growth)
+- `RwLock` with write-heavy pattern (consider `Mutex`)
 
 ### Error handling
 
-- `unwrap()` / `expect()` in library code (should return `Result`)
-- `unwrap()` in production paths (only OK in tests and provably-safe cases)
+- `unwrap()`/`expect()` in library code (should return `Result`)
+- `unwrap()` in production paths (OK only in tests/provably-safe)
 - `.unwrap_or_default()` hiding real errors
-- Error types without `Display`/`Error` impl
-- `?` operator losing context (use `anyhow::Context` or `map_err`)
+- Error types missing `Display`/`Error` impl
+- `?` losing context (use `anyhow::Context` or `map_err`)
 - `panic!` in library code
-- `todo!()` / `unimplemented!()` in non-prototype code
+- `todo!()`/`unimplemented!()` in non-prototype code
 
 ### Resource management
 
-- File/socket without `drop` guarantee (use RAII patterns)
-- `forget()` on values that own resources (memory/handle leak)
+- File/socket without `drop` guarantee (use RAII)
+- `forget()` on resource-owning values (leak)
 - Connection pools without size limits
-- `TempDir` / `TempFile` drop not guaranteed on panic
-- HTTP client without timeout configuration
+- `TempDir`/`TempFile` drop not guaranteed on panic
+- HTTP client without timeout
 
 ### Performance
 
-- `clone()` in hot paths where borrow would work
-- `String` allocation where `&str` suffices
+- `clone()` in hot paths where borrow works
+- `String` where `&str` suffices
 - `Vec` without `with_capacity` for known sizes
 - `format!()` in hot loop (allocates each time)
 - `HashMap` without `with_capacity` for known sizes
-- `collect::<Vec<_>>()` immediately followed by iteration (skip collect)
+- `collect::<Vec<_>>()` immediately iterated (skip collect)
 - Boxing where stack allocation works
-- `to_string()` / `to_owned()` where reference lifetime is sufficient
+- `to_string()`/`to_owned()` where reference lifetime sufficient
 
-### Quick reference: Rust vulnerability patterns
+### Rust vulnerability patterns
 
 | Vuln | Grep pattern | Fix |
 |------|-------------|-----|
-| Unsafe code | `unsafe\s*\{` | Minimize, wrap in safe API, add `// SAFETY:` comment |
+| Unsafe code | `unsafe\s*\{` | Minimize, wrap in safe API, add `// SAFETY:` |
 | Transmute | `transmute` | Use `from_*`, `TryFrom`, or `as` casts |
-| SQL Injection | `format!.*SELECT`, `&format!.*WHERE` | Use parameterized queries (sqlx `query!` macro) |
+| SQL Injection | `format!.*SELECT`, `&format!.*WHERE` | Parameterized queries (sqlx `query!`) |
 | Command Injection | `Command::new.*` + user input | Whitelist commands, use `.arg()` not shell interpolation |
 | Path Traversal | `Path::new.*` + user input | Canonicalize + prefix check |
 | Unwrap in prod | `\.unwrap\(\)` (outside `_test.rs`) | Use `?`, `.expect("reason")`, or handle `Result` |
 | Blocking in async | `std::thread::sleep`, `std::fs::` in async fn | Use `tokio::time::sleep`, `tokio::fs::` |
-| Deadlock | `Mutex::lock.*Mutex::lock` (nested) | Consistent lock ordering, or use `parking_lot` |
+| Deadlock | `Mutex::lock.*Mutex::lock` (nested) | Consistent lock ordering, or `parking_lot` |
 | Memory leak | `mem::forget`, `ManuallyDrop` without drop | Ensure explicit drop path |
-| Fire-and-forget | `tokio::spawn` without `JoinHandle` | Store handle, await or abort on shutdown |
+| Fire-and-forget | `tokio::spawn` without `JoinHandle` | Store handle, await/abort on shutdown |
 
 ---
 
-## Level 3: Deep (includes Level 2)
+## Level 3: Deep (includes L2)
 
 ### Architecture
 
-- Public API surface too large (items that should be `pub(crate)`)
-- Module structure flat (everything in `lib.rs` / `main.rs`)
+- Public API surface too large (should be `pub(crate)`)
+- Flat module structure (everything in `lib.rs`/`main.rs`)
 - Circular module dependencies
 - God struct (>20 fields, >10 methods)
-- Trait with >10 methods (should be split)
-- Generics over-used where concrete type works
+- Trait >10 methods (split it)
+- Over-generic where concrete type works
 
 ### API safety
 
-- Public functions accepting `String` where `&str` works (unnecessary allocation on caller)
-- Returning `Vec<T>` where `impl Iterator<Item=T>` works (lazy evaluation)
-- `pub` fields on structs (should be private with getter/setter for invariants)
-- Missing `#[must_use]` on functions returning `Result` or values that shouldn't be discarded
-- Missing `#[non_exhaustive]` on public enums (breaking change to add variant)
-- Builder pattern without compile-time guarantees (typestate pattern for required fields)
+- Public fns accepting `String` where `&str` works (unnecessary caller allocation)
+- Returning `Vec<T>` where `impl Iterator<Item=T>` works (lazy eval)
+- `pub` fields on structs (should be private with getter/setter)
+- Missing `#[must_use]` on `Result`-returning fns
+- Missing `#[non_exhaustive]` on public enums (adding variant = breaking change)
+- Builder pattern without compile-time guarantees (typestate for required fields)
 
 ### Dependency quality
 
-> Level 3 dependency audit: consider cargo-vet for supply chain verification (see tools.md).
-
-> Check Cargo.toml for rust-version field (MSRV). Missing MSRV = potential compatibility issues.
+> L3: consider cargo-vet for supply chain verification (see tools.md).
+> Check Cargo.toml for `rust-version` (MSRV). Missing = potential compat issues.
 
 ```bash
-# Check dependency tree depth
 cargo tree --depth 3 2>&1
-# Check for duplicate versions
 cargo tree --duplicates 2>&1
 ```
 
 Check:
-- No unmaintained crates (>2 years without update)
+- No unmaintained crates (>2yr without update)
 - No yanked versions
-- Minimal dependency tree (each dep justified)
+- Minimal dep tree (each dep justified)
 - `[patch]` section explained in comments
-- Feature flags used to minimize compiled code
+- Feature flags minimize compiled code
 
 ### Web framework checks (Actix-web, Axum, Rocket)
 
 <details><summary>Actix-web / Axum / Rocket</summary>
 
-- Middleware/layer order correct (tracing -> auth -> CORS -> routes)
-- Extractors validate input (reject malformed requests early)
-- Shared state via `Arc` / `Extension` — not global mutable
-- Rate limiting middleware configured
-- CORS policy scoped (not blanket allow-all)
+- Middleware/layer order: tracing → auth → CORS → routes
+- Extractors validate input (reject malformed early)
+- Shared state via `Arc`/`Extension` — no global mutable
+- Rate limiting configured
+- CORS scoped (not blanket allow-all)
 - Graceful shutdown via `tokio::signal`
-- Custom error responses (no internal details to client)
-- Request body size limits configured
+- Custom error responses (no internals to client)
+- Request body size limits set
 - TLS configured or behind reverse proxy
 
 </details>
 
-### Async-specific (if using tokio/async-std)
+### Async-specific (tokio/async-std)
 
-> Async cancellation safety: verify select! branches handle cancellation correctly. Drop + async interaction can cause resource leaks.
+> Async cancellation safety: verify `select!` branches handle cancellation. Drop + async interaction can leak resources.
 
-- `tokio::main` with proper runtime configuration (multi-thread vs current-thread)
+- `tokio::main` with proper runtime config (multi-thread vs current-thread)
 - `select!` branches all cancel-safe
 - Graceful shutdown via `tokio::signal`
-- Task JoinHandle errors handled (panic in spawned task)
-- No sync primitives in async code (`std::sync::Mutex` vs `tokio::sync::Mutex`)
-- Backpressure on channels (bounded channels with handled full case)
+- Task `JoinHandle` errors handled (panic in spawned task)
+- No sync primitives in async (`std::sync::Mutex` vs `tokio::sync::Mutex`)
+- Backpressure on channels (bounded + handle full case)
 
 ### License compliance
 ```bash

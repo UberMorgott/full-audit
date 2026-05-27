@@ -1,13 +1,13 @@
 # C# / .NET Audit Checks
 
-> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+> **Cross-references:** [README.md](README.md) (orchestration), [universal.md](universal.md) (language-agnostic).
 >
-> **Required reading for all agents using this file:**
-> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
-> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
-> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
-> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
-> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+> **Required reading:**
+> - **Confidence Scoring** (README.md) — 0-100 per finding. L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — stack-specific auto-discard patterns.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol per CLI finding.
+> - **YAGNI Check** (universal.md) — verify need before suggesting additions.
+> - **Anti-Rationalization Rules** (universal.md) — no skipping/softening findings.
 
 Applies when `*.csproj`, `*.sln`, or `global.json` detected.
 All commands assume `cd {solution_root}`.
@@ -25,14 +25,14 @@ dotnet test --no-build 2>&1
 ### Lint (Roslyn analyzers)
 ```bash
 dotnet build /p:TreatWarningsAsErrors=true 2>&1
-# Or with dotnet-format:
+# Or dotnet-format:
 dotnet format --verify-no-changes 2>&1
 ```
 
 ### Dependency vulnerabilities
 ```bash
 dotnet list package --vulnerable --include-transitive 2>&1
-# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# Universal (verify version — v0.69.4-6 compromised, see tools.md):
 trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
@@ -41,9 +41,9 @@ trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```bash
 dotnet --version 2>&1
 ```
-> If `dotnet list package --vulnerable` reports SDK-level issues, update .NET SDK. Check dotnet.microsoft.com/download for latest patch.
+> If `dotnet list package --vulnerable` reports SDK issues, update SDK via dotnet.microsoft.com/download.
 
-**Pass criteria:** 0 errors, 0 critical/high vulnerabilities.
+**Pass criteria:** 0 errors, 0 critical/high vulns.
 
 ---
 
@@ -51,10 +51,10 @@ dotnet --version 2>&1
 
 ### Security scan
 ```bash
-# .NET security analyzers (if referenced in csproj)
+# .NET security analyzers (if in csproj)
 dotnet build /p:EnableNETAnalyzers=true /p:AnalysisLevel=latest 2>&1
 
-# Also recommended: semgrep (catches different patterns than Roslyn analyzers)
+# semgrep (catches patterns Roslyn misses)
 semgrep --config=auto . 2>&1
 ```
 
@@ -71,7 +71,7 @@ dotnet list package --deprecated 2>&1
 
 ### Unused packages
 ```bash
-# Requires snitch tool
+# Requires snitch
 dotnet tool install -g snitch
 snitch 2>&1
 ```
@@ -92,19 +92,19 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
-> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+> **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
 
 ### Security review
 
 - **SQL injection:** string interpolation in SQL (`$"SELECT ... WHERE id = {id}"`)
-  - Must use parameterized queries: `command.Parameters.AddWithValue()` or EF Core LINQ
-- **Deserialization:** `BinaryFormatter` (banned — RCE risk), `JsonSerializer` without type restrictions
+  - Use parameterized queries: `command.Parameters.AddWithValue()` or EF Core LINQ
+- **Deserialization:** `BinaryFormatter` (banned — RCE), `JsonSerializer` without type restrictions
   - Use `System.Text.Json` with `[JsonSerializable]` source gen or explicit type
 - **Path traversal:** `Path.Combine(basePath, userInput)` without `Path.GetFullPath()` + prefix check
 - **XSS (Blazor/Razor):** `@Html.Raw(userInput)`, `MarkupString(userInput)`
 - **SSRF:** `HttpClient.GetAsync(userUrl)` without URL scheme validation
-- **CORS:** `AllowAnyOrigin()` with `AllowCredentials()` (dangerous combination)
-- **Connection strings:** hardcoded in code (should be in config with User Secrets / Key Vault)
+- **CORS:** `AllowAnyOrigin()` + `AllowCredentials()` (dangerous combo)
+- **Connection strings:** hardcoded (use config + User Secrets / Key Vault)
 - **ASP.NET-specific:**
   - Missing `[ValidateAntiForgeryToken]` on POST actions
   - `[AllowAnonymous]` on sensitive endpoints
@@ -114,65 +114,65 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ### Concurrency
 
-- `async void` methods (exceptions crash process — must be `async Task`)
-- `.Result` / `.Wait()` on Task (deadlock risk — use `await`)
-- `lock` on `this` or `typeof(T)` (should lock on private `object`)
-- Shared `static` mutable state without `lock` or `Interlocked`
-- `Dictionary<>` shared across threads (use `ConcurrentDictionary`)
-- `HttpClient` created per request (use `IHttpClientFactory` — socket exhaustion)
-- `SemaphoreSlim` without `try/finally` release pattern
+- `async void` (exceptions crash process — must be `async Task`)
+- `.Result` / `.Wait()` on Task (deadlock — use `await`)
+- `lock` on `this`/`typeof(T)` (lock on private `object`)
+- Shared `static` mutable state without `lock`/`Interlocked`
+- `Dictionary<>` across threads (use `ConcurrentDictionary`)
+- `HttpClient` per request (use `IHttpClientFactory` — socket exhaustion)
+- `SemaphoreSlim` without `try/finally` release
 - `CancellationToken` not passed through async chain
-- `Task.Run()` in ASP.NET (steals ThreadPool threads from request processing)
-- Fire-and-forget `Task` without exception observation (`TaskScheduler.UnobservedTaskException`)
+- `Task.Run()` in ASP.NET (steals ThreadPool threads)
+- Fire-and-forget `Task` without exception observation
 
 ### Resource management
 
-- `IDisposable` not disposed (no `using` statement)
+- `IDisposable` not disposed (no `using`)
 - `HttpClient` not via `IHttpClientFactory` (socket leak)
-- `DbContext` with wrong lifetime (Scoped, not Singleton)
+- `DbContext` wrong lifetime (Scoped, not Singleton)
 - `StreamReader`/`StreamWriter` not in `using`
 - `Timer` without `Dispose`
-- Unsubscribed event handlers (memory leak via strong reference)
+- Unsubscribed event handlers (memory leak via strong ref)
 - `CancellationTokenSource` not disposed
 
 ### Error handling
 
 - Empty `catch` blocks
-- `catch (Exception ex)` without re-throw or logging
+- `catch (Exception ex)` without re-throw/logging
 - `throw ex;` instead of `throw;` (loses stack trace)
-- Exception in finally block hiding original exception
+- Exception in finally hiding original exception
 - Business logic in catch blocks
-- `Task` without exception observation (unobserved task exception)
+- `Task` without exception observation
 
-### Quick reference: vulnerability grep patterns
+### Vulnerability grep patterns
 
 | Pattern | Risk | Severity |
 |---------|------|----------|
 | `BinaryFormatter` | Deserialization RCE (banned) | CRITICAL |
-| `Process.Start` with user input | Command injection | CRITICAL |
+| `Process.Start` + user input | Command injection | CRITICAL |
 | `[AllowAnonymous]` on sensitive endpoints | Missing auth | HIGH |
 | `async void` (non-event-handler) | Unhandled exceptions | HIGH |
 | `.Result` / `.Wait()` | Deadlock risk | HIGH |
 | `new HttpClient()` in loop | Socket exhaustion | HIGH |
-| `SqlCommand` with string concat | SQL injection | CRITICAL |
-| `Html.Raw()` with user data | XSS | HIGH |
-| `TempData` with sensitive info | Data exposure | MEDIUM |
+| `SqlCommand` + string concat | SQL injection | CRITICAL |
+| `Html.Raw()` + user data | XSS | HIGH |
+| `TempData` + sensitive info | Data exposure | MEDIUM |
 | `AddCors(o => o.AllowAnyOrigin())` | Permissive CORS | HIGH |
 
 ---
 
 ## Level 3: Deep (includes Level 2)
 
-> .NET 8+ NativeAOT: If project uses AOT compilation, verify [JsonSerializable] source generators are used (reflection-based serialization breaks in AOT). Check for dynamic type loading patterns.
+> .NET 8+ NativeAOT: verify `[JsonSerializable]` source generators (reflection serialization breaks in AOT). Check dynamic type loading.
 
-> .NET 8+ Minimal APIs: Verify endpoint filters for auth/validation (no automatic [Authorize] like controllers). Check for missing .RequireAuthorization() on sensitive endpoints.
+> .NET 8+ Minimal APIs: verify endpoint filters for auth/validation (no automatic `[Authorize]`). Check missing `.RequireAuthorization()`.
 
 ### Architecture
 
 - Circular project references
 - God class (>500 lines)
-- Mixing business logic with infrastructure (EF queries in controllers)
-- Missing dependency injection (manual `new` of services)
+- Business logic mixed with infrastructure (EF queries in controllers)
+- Missing DI (manual `new` of services)
 - Static classes/methods for stateful operations
 - `#region` overuse (code organization smell)
 
@@ -180,14 +180,14 @@ gitleaks detect --source . --no-git -v 2>&1
 
 <details><summary>ASP.NET Core checks</summary>
 
-- Middleware pipeline order correct (Auth before Authorization before Endpoints)
-- `IOptions<T>` / `IOptionsSnapshot<T>` for configuration (not raw strings)
-- Health checks configured (`app.MapHealthChecks`)
+- Middleware pipeline order (Auth → Authorization → Endpoints)
+- `IOptions<T>` / `IOptionsSnapshot<T>` for config (not raw strings)
+- Health checks (`app.MapHealthChecks`)
 - Response compression enabled
-- Rate limiting configured (`app.UseRateLimiter`)
-- CORS policy properly scoped (not global `AllowAnyOrigin`)
+- Rate limiting (`app.UseRateLimiter`)
+- CORS properly scoped (not global `AllowAnyOrigin`)
 - Minimal API vs Controllers: consistent pattern
-- `ProblemDetails` for error responses (RFC 7807)
+- `ProblemDetails` for errors (RFC 7807)
 - Output caching for GET endpoints where appropriate
 - Graceful shutdown: `IHostApplicationLifetime` handlers
 
@@ -197,12 +197,12 @@ gitleaks detect --source . --no-git -v 2>&1
 
 <details><summary>EF Core checks</summary>
 
-- No `ToList()` before `Where()` (loads all data, then filters in memory)
+- No `ToList()` before `Where()` (loads all, filters in memory)
 - `AsNoTracking()` for read-only queries
-- No `Include()` without filter (loading entire related collection)
-- Migrations have both Up and Down methods
+- No `Include()` without filter (loads entire related collection)
+- Migrations have both Up and Down
 - No `ExecuteSqlRaw` with string interpolation (SQL injection)
-- `DbContext` pooling configured (`AddDbContextPool`)
+- `DbContext` pooling (`AddDbContextPool`)
 - Connection resiliency for SQL Server (`EnableRetryOnFailure`)
 - No lazy loading in APIs (N+1 serialization)
 
@@ -210,22 +210,22 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ### Performance
 
-- `string` concatenation in loop (use `StringBuilder` or `string.Join`)
-- LINQ `.Count() > 0` instead of `.Any()`
-- Boxing in hot paths (value type cast to `object`)
+- `string` concat in loop (use `StringBuilder`/`string.Join`)
+- `.Count() > 0` instead of `.Any()`
+- Boxing in hot paths (value type → `object`)
 - `Regex` without `RegexOptions.Compiled` for reused patterns (or source generators)
 - Large objects on LOH without pooling (`ArrayPool<T>`)
 - Allocations in hot paths (use `Span<T>`, `Memory<T>`, stackalloc)
-- Missing `ConfigureAwait(false)` in library code (context capture overhead)
+- Missing `ConfigureAwait(false)` in library code
 
 ### Blazor-specific (if applicable)
 
 <details><summary>Blazor checks</summary>
 
-- `StateHasChanged()` called too frequently (re-render overhead)
+- `StateHasChanged()` called too often (re-render overhead)
 - JS interop without `IJSRuntime` (no isolation)
-- Large component without virtualization (`<Virtualize>`)
-- No error boundary (`<ErrorBoundary>`)
+- Large component without `<Virtualize>`
+- No `<ErrorBoundary>`
 - Auth state not checked before render
 - `NavigationManager.NavigateTo` without validation
 

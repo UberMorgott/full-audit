@@ -1,15 +1,15 @@
 # Java / Kotlin (JVM) Audit Checks
 
-> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+> **Cross-references:** [README.md](README.md) (orchestration), [universal.md](universal.md) (language-agnostic checks).
 >
-> **Required reading for all agents using this file:**
-> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
-> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
-> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
-> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
-> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+> **Required reading:**
+> - **Confidence Scoring** (README.md) — 0-100 per finding. Thresholds: L1≥75, L2≥60, L3≥40.
+> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol per CLI tool finding.
+> - **YAGNI Check** (universal.md) — verify need before suggesting additions.
+> - **Anti-Rationalization Rules** (universal.md) — no skipping checks or softening findings.
 
-Applies when `pom.xml` (Maven), `build.gradle` / `build.gradle.kts` (Gradle), or `*.java`/`*.kt` detected.
+Applies when `pom.xml`, `build.gradle`/`build.gradle.kts`, or `*.java`/`*.kt` detected.
 All commands assume `cd {project_root}`.
 
 ---
@@ -41,7 +41,7 @@ mvn pmd:check -q 2>&1
 **Gradle:**
 ```bash
 ./gradlew check 2>&1
-# Or if detekt for Kotlin:
+# Kotlin detekt:
 ./gradlew detekt 2>&1
 ```
 
@@ -49,9 +49,9 @@ mvn pmd:check -q 2>&1
 ```bash
 # OWASP Dependency-Check (if plugin configured)
 mvn org.owasp:dependency-check-maven:check 2>&1
-# Or Gradle:
+# Gradle:
 ./gradlew dependencyCheckAnalyze 2>&1
-# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# Universal (verify version — v0.69.4-6 compromised, see tools.md):
 trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
@@ -60,15 +60,15 @@ trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```bash
 java --version 2>&1
 ```
-> If dependency-check or govulncheck-equivalent reports JDK vulnerabilities, update JDK. Check adoptium.net for latest LTS patch.
+> If dependency-check reports JDK vulns, update JDK. Check adoptium.net for latest LTS patch.
 
 **Pass criteria:** 0 errors, 0 critical/high vulnerabilities.
 
 ---
 
-## Level 2: Full (includes Level 1)
+## Level 2: Full (includes L1)
 
-### SpotBugs (FindBugs successor)
+### SpotBugs
 
 **Maven:**
 ```bash
@@ -80,21 +80,21 @@ mvn spotbugs:check 2>&1
 ./gradlew spotbugsMain 2>&1
 ```
 
-Key bug patterns:
-- `NP_NULL_ON_SOME_PATH` — null dereference
+Key patterns:
+- `NP_NULL_ON_SOME_PATH` — null deref
 - `SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE` — SQL injection
 - `RCN_REDUNDANT_NULLCHECK` — redundant null check
 - `EI_EXPOSE_REP` — mutable object exposed
 - `MS_SHOULD_BE_FINAL` — mutable static field
 
-### Error Prone (compile-time checks)
+### Error Prone
 
 > Requires compiler plugin. If configured:
 ```bash
 mvn compile -Derror-prone 2>&1
 ```
 
-### Dependency tree analysis
+### Dependency tree
 ```bash
 # Maven
 mvn dependency:tree 2>&1
@@ -129,60 +129,58 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
-> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+> **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
 
-### Security review
+### Security
 
-- **SQL injection:** string concatenation in SQL (`"SELECT * FROM users WHERE id = " + id`)
-  - Must use PreparedStatement / JPA parameterized queries / named parameters
-- **Deserialization:** `ObjectInputStream.readObject()` on untrusted data (RCE risk)
-  - Use JSON/Protobuf instead, or whitelist classes via `ObjectInputFilter`
-- **XXE:** `DocumentBuilderFactory` / `SAXParser` without disabling external entities
+- **SQL injection:** string concat in SQL (`"SELECT * FROM users WHERE id = " + id`) — use PreparedStatement / JPA parameterized / named params
+- **Deserialization:** `ObjectInputStream.readObject()` on untrusted data (RCE) — use JSON/Protobuf or whitelist via `ObjectInputFilter`
+- **XXE:** `DocumentBuilderFactory`/`SAXParser` without disabling external entities
   ```java
   // REQUIRED:
   factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
   ```
 - **Path traversal:** `new File(basePath + userInput)` without canonical path check
-- **SSRF:** `URL.openConnection()` / `HttpClient` with user-supplied URL
-- **Log injection:** user input logged without sanitization (log forging)
+- **SSRF:** `URL.openConnection()`/`HttpClient` with user-supplied URL
+- **Log injection:** user input logged unsanitized (log forging)
 - **Spring-specific:**
   - `@RequestMapping` without method restriction (accepts all HTTP methods)
-  - Missing `@Valid` / `@Validated` on request body
+  - Missing `@Valid`/`@Validated` on request body
   - `@CrossOrigin("*")` on controller
   - Actuator endpoints exposed without auth
   - `server.error.include-stacktrace=always` in prod
 
 ### Concurrency
 
-- `synchronized` on wrong object (e.g., on local variable, on `this` in public class)
-- `HashMap`/`ArrayList` shared between threads without synchronization (use `ConcurrentHashMap`)
+- `synchronized` on wrong object (local var, `this` in public class)
+- `HashMap`/`ArrayList` shared across threads without sync (use `ConcurrentHashMap`)
 - Double-checked locking without `volatile`
-- `Thread.sleep()` in synchronized block (holds lock while sleeping)
+- `Thread.sleep()` in synchronized block (holds lock)
 - `ExecutorService` without `shutdown()` (thread leak)
-- `CompletableFuture` without `exceptionally()` or `handle()` (swallowed exceptions)
-- Mutable fields without `volatile` or `synchronized` in concurrent context
-- `SimpleDateFormat` shared between threads (not thread-safe)
-- **Kotlin coroutines (if applicable):** `GlobalScope.launch` (goroutine leak — use structured concurrency: `viewModelScope`, `lifecycleScope`, or custom `CoroutineScope`), `runBlocking` in production code (blocks thread pool)
+- `CompletableFuture` without `exceptionally()`/`handle()` (swallowed exceptions)
+- Mutable fields without `volatile`/`synchronized` in concurrent context
+- `SimpleDateFormat` shared across threads (not thread-safe)
+- **Kotlin coroutines:** `GlobalScope.launch` (leak — use structured concurrency: `viewModelScope`, `lifecycleScope`, custom `CoroutineScope`), `runBlocking` in prod (blocks thread pool)
 
 ### Resource leaks
 
 - JDBC `Connection`/`Statement`/`ResultSet` without try-with-resources
 - `InputStream`/`OutputStream` without close
 - `ExecutorService` not shut down
-- Spring `@Async` without `ThreadPoolTaskExecutor` configuration (unbounded pool)
-- HTTP client connections without pool configuration
+- Spring `@Async` without `ThreadPoolTaskExecutor` config (unbounded pool)
+- HTTP client connections without pool config
 - File locks not released in finally
 
 ### Error handling
 
-- Catching `Exception` or `Throwable` (too broad)
+- Catching `Exception`/`Throwable` (too broad)
 - Empty catch blocks (`catch (Exception e) {}`)
 - `e.printStackTrace()` instead of proper logging
-- `throws Exception` on method signature (too broad)
+- `throws Exception` on signature (too broad)
 - Business logic in catch blocks
 - Checked exceptions wrapped in `RuntimeException` without reason
 
-### Quick reference: vulnerability grep patterns
+### Vulnerability grep patterns
 
 | Pattern | Risk | Severity |
 |---------|------|----------|
@@ -195,17 +193,17 @@ gitleaks detect --source . --no-git -v 2>&1
 | `new Random()` for security | Predictable values | HIGH |
 | `catch (Exception e) {}` | Swallowed exceptions | MEDIUM |
 | `.password` in properties files | Hardcoded credentials | CRITICAL |
-| `spring.jpa.show-sql=true` | SQL in production logs | MEDIUM |
+| `spring.jpa.show-sql=true` | SQL in prod logs | MEDIUM |
 
 ---
 
-## Level 3: Deep (includes Level 2)
+## Level 3: Deep (includes L2)
 
-> Java 21+: Check for Virtual Threads usage. Virtual threads should NOT hold locks during blocking I/O. synchronized blocks pin virtual threads to platform threads.
+> Java 21+: Virtual Threads must NOT hold locks during blocking I/O. `synchronized` blocks pin virtual threads to platform threads.
 
-> GraalVM Native Image: If project uses native compilation, verify reflection configuration, serialization registration, and resource inclusion in native-image.properties.
+> GraalVM Native Image: verify reflection config, serialization registration, resource inclusion in native-image.properties.
 
-> Verify log4j version is ≥2.17.1 (CVE-2021-44228 Log4Shell + follow-ups). Check for JNDI lookup patterns in logging configuration.
+> Verify log4j ≥2.17.1 (CVE-2021-44228 Log4Shell + follow-ups). Check JNDI lookup patterns in logging config.
 
 ### Architecture
 
@@ -220,40 +218,40 @@ gitleaks detect --source . --no-git -v 2>&1
 
 <details><summary>Spring Boot checks</summary>
 
-- Profile configuration: `application-prod.yml` separate from `application.yml`
-- `@Transactional` on correct layer (service, not controller)
-- `@Transactional(readOnly=true)` for read operations
+- Profile config: `application-prod.yml` separate from `application.yml`
+- `@Transactional` on service layer, not controller
+- `@Transactional(readOnly=true)` for reads
 - No `@Autowired` on fields (use constructor injection)
 - Bean scope correct (singleton vs prototype vs request)
-- Health check endpoint (`/actuator/health`) configured
-- Graceful shutdown enabled (`server.shutdown=graceful`)
+- Health check (`/actuator/health`) configured
+- Graceful shutdown (`server.shutdown=graceful`)
 - Connection pool configured (HikariCP defaults reviewed)
-- Cache configuration (if `@Cacheable` used)
+- Cache config (if `@Cacheable` used)
 - Security filter chain properly configured
 
 </details>
 
 ### Performance
 
-- N+1 query problem (JPA `@OneToMany` without `@BatchSize` or `JOIN FETCH`)
-- `SELECT *` in queries (fetch only needed columns)
-- Missing database indexes on frequently queried columns
-- `String` concatenation in loop (use `StringBuilder`)
+- N+1 queries (JPA `@OneToMany` without `@BatchSize`/`JOIN FETCH`)
+- `SELECT *` (fetch only needed columns)
+- Missing indexes on frequently queried columns
+- `String` concat in loop (use `StringBuilder`)
 - Autoboxing in hot paths (`int` vs `Integer`)
 - Stream operations with side effects
-- Large collections loaded fully into memory (use pagination / streaming)
+- Large collections fully in memory (use pagination/streaming)
 
 ### Kotlin-specific
 
 <details><summary>Kotlin checks</summary>
 
-- `!!` (non-null assertion) — should use safe calls (`?.`) or `requireNotNull`
-- `var` where `val` works (immutability preferred)
+- `!!` (non-null assertion) — use safe calls (`?.`) or `requireNotNull`
+- `var` where `val` works (prefer immutability)
 - Java interop: `@JvmStatic`, `@JvmField` where needed
-- Coroutine scope: `GlobalScope` usage (use structured concurrency)
-- `runBlocking` in production code (blocks thread)
+- `GlobalScope` usage (use structured concurrency)
+- `runBlocking` in prod (blocks thread)
 - Data class with mutable properties
-- Sealed class not used where enum + data is needed
+- Sealed class not used where enum + data needed
 
 </details>
 
@@ -265,7 +263,7 @@ mvn license:third-party-report 2>&1
 # Gradle (if license plugin configured)
 ./gradlew generateLicenseReport 2>&1
 
-# Or universal:
+# Universal:
 trivy fs --scanners license . 2>&1
 ```
 

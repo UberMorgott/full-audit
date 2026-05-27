@@ -2,9 +2,9 @@
 
 > **Version 1.6.0** — 2026-05-28
 
-Universal codebase audit system for Claude Code. Works with any project, any stack, via GitHub reference.
+Universal codebase audit for Claude Code. Any project, any stack, via GitHub reference.
 
-**Supported stacks:** Go, JavaScript/TypeScript (Vue, React, Svelte, Angular), Python (Django, Flask, FastAPI), Rust, Java/Kotlin (Spring Boot), C#/.NET (ASP.NET Core, Blazor).
+**Stacks:** Go, JS/TS (Vue, React, Svelte, Angular), Python (Django, Flask, FastAPI), Rust, Java/Kotlin (Spring Boot), C#/.NET (ASP.NET Core, Blazor).
 
 ## Quick Start
 
@@ -13,25 +13,25 @@ User says:
 run full audit of this project, instructions at github.com/UberMorgott/full-audit
 ```
 
-<!-- Fork users: replace UberMorgott with your GitHub username in the URL below -->
+<!-- Fork users: replace UberMorgott with your GitHub username in URL below -->
 Claude executes:
-1. **Fetch this README** via WebFetch (`https://raw.githubusercontent.com/UberMorgott/full-audit/main/README.md`)
-2. **Read project's `CLAUDE.md`** — project-specific code rules override generic checks
-3. **Detect stack** (Phase 0 below)
-4. **Fetch relevant files** from this repo (stack-specific + universal)
+1. **Fetch README** via WebFetch (`https://raw.githubusercontent.com/UberMorgott/full-audit/main/README.md`)
+2. **Read project `CLAUDE.md`** — project rules override generic checks
+3. **Detect stack** (Phase 0)
+4. **Fetch relevant files** (stack-specific + universal)
 5. **Run audit** at requested level
 
 ### Audit Levels
 
-| Level | Name | When | Time estimate (single stack / monorepo) |
-|-------|------|------|----------------------------------------|
-| 1 | Quick | Every release, CI | ~5-10 min / ~10-15 min |
-| 2 | Full | Per sprint | ~20-35 min / ~40-60 min |
-| 3 | Deep | Major release, quarterly | ~60-90 min / ~2-3 hours |
-| S | Specialized | On demand (API request audit) | ~15-25 min |
+| Level | Name | When | Time (single / monorepo) |
+|-------|------|------|--------------------------|
+| 1 | Quick | Every release, CI | ~5-10 / ~10-15 min |
+| 2 | Full | Per sprint | ~20-35 / ~40-60 min |
+| 3 | Deep | Major release, quarterly | ~60-90 min / ~2-3 hrs |
+| S | Specialized | On demand (API audit) | ~15-25 min |
 
-User can request: "level 1", "level 2", "full audit" (= level 2), "deep audit" (= level 3).
-Default: **ask the user** (see Phase 0, step 1.5). If user explicitly specified level in their request, skip the prompt.
+User requests: "level 1", "level 2", "full audit" (=L2), "deep audit" (=L3).
+Default: **ask user** (Phase 0, step 1.5). If specified — skip prompt.
 
 ---
 
@@ -39,16 +39,16 @@ Default: **ask the user** (see Phase 0, step 1.5). If user explicitly specified 
 
 | File | Fetch when | Contents |
 |------|-----------|----------|
-| `README.md` | Always | This file: orchestration, workflow, report format |
+| `README.md` | Always | Orchestration, workflow, report format |
 | `tools.md` | First run / missing tools | Installation per stack |
-| `go.md` | `go.mod` detected | Go: CLI + code review checks |
-| `frontend.md` | `package.json` detected | JS/TS/Vue/React: CLI + code review checks |
-| `python.md` | `pyproject.toml` / `requirements.txt` detected | Python: CLI + code review checks |
-| `rust.md` | `Cargo.toml` detected | Rust: CLI + code review checks |
-| `java.md` | `pom.xml` / `build.gradle` detected | Java/Kotlin: CLI + code review checks |
-| `csharp.md` | `*.csproj` / `*.sln` detected | C#/.NET: CLI + code review checks |
-| `universal.md` | Level 2+ | Language-agnostic reviews (security, concurrency, architecture...) |
-| `api-audit.md` | Specialized request, or Level 3 with API-heavy apps | API request redundancy audit |
+| `go.md` | `go.mod` detected | Go: CLI + code review |
+| `frontend.md` | `package.json` detected | JS/TS/Vue/React: CLI + code review |
+| `python.md` | `pyproject.toml` / `requirements.txt` | Python: CLI + code review |
+| `rust.md` | `Cargo.toml` detected | Rust: CLI + code review |
+| `java.md` | `pom.xml` / `build.gradle` | Java/Kotlin: CLI + code review |
+| `csharp.md` | `*.csproj` / `*.sln` | C#/.NET: CLI + code review |
+| `universal.md` | Level 2+ | Language-agnostic (security, concurrency, architecture...) |
+| `api-audit.md` | Specialized request, or L3 with API-heavy apps | API request redundancy audit |
 
 > **Fetch pattern:** `https://raw.githubusercontent.com/{user}/full-audit/main/{file}`
 
@@ -56,238 +56,237 @@ Default: **ask the user** (see Phase 0, step 1.5). If user explicitly specified 
 
 ## Pre-conditions
 
-- **Clean worktree recommended.** Commit or stash before audit.
-- **Run from project root** (where manifest files are).
-- Level 1: any branch. Level 2+: prefer `main` or release branch.
-- **Read project's `CLAUDE.md`** before any code review — it contains project-specific Code Rules.
-- **Static analysis by default.** Do not run the server unless the project or user explicitly requires runtime testing.
+- **Clean worktree recommended.** Commit/stash before audit.
+- **Run from project root** (where manifests are).
+- L1: any branch. L2+: prefer `main` or release branch.
+- **Read project `CLAUDE.md`** before code review — project-specific rules.
+- **Static analysis by default.** No server unless explicitly required.
 
 ## Conventions
 
 ### `skip_if` blocks
 
-Throughout the playbooks, checks may include a `skip_if` annotation:
+Checks may include `skip_if`:
 
 ```
 > skip_if: <condition>
 ```
 
-When the condition is true, the agent should skip the check and note it in the report as "SKIPPED: reason". Common conditions:
-- `skip_if: windows` — command requires Unix-specific tools not available in Git Bash
-- `skip_if: no_tool(name)` — tool not installed (check via `which`/`command -v`)
-- `skip_if: no_ci` — project has no CI/CD pipeline
-- `skip_if: nightly_only` — requires Rust nightly toolchain
+When true, skip and note "SKIPPED: reason". Common:
+- `skip_if: windows` — Unix-specific tools unavailable in Git Bash
+- `skip_if: no_tool(name)` — tool not installed (`which`/`command -v`)
+- `skip_if: no_ci` — no CI/CD pipeline
+- `skip_if: nightly_only` — requires Rust nightly
 
 ---
 
 ## Phase 0: Pre-Audit
 
-Before starting any audit, the orchestrator performs eligibility, scope, and stack detection.
+Orchestrator performs eligibility, scope, stack detection.
 
 ### 1. Eligibility Check (haiku agent)
 
-Dispatch a haiku agent to verify the project is auditable:
+Dispatch haiku agent to verify auditable:
 
-1. **Not empty** — project has source code files (not just configs/docs)
-2. **Not pure generated** — if >80% code is auto-generated (protobuf, swagger, migrations), warn user and suggest focusing on hand-written code only
-3. **Has build system** — at least one manifest file detected
-4. **Clean state** — no uncommitted changes that could affect results (warn, don't block)
-5. **Not a fork with zero changes** — if fork, check for divergence from upstream
+1. **Not empty** — has source code (not just configs/docs)
+2. **Not pure generated** — if >80% auto-generated, warn, suggest hand-written only
+3. **Has build system** — at least one manifest detected
+4. **Clean state** — no uncommitted changes (warn, don't block)
+5. **Not unchanged fork** — if fork, check divergence
 
-If project fails eligibility → report to user with reasons, do not proceed.
+Fails eligibility -> report reasons, do not proceed.
 
-### 2. Scan & Brief (Stack + MCP + CLI → unified report to user)
+### 2. Scan & Brief (Stack + MCP + CLI -> unified report)
 
-This step silently gathers all environment info, then presents ONE consolidated briefing. The user should not see intermediate scan output — only the final summary.
+Silently gathers environment info, presents ONE consolidated briefing.
 
 **Step 2a: Stack Detection (silent)**
 
-1. Look for manifest files: `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `*.csproj`, `*.sln`, `pom.xml`, `build.gradle`, `build.gradle.kts`
+1. Look for manifests: `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, `requirements.txt`, `*.csproj`, `*.sln`, `pom.xml`, `build.gradle`, `build.gradle.kts`
 2. Determine structure: monorepo? `backend/` + `frontend/`? single app?
-3. Fetch applicable stack files from this repo
+3. Fetch applicable stack files
 
 **Step 2b: MCP Server Health Check (silent, parallel)**
 
-For each MCP server, execute a real test call. A server may be configured but crashed, misconfigured, or have expired auth. The test call verifies end-to-end functionality.
+Real test call per MCP server. May be crashed/misconfigured/expired.
 
-> **Timeout:** 10 seconds per call. No response → unavailable. Do NOT retry.
+> **Timeout:** 10s per call. No response -> unavailable. No retry.
 
 Execute all 4 in parallel:
 
-1. **Serena (connection + LSP check):**
+1. **Serena (connection + LSP):**
    ```
    Step A — Connection:
    Call: mcp__serena__initial_instructions()
-   Expected: returns instruction text (any non-error response)
-   Error → ❌ Serena not running. Save error.
+   Expected: non-error response
+   Error -> Serena not running. Save error.
 
-   Step B — LSP languages (only if Step A passed):
-   Read: {project_root}/.serena/project.yml → check `languages:` field
-   If .serena/project.yml not found → Serena has no project config for this repo.
+   Step B — LSP languages (only if A passed):
+   Read: {project_root}/.serena/project.yml -> `languages:` field
+   Not found -> no project config.
    
-   Compare `languages:` list against detected stack. Mapping:
-     go.mod          → need "go" in languages
-     package.json    → need "typescript" (covers JS too)
-     Vue project     → need "vue" (or "typescript" as fallback)
-     Angular project → need "angular"
-     Svelte project  → need "svelte"
-     pyproject.toml  → need "python" (or "python_jedi" / "python_ty")
-     Cargo.toml      → need "rust"
-     pom.xml / gradle→ need "java" (or "kotlin" if Kotlin)
-     *.csproj / *.sln→ need "csharp" (or "csharp_omnisharp")
+   Compare languages vs detected stack:
+     go.mod          -> "go"
+     package.json    -> "typescript"
+     Vue project     -> "vue" (or "typescript" fallback)
+     Angular project -> "angular"
+     Svelte project  -> "svelte"
+     pyproject.toml  -> "python" (or "python_jedi"/"python_ty")
+     Cargo.toml      -> "rust"
+     pom.xml/gradle  -> "java" (or "kotlin")
+     *.csproj/*.sln  -> "csharp" (or "csharp_omnisharp")
    
-   If languages: [] (empty) or missing required language:
-     → Serena connected but LSP not configured for {stack}.
-     → Symbol navigation, go-to-definition, find-references will NOT work.
-     → Status: ⚠️ (partial — Serena works for memory/files but not code intelligence)
+   Empty/missing required language:
+     -> Connected but LSP not configured for {stack}.
+     -> Symbol nav, go-to-definition, find-references won't work.
+     -> Partial (memory/files work, no code intelligence)
    
-   If all required languages present:
-     → ✅ Serena — full code intelligence available
+   All present -> full code intelligence
    ```
 
 2. **Playwright:**
    ```
    Call: mcp__playwright__browser_navigate(url="about:blank")
    Then: mcp__playwright__browser_snapshot()
-   Expected: returns DOM snapshot of blank page
-   OK → ✅    Error → ❌ + save error message
+   Expected: DOM snapshot of blank page
+   OK -> pass    Error -> fail + save error
    ```
 
 3. **Context7:**
    ```
    Call: mcp__context7__resolve-library-id(libraryName="react")
-   Expected: returns library ID
-   OK → ✅    Error → ❌ + save error message
+   Expected: library ID
+   OK -> pass    Error -> fail + save error
    ```
 
 4. **Sequential Thinking:**
    ```
    Call: mcp__sequential-thinking__sequentialthinking(thought="test", thoughtNumber=1, totalThoughts=1, nextThoughtNeeded=false)
-   Expected: returns acknowledgment
-   OK → ✅    Error → ⚠️ (non-critical)
+   Expected: acknowledgment
+   OK -> pass    Error -> warning (non-critical)
    ```
 
-**Step 2c: CLI Tools Check (silent, NO install yet)**
+**Step 2c: CLI Tools Check (silent, NO install)**
 
-Verify required CLI tools per detected stack:
+Verify required CLI tools per stack:
 ```bash
-# Example for Go stack:
+# Example for Go:
 for cmd in go staticcheck govulncheck golangci-lint gosec deadcode gitleaks semgrep; do
   command -v "$cmd" >/dev/null 2>&1 && echo "OK: $cmd" || echo "MISSING: $cmd"
 done
 ```
 
-> Do NOT install anything at this step. Only collect status. Installation happens after user picks a level (Step 3).
+> Only collect status. Install after user picks level (Step 3).
 
 ---
 
-### 3. Project Briefing + Depth Selection (MANDATORY — present to user)
+### 3. Project Briefing + Depth Selection (MANDATORY)
 
-After all scans complete, present **one consolidated message** to the user. This is the first thing the user sees after asking for an audit.
+After scans, present **one consolidated message**. First thing user sees.
 
-The orchestrator MUST dynamically build this briefing from Steps 2a-2c results. **Example:**
+Orchestrator MUST dynamically build from Steps 2a-2c. **Example:**
 
 ---
 
-## 📋 Preliminary Report
+## Preliminary Report
 
-**Your project:** `{project_name}` (`{project_root}`)
+**Project:** `{project_name}` (`{project_root}`)
 **Structure:** {monorepo / single app / backend + frontend}
-**Stack:** {Go 1.22, Vue 3 + TypeScript, PostgreSQL — or whatever detected}
+**Stack:** {Go 1.22, Vue 3 + TypeScript, PostgreSQL — or detected}
 
 ### Audit Tools
 
 **MCP Servers:**
 | Server | Status | Purpose |
 |--------|--------|---------|
-| Serena | ✅ Connected, LSP: `go` ✅, `typescript` ❌ not configured | Code navigation, symbol search, cross-references |
-| Playwright | ❌ Not responding: `{error}` | UI testing: button clicks, link verification, forms |
-| Context7 | ✅ Working | Up-to-date library docs for fixes |
-| Seq. Thinking | ⚠️ Not installed | Advanced planning (non-critical) |
+| Serena | Connected, LSP: `go` pass, `typescript` not configured | Code nav, symbol search, cross-refs |
+| Playwright | Not responding: `{error}` | UI testing: clicks, links, forms |
+| Context7 | Working | Up-to-date library docs |
+| Seq. Thinking | Not installed | Advanced planning (non-critical) |
 
-> **Serena LSP:** For full code navigation (go-to-definition, find-references, rename), LSP servers are needed for each stack. Without LSP, Serena works as a file manager — read/write, but without code intelligence.
-> In `.serena/project.yml` → `languages:` should list the required languages.
+> **Serena LSP:** For full code nav (go-to-definition, find-references, rename), LSP needed per stack. Without LSP, Serena = file manager only.
+> `.serena/project.yml` -> `languages:` should list required languages.
 
 **CLI Tools:**
 | Tool | Status | Purpose |
 |------|--------|---------|
-| staticcheck | ✅ | Go static analysis |
-| govulncheck | ✅ | Go vulnerability check |
-| gitleaks | ❌ Not found | Secrets detection in code |
-| semgrep | ❌ Not found | SAST analysis |
+| staticcheck | pass | Go static analysis |
+| govulncheck | pass | Go vuln check |
+| gitleaks | missing | Secrets detection |
+| semgrep | missing | SAST analysis |
 
 ### Not Installed
 
-> Show only if something is missing. If all available → "✅ All tools available, no limitations."
+> Show only if something missing. All available -> "All tools available, no limitations."
 
-**Unavailable MCP Servers** (cannot be auto-installed):
+**Unavailable MCP Servers** (cannot auto-install):
 | Server | Issue | Impact |
 |--------|-------|--------|
-| Playwright | ❌ Not responding: `{error}` | Level 3: functional UI testing skipped |
-| Serena LSP: `typescript` | ⚠️ Not configured | Code intelligence for JS/TS: go-to-definition, find-references |
+| Playwright | Not responding: `{error}` | L3: UI testing skipped |
+| Serena LSP: `typescript` | Not configured | JS/TS code intelligence |
 
-**Unavailable CLI Tools** (will be auto-installed when level is selected):
+**Unavailable CLI Tools** (auto-installed when level selected):
 | Tool | Needed for | Level |
 |------|-----------|-------|
-| gitleaks | Secrets detection in code | L1+ |
+| gitleaks | Secrets detection | L1+ |
 | semgrep | SAST analysis | L2+ |
 
 ### Select Audit Depth
 
 | Level | Includes | Limitations | Time |
 |-------|----------|-------------|------|
-| **1 — Quick** | CLI: build, linter, vulnerabilities, tests | — | ~5-10 min |
+| **1 — Quick** | CLI: build, linter, vulns, tests | — | ~5-10 min |
 | **2 — Full** | L1 + code review (5 agents), SAST, coverage, HTTP headers, CSRF, rate limiting | — | ~20-35 min |
-| **3 — Deep** | L2 + security audit, accessibility, licenses, UI testing, **business logic, architecture review** | ⚠️ Playwright unavailable — UI testing skipped | ~60-90 min |
-| **S — API** | API requests only: duplication, N+1, GraphQL/gRPC, cache | — | ~15-25 min |
+| **3 — Deep** | L2 + security, a11y, licenses, UI testing, business logic, architecture | Playwright unavailable — UI skipped | ~60-90 min |
+| **S — API** | API requests: duplication, N+1, GraphQL/gRPC, cache | — | ~15-25 min |
 
-> For monorepos, time ×1.5-2.
+> Monorepos: time x1.5-2.
 >
-> ⚙️ **By selecting a level, you agree to auto-install missing CLI tools** (gitleaks, semgrep, etc.) required for the selected level. MCP servers are not auto-installed — their limitations are listed in the table above.
+> Selecting level = agree to auto-install missing CLI tools for that level. MCP servers not auto-installed.
 
 **Enter number (1, 2, 3 or S):**
 
 ---
 
-**Dynamic rules for building this briefing:**
-- **Language:** present the briefing in the user's language (match the language they used when requesting the audit). The template above is in English as a reference; adapt all labels, headers, and messages to the user's language at runtime.
-- Stack info: fill from manifest detection results
-- MCP table: fill from health check results. Show exact error messages for failed servers.
-- CLI table: show only tools relevant to detected stack (don't show Go tools for JS project)
-- "Not Installed" section: only show if something is missing. If all available → replace with "✅ All tools available, no limitations."
-- "Unavailable CLI Tools" table: show which level needs each tool — so user knows what gets installed for their choice
-- Depth table "Limitations" column: only show MCP limitations (CLI will be auto-installed). If all MCP available → "—"
-- **After user selects level:**
-  1. Fetch `tools.md` from this repo
-  2. Install all missing CLI tools required for the selected level and below
-  3. Re-verify each installed tool (`command -v`)
-  4. Report install results: "✅ gitleaks installed" / "❌ semgrep: installation failed — {error}"
-  5. Proceed to Scope Planning — do NOT re-show the briefing
-- **Save all scan results** — they feed into Audit Limitations section of final report
+**Dynamic rules:**
+- **Language:** match user's request language. Template = English reference.
+- Stack info from manifest detection
+- MCP table from health checks, show exact errors for failures
+- CLI table: only stack-relevant tools
+- "Not Installed": only if missing. All available -> skip section
+- "Unavailable CLI Tools": show which level needs each
+- Depth "Limitations": MCP only (CLI auto-installed). All MCP ok -> "—"
+- **After level selected:**
+  1. Fetch `tools.md`
+  2. Install missing CLI tools
+  3. Re-verify (`command -v`)
+  4. Report install results
+  5. Proceed to Scope Planning — don't re-show briefing
+- **Save scan results** for Audit Limitations in final report
 
 ### 4. Scope Planning (sequential-thinking)
 
-Before creating audit tasks, clarify scope with the user:
+Clarify scope:
 
-1. **Critical modules** — which directories/packages are highest priority?
-2. **Compliance requirements** — any specific standards (SOC2, HIPAA, PCI-DSS)?
-3. **Known issues** — anything already tracked that audit should skip?
-4. **Time budget** — adjust level if time is constrained
-5. **Focus areas** — security-only? quality-only? full?
+1. **Critical modules** — highest priority dirs/packages?
+2. **Compliance** — standards (SOC2, HIPAA, PCI-DSS)?
+3. **Known issues** — already tracked, skip?
+4. **Time budget** — adjust level if constrained
+5. **Focus** — security-only? quality-only? full?
 
-Output: focused checklist that feeds into Wave 1+ task creation.
+Output: focused checklist for Wave 1+ tasks.
 
 ### Approach Proposal
 
-Based on scope answers and environment scan, present 2-3 audit strategies to the user:
+Present 2-3 strategies:
 
-| Approach | Focus | Agents | Estimated Time | Best For |
-|----------|-------|--------|---------------|----------|
-| **Broad Coverage** | All checks at requested level across full codebase | Full wave plan | L2: 30-60 min | Regular sprint audits |
-| **Security Deep Dive** | Security checks only, all levels | Security-focused reviewers + SAST | L2: 20-40 min | Pre-release, compliance |
-| **Targeted Audit** | User-specified modules/packages only | Scoped agents | L2: 15-30 min | Known problem areas, post-incident |
+| Approach | Focus | Agents | Time | Best For |
+|----------|-------|--------|------|----------|
+| **Broad Coverage** | All checks, full codebase | Full wave plan | L2: 30-60 min | Sprint audits |
+| **Security Deep Dive** | Security only, all levels | Security reviewers + SAST | L2: 20-40 min | Pre-release, compliance |
+| **Targeted Audit** | User-specified modules only | Scoped agents | L2: 15-30 min | Problem areas, post-incident |
 
-Present approaches with trade-offs. User selects one. Selected approach determines which agents spawn and which checks run.
+User selects approach -> determines agents and checks.
 
 **Stack command mapping:**
 
@@ -295,7 +294,7 @@ Present approaches with trade-offs. User selects one. Selected approach determin
 |----------|-------|------|-----------|-------|
 | `go.mod` | `go build ./...` | `go vet ./... && staticcheck ./...` | `govulncheck ./...` | `go test ./...` |
 
-> **Note:** `staticcheck` requires separate install: `go install honnef.co/go/tools/cmd/staticcheck@latest`
+> `staticcheck` requires: `go install honnef.co/go/tools/cmd/staticcheck@latest`
 
 | `package.json` | `npm run build` | `npm run lint` | `npm audit` | `npm test` / `npx vitest run` |
 | `pyproject.toml` / `requirements.txt` | `python -m py_compile` | `ruff check .` | `pip-audit` | `pytest` |
@@ -310,9 +309,9 @@ Present approaches with trade-offs. User selects one. Selected approach determin
 
 ```
 TeamCreate("audit-{level}")
-  +-- Team Lead (you, Opus) -- orchestrator
+  +-- Team Lead (Opus) -- orchestrator
        |-- cli-scanner-{N} (haiku) -- build, lint, vuln
-       |-- waste-scanner (haiku) -- cross-reference waste detection
+       |-- waste-scanner (haiku) -- cross-ref waste detection
        |-- diff-scanner-{N} (opus) -- surface scan, obvious bugs
        |-- history-reviewer-{N} (opus) -- git blame, regressions
        |-- comment-checker (opus) -- TODO/FIXME compliance
@@ -320,8 +319,8 @@ TeamCreate("audit-{level}")
        |-- impact-reviewer-{N} (opus) -- cross-file impact
        |-- web-researcher (sonnet) -- version checks, CVE
        |-- fixer-{N} (opus) -- fix findings
-       +-- fix-reviewer (opus) -- reviews fix diffs
-       +-- scoring-agent-{N} (haiku) -- scores findings confidence 0-100
+       +-- fix-reviewer (opus) -- review fix diffs
+       +-- scoring-agent-{N} (haiku) -- confidence 0-100
 ```
 
 ### Teammate Roles
@@ -342,173 +341,167 @@ TeamCreate("audit-{level}")
 | Deep reviewer (stack) | `general-purpose` | `opus` | `code-reviewer-go` |
 | Deep reviewer (security) | `general-purpose` | `opus` | `code-reviewer-security` |
 | Deep reviewer (quality) | `general-purpose` | `opus` | `code-reviewer-quality` |
-| Logic reviewer (domain) | `general-purpose` | `opus` | `logic-reviewer-go` |
+| Logic reviewer | `general-purpose` | `opus` | `logic-reviewer-go` |
 | UI/UX reviewer | `general-purpose` | `opus` | `ui-reviewer` |
 | Architecture reviewer | `general-purpose` | `opus` | `arch-reviewer` |
 
 ### Orchestrator Steps
 
 0. **Planning** — Sequential Thinking MCP (if available): waves, dependencies, skippable tasks.
-0.5. **Preflight complete** — MCP + CLI checks already done in Phase 0, Steps 2-3. Proceed with team creation.
+0.5. **Preflight done** — MCP + CLI checks from Phase 0. Proceed with team.
 1. **Create team** — `TeamCreate(team_name="audit-{level}")`.
-2. **Create tasks** — `TaskCreate` per agent. Use `TaskUpdate(addBlockedBy=[...])` for wave dependencies. Set priority: CRITICAL tasks first.
-   Tasks MUST be self-contained: each TaskCreate description includes ALL file paths, context, checklist items, and instructions needed. Agents must NOT need to read other tasks, prior conversation, or external documents to complete a task. Embed relevant sections from stack files and universal.md directly in the task description.
-3. **Spawn teammates** — `Agent(team_name="audit-{level}", name=..., model=..., prompt=...)`. Each teammate:
-   - Reads `TaskList`, claims highest-priority unblocked task via `TaskUpdate(owner="{name}")`
-   - Executes -> `TaskUpdate(status="completed")` -> takes next
-   - Goes idle when no tasks — this is normal
-4. **Coordination** — messages arrive automatically. On blockers — reassign via `SendMessage`.
-5. **Timeout recovery** — if agent reports no progress for >5 min, Lead reassigns task to another agent or investigates blocker.
-6. **Collect results** — compile summary + fix plan. **Deduplicate** findings from multiple agents (same issue found by different reviewers → merge, keep highest severity).
-6.5. **Self-review & Verification Gate** — before presenting report to user:
-   - **Verification Gate:** every finding has evidence (file:line, tool output or code snippet, confidence score). Remove any finding without evidence.
-   - **Prohibited phrases scan:** remove "appears to be", "should be fine", "I've verified", "Everything looks good", "Tests are passing", "The fix works" without attached proof.
-   - Scan for placeholders: "TBD", "TODO", "N/A" without explanation, "..."
-   - Verify severity consistency: identical issues must have identical severity
-   - Check all files from scope are mentioned (covered or explicitly excluded)
-   - Verify Health Score matches actual findings (e.g., "PASS" security but CRITICAL findings = contradiction)
-   - Remove duplicate findings (same issue reported by multiple agents)
-   - Ensure every CRITICAL/HIGH has a reproduction path or evidence
-7. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with `model="opus"` teammates. Create feature branch before fixing.
-8. **Post-fix verification** — re-run the CLI commands that originally found each issue to confirm closure.
+2. **Create tasks** — `TaskCreate` per agent. `TaskUpdate(addBlockedBy=[...])` for wave deps. Priority: CRITICAL first.
+   Tasks MUST be self-contained: ALL file paths, context, checklist, instructions. Agents must NOT need other tasks/conversation/docs. Embed relevant stack/universal.md sections.
+3. **Spawn teammates** — `Agent(team_name, name, model, prompt)`. Each:
+   - `TaskList` -> claim highest-priority unblocked via `TaskUpdate(owner="{name}")`
+   - Execute -> `TaskUpdate(status="completed")` -> next
+   - Idle when no tasks — normal
+4. **Coordination** — messages arrive automatically. Blockers -> reassign via `SendMessage`.
+5. **Timeout** — agent no progress >5 min -> reassign or investigate.
+6. **Collect results** — compile summary + fix plan. **Deduplicate** (same issue by multiple reviewers -> merge, highest severity).
+6.5. **Self-review & Verification Gate** — before report:
+   - Every finding has evidence (file:line, tool output/snippet, confidence). Remove unsubstantiated.
+   - Remove prohibited phrases without proof: "appears to be", "should be fine", "I've verified", "Everything looks good", "Tests are passing", "The fix works"
+   - No placeholders: "TBD", "TODO", "N/A" without explanation
+   - Severity consistency: identical issues = identical severity
+   - All scope files mentioned (covered or explicitly excluded)
+   - Health Score matches findings ("PASS" + CRITICAL = contradiction)
+   - Every CRITICAL/HIGH has reproduction path or evidence
+7. **Fixes** — after user approval only. `TeamCreate("audit-fix")` with opus teammates. Feature branch first.
+8. **Post-fix verification** — re-run CLI commands that found each issue.
 9. **Shutdown** — `SendMessage(message={type:"shutdown_request"})` per teammate -> `TeamDelete`.
 
 ### Diff Mode (CI / incremental)
 
-For auditing only changes since last audit (faster, ~3-5 min):
+Audit only changes since last audit (~3-5 min):
 
 ```bash
-# Get changed files since last audit tag or main branch
 git diff --name-only main...HEAD
 # Or since last audit:
 git diff --name-only audit/last-run...HEAD
 ```
 
-Only run CLI scanners and code review on changed files. Useful for:
-- CI pipeline integration (run on every PR)
+Run scanners + review on changed files only. For:
+- CI pipeline (every PR)
 - Post-sprint quick check
 - Pre-release delta audit
 
 ### Wave Plan
 
-> Waves are generated dynamically based on detected stacks. `{stack}.md` = the stack-specific file (go.md, frontend.md, python.md, etc.). For monorepos with N stacks, spawn 1 cli-scanner + review agents (diff-scanner, history-reviewer, comment-checker, convention-checker, impact-reviewer) per stack.
+> Waves generated dynamically per detected stacks. `{stack}.md` = stack file. Monorepos: 1 cli-scanner + reviewers per stack.
 
 ```
 Wave 1 — CLI + research (parallel, haiku + sonnet):
-  - cli-scanner-{N} (haiku): [{stack}.md CLI commands for current level]
-      Per detected stack: L1: build, lint, vuln scan, tests
+  - cli-scanner-{N} (haiku): [{stack}.md CLI for current level]
+      L1: build, lint, vuln scan, tests
       L2+: adds SAST (semgrep), secrets (gitleaks), dead code, coverage
-      → 1 scanner per stack (e.g., cli-scanner-go, cli-scanner-frontend)
+      -> 1 per stack
   - cli-scanner-universal (haiku): [universal.md L2 CLI]
       git hygiene (large files, suspicious files, .gitignore)
-  - waste-scanner (haiku): [cross-reference waste detection, L2+]
-      Runs automated CLI tools with supply chain verification:
-      1. Pre-audit integrity check: verifies tool versions are @latest, checks maintainer identity,
-         validates publish dates, runs npm audit on tools themselves (see tools.md integrity protocol)
-      2. Comprehensive dead code: `npx knip@latest --reporter compact` (unused deps, imports, exports, files, types)
-      3. Dead CSS: `purgecss --rejected` on global stylesheets against component templates
-      4. Dead i18n keys: `npx i18n-unused display-unused-keys` (if locale files exist)
-      5. Dead env vars: `npx dotenv-check@latest` (if .env exists)
-      6. Dependency second opinion: `npx depcheck` (Node) / `cargo udeps` (Rust) / `pip-extra-reqs` (Python)
-      7. tsconfig/eslint strictness: verify noUnusedLocals, noUnusedParameters, no-unused-imports enabled
-      Outputs structured findings from tool results. Manual reasoning checks delegated to impact-reviewer.
-      → 1 per project (not per stack)
+  - waste-scanner (haiku): [cross-ref waste detection, L2+]
+      Automated CLI with supply chain verification:
+      1. Pre-audit integrity: verify @latest versions, maintainer identity,
+         publish dates, npm audit on tools (see tools.md integrity protocol)
+      2. Dead code: `npx knip@latest --reporter compact` (unused deps, imports, exports, files, types)
+      3. Dead CSS: `purgecss --rejected` on global stylesheets
+      4. Dead i18n: `npx i18n-unused display-unused-keys` (if locale files)
+      5. Dead env vars: `npx dotenv-check@latest` (if .env)
+      6. Dep second opinion: `npx depcheck` (Node) / `cargo udeps` (Rust) / `pip-extra-reqs` (Python)
+      7. tsconfig/eslint strictness: noUnusedLocals, noUnusedParameters, no-unused-imports
+      Structured findings from tools. Manual checks -> impact-reviewer.
+      -> 1 per project
   - web-researcher (sonnet): [universal.md Stack Currency]
-      version checks, CVE search for all deps
+      version checks, CVE search
 
 Wave 2 — code review (parallel, opus, after Wave 1):
-  - diff-scanner-{N} (opus): [{stack}.md L2 Code Review — surface scan]
-      Diff-only review: obvious bugs, typos, logic errors without deep context
-  - history-reviewer-{N} (opus): [{stack}.md L2 Code Review — history-aware]
-      Git blame + history: regressions, reverted patterns, repeated mistakes
-  - comment-checker (opus): [universal.md — comment compliance]
-      Code matches its own TODO/FIXME/comments, no stale annotations
-  - convention-checker (opus): [CLAUDE.md + project conventions]
-      Project-specific rules from CLAUDE.md, naming, structure compliance
-  - impact-reviewer-{N} (opus): [{stack}.md L2 Code Review — cross-file]
-      Changes break dependent code? API contracts maintained? Import chains valid?
-      Serialization tag audit: fields with json:"-", @JsonIgnore, [NonSerialized] etc. that have active UI/API consumers
-      Progress/counter data flow: trace counters from source to display, verify no silent resets
-      Dead UI features: state variables without reachable triggers
+  - diff-scanner-{N}: [{stack}.md L2 — surface scan]
+      Obvious bugs, typos, logic errors without deep context
+  - history-reviewer-{N}: [{stack}.md L2 — history-aware]
+      Git blame: regressions, reverted patterns, repeated mistakes
+  - comment-checker: [universal.md — comment compliance]
+      TODO/FIXME matches code, no stale annotations
+  - convention-checker: [CLAUDE.md + project conventions]
+      Naming, structure compliance
+  - impact-reviewer-{N}: [{stack}.md L2 — cross-file]
+      Breaks dependent code? API contracts? Import chains?
+      Serialization tag audit: json:"-", @JsonIgnore, [NonSerialized] with active consumers
+      Progress/counter data flow: trace source to display, verify no silent resets
+      Dead UI: state vars without reachable triggers
 
-Scoring Phase (after final review wave, before report assembly):
-  - scoring-agent-{N} (haiku): [batch of findings from after final review wave (Wave 2 at Level 2, Wave 3 at Level 3)]
-      Score each finding 0-100, filter by level threshold
-      → 1 scoring agent per ~20 findings
+Scoring Phase (after final review wave, before report):
+  - scoring-agent-{N} (haiku): [findings batch]
+      Score 0-100, filter by level threshold
+      -> 1 per ~20 findings
 ```
 
 <details><summary>Wave 3 — Level 3 only (after Wave 2)</summary>
 
 ```
 Wave 3 — deep review (parallel, opus):
-  - code-reviewer-{N} (opus): [{stack}.md L3]
-      Per detected stack: all Level 3 checks from stack file
-      → 1 reviewer per stack
-  - code-reviewer-security (opus): [universal.md L3 — security]
+  - code-reviewer-{N}: [{stack}.md L3]
+      All L3 checks per stack -> 1 per stack
+  - code-reviewer-security: [universal.md L3 — security]
       XSS, SSRF, deserialization, XXE, ReDoS,
       log injection, IDOR/BOLA/BFLA, session mgmt,
       JWT/auth, business logic abuse,
       webhook security, file upload hardening
-  - code-reviewer-quality (opus): [universal.md L3 — quality]
-      API contract consistency, logging & observability,
+  - code-reviewer-quality: [universal.md L3 — quality]
+      API contracts, logging/observability,
       error disclosure, overengineering, docs freshness,
       input validation, resilience, config mgmt,
       state mgmt, privacy/PII, supply chain, SBOM,
       sharp edges, variant analysis
-  - logic-reviewer-{N} (opus): [universal.md L3 — business logic]
-      Domain logic correctness, edge cases, heuristic accuracy
-      Race conditions in concurrent code paths
-      Error handling gaps, resource leaks, tool invocation safety
-      → 1 reviewer per stack
-  - ui-reviewer (opus): [universal.md L3 — UI/UX (Playwright DOM)]
-      Live DOM audit via Playwright browser_snapshot (not screenshots)
+  - logic-reviewer-{N}: [universal.md L3 — business logic]
+      Domain correctness, edge cases, heuristic accuracy
+      Race conditions, error handling gaps, resource leaks
+      -> 1 per stack
+  - ui-reviewer: [universal.md L3 — UI/UX (Playwright DOM)]
+      Live DOM via browser_snapshot (not screenshots)
       Navigation, interactive elements, empty/error/loading states
-      Responsive layouts, keyboard accessibility, console errors
+      Responsive, keyboard a11y, console errors
       Requires: running dev server
-  - arch-reviewer (opus): [universal.md L3 — architecture]
-      Design decisions evaluation, trade-offs, alternatives
+  - arch-reviewer: [universal.md L3 — architecture]
+      Design decisions, trade-offs, alternatives
       Communication patterns, scalability, extensibility
-      Dead config fields, missing implementations
+      Dead config, missing implementations
 ```
 
 </details>
 
-### Wave Completion Criteria
+### Wave Completion
 
-Wave N is complete when ALL tasks tagged wave-N have status=completed (any outcome). Orchestrator monitors via `TaskList` polling every 30 seconds.
+Wave N done when ALL wave-N tasks completed. Orchestrator polls `TaskList` every 30s.
 
-- If an agent is idle >5 minutes with incomplete tasks → investigate or reassign
-- If a wave exceeds 2x estimated time → notify user, offer to proceed with partial results
-- Wave N+1 tasks are automatically unblocked when Wave N completes
+- Agent idle >5 min with incomplete tasks -> investigate/reassign
+- Wave exceeds 2x estimate -> notify user, offer partial results
+- Wave N+1 auto-unblocked on Wave N completion
 
-**Wave 3 additional completion criteria:**
-- Logic reviewer: all domain-specific logic paths reviewed, edge cases documented
-- UI reviewer: all pages visited, interactive elements tested, states verified
-- Architecture reviewer: all major decisions evaluated with trade-offs
+**Wave 3 extras:**
+- Logic reviewer: all domain logic paths reviewed, edge cases documented
+- UI reviewer: all pages visited, elements tested, states verified
+- Arch reviewer: all major decisions evaluated with trade-offs
 
 ### Level-to-Wave Agent Mapping
 
-| Agent | Level 1 | Level 2 | Level 3 |
-|-------|---------|---------|---------|
-| cli-scanner-{N} | ✅ | ✅ | ✅ |
-| cli-scanner-universal | — | ✅ | ✅ |
-| waste-scanner | — | ✅ | ✅ |
-| web-researcher | — | ✅ | ✅ |
-| diff-scanner-{N} | — | ✅ | ✅ |
-| history-reviewer-{N} | — | ✅ | ✅ |
-| comment-checker | — | ✅ | ✅ |
-| convention-checker | — | ✅ | ✅ |
-| impact-reviewer-{N} | — | ✅ | ✅ |
-| scoring-agent-{N} | — | ✅ | ✅ |
-| Wave 3 deep reviewers | — | — | ✅ |
+| Agent | L1 | L2 | L3 |
+|-------|----|----|----|
+| cli-scanner-{N} | yes | yes | yes |
+| cli-scanner-universal | — | yes | yes |
+| waste-scanner | — | yes | yes |
+| web-researcher | — | yes | yes |
+| diff-scanner-{N} | — | yes | yes |
+| history-reviewer-{N} | — | yes | yes |
+| comment-checker | — | yes | yes |
+| convention-checker | — | yes | yes |
+| impact-reviewer-{N} | — | yes | yes |
+| scoring-agent-{N} | — | yes | yes |
+| Wave 3 deep reviewers | — | — | yes |
 
-Level 1 (Quick): minimal agents for fast results. Level 2: full coverage. Level 3: everything including deep review.
+L1: minimal, fast. L2: full coverage. L3: everything + deep review.
 
 ### Parallel Execution Protocol
 
-Formalized protocol for wave-based parallel execution:
-
-**Agent output format (structured):**
+**Agent output format:**
 ```json
 {
   "agent": "cli-scanner-go",
@@ -521,83 +514,82 @@ Formalized protocol for wave-based parallel execution:
 }
 ```
 
-**Orchestrator integration steps:**
-1. Collect all agent outputs for the wave
-2. **Conflict check** — same file:line reported by multiple agents → merge, keep highest severity + all context
-3. **Spot-check** — randomly verify 10-20% of findings against actual code
-4. **Gap analysis** — any files/packages in scope not covered by any agent?
-5. Integrate into unified findings list before next wave
+**Orchestrator integration:**
+1. Collect wave outputs
+2. **Conflict check** — same file:line by multiple agents -> merge, highest severity + all context
+3. **Spot-check** — verify 10-20% against code
+4. **Gap analysis** — uncovered files/packages?
+5. Integrate before next wave
 
 ### MCP Servers
 
-> **All MCP servers are checked in Step 0.5 Part A (Preflight).** User is warned about missing servers before audit starts. See degradation table there.
+> Checked in Phase 0 preflight. User warned about missing before audit starts.
 
-| MCP | Who | What it enables | Fallback without it |
-|-----|-----|----------------|-------------------|
-| **Serena** | Lead, reviewers, fixers | Symbol-level navigation, cross-references, `read_memory("project_overview", "code_style")` | Grep/Read/Glob (slower, no symbol semantics) |
-| **Playwright** | UI testing agents | DOM-based functional testing: click buttons, fill forms, check links, console errors | Static analysis only — ~70% UI bugs missed |
-| **Context7** | Fixers | Current library docs via `resolve-library-id` → `query-docs` | Code without docs reference — higher error risk |
-| **Seq. Thinking** | Lead | Multi-hypothesis planning, mid-course revision | Linear planning (adequate for most audits) |
+| MCP | Who | Enables | Fallback |
+|-----|-----|---------|----------|
+| **Serena** | Lead, reviewers, fixers | Symbol nav, cross-refs, `read_memory` | Grep/Read/Glob (slower, no semantics) |
+| **Playwright** | UI agents | DOM testing: clicks, forms, links, console errors | Static only — ~70% UI bugs missed |
+| **Context7** | Fixers | Current lib docs via `resolve-library-id` -> `query-docs` | No docs ref — higher error risk |
+| **Seq. Thinking** | Lead | Multi-hypothesis planning, revision | Linear planning (adequate) |
 
-> **If Serena unavailable:** all code review agents switch from Serena to Grep/Read/Glob.
-> **If Playwright unavailable:** all runtime UI checks in `frontend.md` and `universal.md` are SKIPPED. Report as "Audit Limitation" in final report.
+> **Serena unavailable:** reviewers switch to Grep/Read/Glob.
+> **Playwright unavailable:** runtime UI checks SKIPPED. Report as "Audit Limitation".
 
 ### Teammate Prompts
 
 **Code reviewer:**
 ```
-You are a teammate in audit team "{team_name}". Role: code review.
+Teammate in audit team "{team_name}". Role: code review.
 
 1. TaskList -> claim unblocked task (TaskUpdate owner="{your_name}")
-2. Execute audit task per description
-3. TaskUpdate(status="completed") with findings: | Severity | File:Line | Issue | Recommendation |
-4. TaskList -> next task. None -> idle (normal).
+2. Execute per description
+3. TaskUpdate(status="completed") with: | Severity | File:Line | Issue | Recommendation |
+4. TaskList -> next. None -> idle.
 
-Read the project CLAUDE.md first — it has project-specific Code Rules.
-MCP: Serena for code nav (if available). Fallback: Grep/Read/Glob.
-When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
+Read project CLAUDE.md first. MCP: Serena (if available), fallback: Grep/Read/Glob.
+On completion, set outcome: DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what), or BLOCKED (what).
 ```
 
 **CLI scanner:**
 ```
-You are a teammate in audit team "{team_name}". Role: run CLI tools.
+Teammate in audit team "{team_name}". Role: run CLI tools.
 
-1. TaskList -> claim task (TaskUpdate owner="{your_name}")
-2. Before running each command, verify the tool exists: `command -v <tool> >/dev/null 2>&1`
-   - If missing: report as "SKIPPED: <tool> not installed" and continue to next command
-   - CLI tools should already be installed during Phase 0 preflight. If something is still missing, report it — do not install mid-audit.
-3. Run CLI commands from task via Bash
+1. TaskList -> claim task
+2. Before each command: `command -v <tool> >/dev/null 2>&1`
+   Missing -> "SKIPPED: <tool> not installed", continue
+   Tools should be installed from Phase 0. If missing, report — don't install mid-audit.
+3. Run CLI commands via Bash
 4. TaskUpdate(status="completed") with output summary
-5. TaskList -> next. None -> idle.
+5. Next task or idle.
 
-Do NOT edit files. Only run commands and report.
-When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
+Do NOT edit files. Only run and report.
+On completion, set outcome: DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED.
 ```
 
 **Web researcher:**
 ```
-You are a teammate in audit team "{team_name}". Role: version & CVE research.
+Teammate in audit team "{team_name}". Role: version & CVE research.
 
-1. TaskList -> claim task (TaskUpdate owner="{your_name}")
-2. Read manifest files (go.mod, package.json, etc.)
-3. For each dependency: web search latest version, known CVEs, EOL status
-4. Check runtime/framework versions against latest releases
-5. TaskUpdate(status="completed") with table:
+1. TaskList -> claim task
+2. Read manifests (go.mod, package.json, etc.)
+3. Per dependency: web search latest version, CVEs, EOL status
+4. Check runtime/framework versions vs latest
+5. TaskUpdate(status="completed") with:
    | Dependency | Current | Latest | Status | CVEs | Notes |
 
-Rate each: Current / Behind / EOL / Vulnerability (see universal.md Stack Currency).
-Do NOT edit files. Only research and report.
-When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
+Rate: Current / Behind / EOL / Vulnerability (see universal.md).
+Do NOT edit. Only research and report.
+On completion, set outcome: DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED.
 ```
 
 **Fixer:**
 ```
-You are a teammate in audit team "{team_name}". Role: fix findings.
+Teammate in audit team "{team_name}". Role: fix findings.
 
-1. TaskList -> claim task (TaskUpdate owner="{your_name}")
-2. Read project CLAUDE.md first — critical Code Rules inside
-3. Fix the issue
-4. Build check per stack:
+1. TaskList -> claim task
+2. Read project CLAUDE.md first
+3. Fix issue
+4. Build check:
    - Go: go build ./... && go vet ./...
    - JS/TS: npm run build && npm run lint
    - Python: ruff check . && pytest
@@ -606,53 +598,50 @@ You are a teammate in audit team "{team_name}". Role: fix findings.
    - Java (Gradle): ./gradlew build && ./gradlew check
    - C#: dotnet build && dotnet format --verify-no-changes
 5. TaskUpdate(status="completed") with change summary
-6. TaskList -> next. None -> idle.
+6. Next or idle.
 
-MCP: Serena for editing (if available). Context7 before code with libraries.
-Work only in assigned directory/package to avoid conflicts.
-IMPORTANT: shared/ and common packages — only ONE fixer at a time. If your task touches shared/,
-check TaskList for other active shared/ tasks. If conflict — wait or notify lead.
-Your fixes are reviewed in batches of 3. CRITICAL fixes get immediate review. Commit each fix separately with message: fix(audit): [SEVERITY] description
-When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
+MCP: Serena for editing, Context7 for lib docs.
+Work only in assigned dir/package.
+IMPORTANT: shared/common packages — ONE fixer at a time. Check TaskList for conflicts.
+Fixes reviewed in batches of 3. CRITICAL = immediate review. Commit each: fix(audit): [SEVERITY] description
+On completion, set outcome: DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED.
 ```
 
 **Scoring agent:**
 ```
-You are a teammate in audit team "{team_name}". Role: score findings.
+Teammate in audit team "{team_name}". Role: score findings.
 
-1. TaskList -> claim task (TaskUpdate owner="{your_name}")
-2. For each finding in the batch, evaluate:
-   - Is this verified against actual code? (not hypothetical)
-   - Is this pre-existing or recently introduced? (git blame)
-   - Does CLAUDE.md allow this pattern?
-   - Can a specific command reproduce this finding?
-3. Assign confidence score 0-100 per the Confidence Scoring scale
-4. TaskUpdate(status="completed") with scored findings:
+1. TaskList -> claim task
+2. Per finding evaluate:
+   - Verified against actual code? (not hypothetical)
+   - Pre-existing or recent? (git blame)
+   - CLAUDE.md allows this pattern?
+   - Specific command can reproduce?
+3. Score 0-100 per Confidence Scoring scale
+4. TaskUpdate(status="completed"):
    | Score | Severity | File:Line | Issue | Evidence |
-5. TaskList -> next. None -> idle.
+5. Next or idle.
 
-Discard findings scoring below the level threshold (L1: <75, L2: <60, L3: <40).
-Do NOT edit files. Only evaluate and score.
-When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking).
+Discard below threshold (L1: <75, L2: <60, L3: <40).
+Do NOT edit. Only evaluate and score.
+On completion, set outcome: DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED.
 ```
 
 ### Agent Completion Statuses
 
-Agents report task completion using `TaskUpdate` with status and metadata:
-
 | Status | When | Orchestrator Action |
 |--------|------|-------------------|
-| `completed` + `outcome: "DONE"` | Task fully completed, all checks pass | Accept results, proceed to next task |
-| `completed` + `outcome: "DONE_WITH_CONCERNS"` | Task done but agent found issues worth noting | Review concerns before proceeding; may spawn follow-up task |
-| `completed` + `outcome: "NEEDS_CONTEXT"` | Cannot complete without additional information | Provide context via SendMessage, agent retries |
-| `completed` + `outcome: "BLOCKED"` | External dependency or tool issue prevents completion | Reassign to different agent or resolve blocker |
+| `completed` + `DONE` | Fully completed | Accept, proceed |
+| `completed` + `DONE_WITH_CONCERNS` | Done but issues noted | Review before proceeding; may spawn follow-up |
+| `completed` + `NEEDS_CONTEXT` | Needs additional info | Provide context via SendMessage, retry |
+| `completed` + `BLOCKED` | External dependency/tool issue | Reassign or resolve |
 
 **Example:**
 ```json
-TaskUpdate(taskId="5", status="completed", metadata={"outcome": "DONE_WITH_CONCERNS", "concerns": "gosec reported 3 findings but 2 appear to be false positives — recommend manual review"})
+TaskUpdate(taskId="5", status="completed", metadata={"outcome": "DONE_WITH_CONCERNS", "concerns": "gosec: 3 findings, 2 likely false positives — recommend manual review"})
 ```
 
-All agent prompts should include: "When completing a task, set metadata outcome to DONE, DONE_WITH_CONCERNS (explain), NEEDS_CONTEXT (what's missing), or BLOCKED (what's blocking)."
+All prompts include outcome instruction.
 
 ---
 
@@ -660,58 +649,58 @@ All agent prompts should include: "When completing a task, set metadata outcome 
 
 | Severity | Criteria | Action |
 |----------|----------|--------|
-| **CRITICAL** | Exploitable vulnerability, data loss/corruption risk, crash in production, secrets exposed | Fix immediately, block release |
-| **HIGH** | Security issue requiring code change, resource leak under load, data integrity risk | Fix before next release |
-| **MEDIUM** | Code quality issue, missing validation, performance degradation, stale dependency | Schedule within 2 sprints |
-| **LOW** | Style, minor optimization, nice-to-have improvement | Fix when convenient, expires after 2 releases if unaddressed |
+| **CRITICAL** | Exploitable vuln, data loss/corruption, prod crash, secrets exposed | Fix immediately, block release |
+| **HIGH** | Security needing code change, resource leak under load, data integrity risk | Fix before next release |
+| **MEDIUM** | Quality issue, missing validation, perf degradation, stale dep | Schedule within 2 sprints |
+| **LOW** | Style, minor optimization, nice-to-have | Fix when convenient, expires after 2 releases |
 
 ---
 
 ## Confidence Scoring
 
-Every finding goes through a confidence scoring gate before inclusion in the report.
+Every finding passes confidence gate before report inclusion.
 
-### Scoring Scale (0-100)
+### Scale (0-100)
 
 | Score | Meaning | Action |
 |-------|---------|--------|
-| **0** | False positive, pre-existing issue, or cannot be verified | Discard |
-| **25** | Possibly real but unverified. Stylistic without CLAUDE.md backing | Discard |
-| **50** | Verified issue but nitpick or impractical to fix | Include in Level 3 only (below Level 2 threshold) |
-| **75** | Re-verified, very likely real. Important for functionality | Include in Level 2+ |
-| **100** | Absolutely confirmed with direct evidence (exit code, line number, output) | Always include |
+| **0** | False positive, pre-existing, unverifiable | Discard |
+| **25** | Possibly real, unverified. Stylistic without CLAUDE.md backing | Discard |
+| **50** | Verified but nitpick/impractical | L3 only (below L2 threshold) |
+| **75** | Re-verified, very likely real, functional impact | L2+ |
+| **100** | Confirmed with direct evidence (exit code, line, output) | Always |
 
-### Scoring Process
+### Process
 
-1. Each reviewer agent produces raw findings with severity
-2. Orchestrator dispatches **scoring agents** (haiku) — one per batch of findings
-3. Scoring agent **independently re-reads the relevant code** (not relying on reviewer's description) and evaluates each finding against:
-   - Is this verified against actual code? (not hypothetical)
-   - Is this a pre-existing issue or introduced recently?
-   - Does the CLAUDE.md mention this pattern as acceptable?
-   - Can the finding be reproduced by running a specific command?
-   - If flagged due to CLAUDE.md, does the CLAUDE.md **actually** call out this issue specifically?
-4. Findings are filtered based on **per-level minimum thresholds**:
+1. Reviewers produce raw findings with severity
+2. Orchestrator dispatches **scoring agents** (haiku) — one per batch
+3. Scoring agent **independently re-reads code** and evaluates:
+   - Verified against actual code?
+   - Pre-existing or recent?
+   - CLAUDE.md allows this pattern?
+   - Reproducible by command?
+   - If CLAUDE.md-flagged, does CLAUDE.md **actually** call this out?
+4. Filter by **per-level thresholds**:
 
-   | Level | Minimum Score | Rationale |
-   |-------|--------------|-----------|
-   | 1 (Quick) | 75 | Only high-confidence findings for fast audits |
-   | 2 (Full) | 60 | Balanced — include verified findings |
-   | 3 (Deep) | 40 | Include lower-confidence findings for thorough review |
+   | Level | Min Score | Rationale |
+   |-------|----------|-----------|
+   | 1 (Quick) | 75 | High-confidence only |
+   | 2 (Full) | 60 | Balanced |
+   | 3 (Deep) | 40 | Thorough |
 
-5. Filtered findings saved to `audit-filtered.md` in the project root (not committed to git — for reference only)
+5. Filtered findings -> `audit-filtered.md` (not committed)
 
 ### False Positive Whitelist
 
-Common false positives to auto-filter (score = 0):
+Auto-filter (score = 0):
 
-- Pre-existing issues not related to recent changes (in Diff Mode)
-- Intentional patterns documented in CLAUDE.md or code comments (e.g., `// nolint: reason`)
-- Tool-level issues that CI/linter will catch separately
-- Issues on non-modified lines (in Diff Mode / Quick audit)
-- Test code patterns that mirror production anti-patterns intentionally
-- Generated code (protobuf, swagger, ORM migrations)
-- Vendor/third-party code in `vendor/`, `node_modules/`, `third_party/`
+- Pre-existing, unrelated to recent changes (Diff Mode)
+- Intentional patterns in CLAUDE.md or comments (`// nolint: reason`)
+- CI/linter catches separately
+- Non-modified lines (Diff Mode / Quick)
+- Test code intentionally mirroring anti-patterns
+- Generated code (protobuf, swagger, migrations)
+- Vendor/third-party (`vendor/`, `node_modules/`, `third_party/`)
 
 ---
 
@@ -735,71 +724,71 @@ Common false positives to auto-filter (score = 0):
 ### CRITICAL (fix immediately)
 1. ...
 
-### HIGH (fix in next release)
+### HIGH (fix next release)
 1. ...
 
 ### MEDIUM (schedule)
 1. ...
 
-### LOW (when possible -- expires after 2 releases if unaddressed)
+### LOW (when possible -- expires after 2 releases)
 1. ...
 
 ### What's Good (don't touch)
 - ...
 
 ### Audit Limitations
-> Include this section if any MCP servers were unavailable or CLI tools missing.
+> Only if MCP/CLI missing.
 
 | Capability | Status | Impact |
 |-----------|--------|--------|
-| e.g. Playwright MCP | ❌ Not installed | Functional UI testing skipped — broken links, dead buttons not checked |
-| e.g. semgrep | ❌ Not installed | SAST analysis skipped |
+| e.g. Playwright | not installed | UI testing skipped |
+| e.g. semgrep | not installed | SAST skipped |
 ```
 
-> **Note:** Only include findings with confidence score >= threshold for the audit level (see Confidence Scoring). Each finding must show its confidence score.
+> Only findings with score >= level threshold. Each shows confidence score.
 
 ### Report Integrity Rules
 
-- **No hollow positives:** "Overall the codebase is in great shape" requires evidence (0 HIGH+, test coverage >80%, all deps current)
-- **No vague negatives:** "Some security concerns" — list them specifically with file:line
-- **Every PASS needs proof:** Health Score "PASS" = link to command output showing clean result
-- **Every count is exact:** "N vulnerabilities" = N specific items listed below
-- **Severity matches impact:** Don't inflate to look thorough, don't deflate to look positive
-- **"What's Good" is specific:** Not "good code quality" but "consistent error handling pattern in pkg/api/ using middleware"
+- **No hollow positives:** "great shape" requires evidence (0 HIGH+, coverage >80%, deps current)
+- **No vague negatives:** "security concerns" -> list with file:line
+- **Every PASS needs proof:** command output showing clean result
+- **Every count exact:** "N vulnerabilities" = N listed
+- **Severity matches impact:** no inflation/deflation
+- **"What's Good" specific:** not "good quality" but "consistent error handling in pkg/api/ via middleware"
 
 ---
 
 ## Verification Gate (Iron Law)
 
-**No claim without fresh evidence.** Every assertion in the audit report must be backed by verifiable proof.
+**No claim without fresh evidence.**
 
 ### Rules
 
-1. **IDENTIFY** — What command/check proves this claim?
-2. **RUN** — Execute the command freshly (not from cache or memory)
-3. **READ** — Read full output, check exit code
-4. **VERIFY** — Does output confirm the claim?
-5. **ONLY THEN** — Include in report
+1. **IDENTIFY** — what command proves this?
+2. **RUN** — execute freshly (not from cache)
+3. **READ** — full output, check exit code
+4. **VERIFY** — output confirms claim?
+5. **ONLY THEN** — include in report
 
 ### Prohibited phrases (without evidence)
 
-- "The codebase appears to be..." — run the check
-- "No issues found" — show the command output
-- "PASS" in Health Score — show exit code 0
-- "All tests pass" — show test runner output
-- "N vulnerabilities" — show scanner output with exact count
-- "I've verified" — show the verification output
-- "Everything looks good" — specify what was checked
-- "Tests are passing" — show test runner output with count
-- "The fix works" — show before/after evidence
+- "codebase appears to be..." — run check
+- "No issues found" — show output
+- "PASS" — show exit code 0
+- "All tests pass" — show runner output
+- "N vulnerabilities" — show scanner output
+- "I've verified" — show verification
+- "Everything looks good" — specify what checked
+- "Tests are passing" — show output with count
+- "The fix works" — show before/after
 
 ### Agent trust policy
 
-- CLI Scanner output → trust if exit code captured
-- Code Reviewer findings → require file:line reference
-- Web Researcher data → require source URL
-- Fixer claims "fixed" → re-run original detection command
-- **Never trust agent self-reports without independent verification**
+- CLI Scanner -> trust if exit code captured
+- Code Reviewer -> require file:line
+- Web Researcher -> require source URL
+- Fixer "fixed" -> re-run detection command
+- **Never trust self-reports without independent verification**
 
 ### Evidence format
 
@@ -809,7 +798,7 @@ Each finding MUST include:
 |-------|----------|
 | File:Line | Yes |
 | Code snippet (3-5 lines) | Yes |
-| Detection method | Yes (tool name or manual review) |
+| Detection method | Yes (tool or manual) |
 | Confidence score | Yes (0-100) |
 | Reproduction command | If applicable |
 ```
@@ -820,182 +809,175 @@ Each finding MUST include:
 
 After user approval:
 
-1. `TeamCreate("audit-fix")` or add tasks to existing team
-2. Create feature branch: `git checkout -b audit-fix/YYYY-MM-DD`
-3. Optionally create git worktree for isolation: `git worktree add .worktrees/audit-fix -b audit-fix/YYYY-MM-DD`
-4. `TaskCreate` per fix, grouped by package/directory
+1. `TeamCreate("audit-fix")` or add to existing team
+2. Feature branch: `git checkout -b audit-fix/YYYY-MM-DD`
+3. Optional worktree: `git worktree add .worktrees/audit-fix -b audit-fix/YYYY-MM-DD`
+4. `TaskCreate` per fix, grouped by package/dir
 
 ### Fix Task Granularity
 
-Each fix task MUST be atomic and time-boxed:
+Atomic, time-boxed:
 
-- **Time target:** 2-5 minutes per task. If a fix takes longer, split it.
-- **Exact targeting:** task description includes exact `file:line` and the specific finding ID
-- **One commit per task:** each task = one failing test + one fix + one commit
-- **No placeholders:** task description must contain the actual fix approach, not "fix the security issue in auth.go"
+- **Time:** 2-5 min per task. Longer -> split.
+- **Exact targeting:** exact `file:line` + finding ID
+- **One commit per task:** failing test + fix + commit
+- **No placeholders:** actual fix approach required
 - **Template:**
   ```
-  Task: Fix [FINDING-ID] — [severity] [short description]
+  Task: Fix [FINDING-ID] — [severity] [description]
   File: src/auth/handler.go:45
-  Finding: SQL injection via string concatenation in UserQuery()
-  Fix approach: Use parameterized query with $1 placeholder
-  Test: Add test with malicious input `'; DROP TABLE users; --`
+  Finding: SQL injection via string concat in UserQuery()
+  Fix: parameterized query with $1
+  Test: malicious input `'; DROP TABLE users; --`
   Verify: `semgrep --config=p/sql-injection src/auth/`
   ```
 
-5. **Conflict prevention:** tasks touching `shared/`, `utils/`, or cross-cutting packages must be sequential (`addBlockedBy`). One fixer at a time.
-6. Spawn fixers (`model="opus"`, prompt from Fixer section)
+5. **Conflict prevention:** `shared/`, `utils/`, cross-cutting -> sequential (`addBlockedBy`). One fixer at a time.
+6. Spawn fixers (opus, Fixer prompt)
 
 ### Fixer TDD Protocol
 
-Each fixer MUST follow Red-Green-Refactor:
+Red-Green-Refactor:
 
-1. **RED** — Write a failing test that reproduces the found issue
-2. **Verify RED** — Run test, confirm it fails for the right reason
-3. **GREEN** — Write minimal fix to pass the test
-4. **Verify GREEN** — All tests pass (not just the new one)
-5. **REFACTOR** — Clean up if needed, re-run tests
-6. **Commit** — One commit per fix with message: `fix(audit): [SEVERITY] description`
+1. **RED** — failing test reproducing issue
+2. **Verify RED** — confirm fails for right reason
+3. **GREEN** — minimal fix
+4. **Verify GREEN** — all tests pass
+5. **REFACTOR** — clean up, re-run
+6. **Commit** — `fix(audit): [SEVERITY] description`
 
-> If the finding is not testable (e.g., config change, header addition), skip TDD but still verify with the appropriate CLI command.
+> Untestable (config change, header) -> skip TDD, verify with CLI command.
 
 ### TDD Rationalization Table
 
-> **Iron Law:** No production code without a failing test first. No exceptions without documented justification reviewed by orchestrator.
+> **Iron Law:** No production code without failing test. No exceptions without documented justification.
 
-| Rationalization | Reality | Correct Action |
-|----------------|---------|---------------|
-| "This is a one-line change" | One-line changes cause production outages | Write the test — it's also one line |
-| "This is just a config change" | Config changes break deployments | Write a test that loads config and validates |
-| "I'll add tests later" | Later never comes | Write the test NOW, before the fix |
-| "The existing tests cover this" | If they did, the bug wouldn't exist | Add a new test for this case |
-| "This is too simple to test" | Simple code has simple tests — no excuse | Write it — takes 30 seconds |
-| "Testing requires too much setup" | Extract logic into a testable unit | Refactor first, then test, then fix |
-| "This is a dependency/infra issue" | You can still test the boundary | Write integration test or mock boundary |
+| Rationalization | Reality | Action |
+|----------------|---------|--------|
+| "One-line change" | Causes outages | Test — also one line |
+| "Just config" | Breaks deployments | Test config loading |
+| "Tests later" | Never comes | Test NOW |
+| "Existing tests cover" | If so, bug wouldn't exist | New test |
+| "Too simple" | Simple tests too | 30 seconds |
+| "Too much setup" | Extract testable unit | Refactor, test, fix |
+| "Dep/infra issue" | Test boundary | Integration test or mock |
 
-When TDD is genuinely impossible (e.g., adding HTTP header, changing log format), the fixer MUST:
-1. Document WHY it's untestable in the task completion
-2. Provide the CLI command that verifies the change
-3. Orchestrator reviews justification — if unconvincing, sends back
+When genuinely untestable, fixer MUST:
+1. Document WHY
+2. Provide verification CLI command
+3. Orchestrator reviews — unconvincing -> sends back
 
 ### Finding Challenge Protocol
 
-If a fixer believes an assigned finding is incorrect or not applicable:
+If fixer believes finding incorrect:
 
-1. **Do NOT fix it silently or skip it.** Challenge it formally.
+1. **Don't fix silently or skip.** Challenge formally.
 2. `TaskUpdate(status="completed", metadata={"outcome": "DONE_WITH_CONCERNS", "challenge": "reason"})`
-3. Orchestrator dispatches a **second reviewer** (different from original) to adjudicate:
-   - Reviewer checks: is the finding technically valid? Is fixer's challenge justified?
-   - Verdict: **CONFIRMED** (fix it) or **RETRACTED** (remove from report)
-4. If CONFIRMED: reassign to fixer with adjudication context
-5. If RETRACTED: remove finding, update report, note in audit-filtered.md
+3. Orchestrator dispatches **second reviewer** to adjudicate:
+   - Technically valid? Challenge justified?
+   - Verdict: **CONFIRMED** or **RETRACTED**
+4. CONFIRMED -> reassign with context
+5. RETRACTED -> remove, update report, note in audit-filtered.md
 
 **When to challenge:**
-- Finding is a false positive (tool misidentified the pattern)
-- Code has documented justification (comment, ADR, CLAUDE.md)
-- Finding is pre-existing and out of audit scope (Diff Mode)
-- Recommended fix would break other functionality
-- YAGNI — the recommendation isn't needed in this project's context
+- False positive (tool misidentified)
+- Documented justification (comment, ADR, CLAUDE.md)
+- Pre-existing, out of scope (Diff Mode)
+- Fix would break other functionality
+- YAGNI
 
-**Never challenge to avoid work.** Anti-Rationalization Rules apply.
+**Never challenge to avoid work.**
 
 ### Fix Review Protocol (Two-Stage)
 
-> **SHA capture (required before spawning fix-reviewers):**
-> Before spawning fixers: `sha_before=$(git rev-parse HEAD)`.
-> At each review checkpoint (every 3 fixes, on CRITICAL fix, or after all fixers complete): `sha_after=$(git rev-parse HEAD)`.
-> After dispatching the fix-reviewer, update: `sha_before=$sha_after` for the next batch.
-> Pass these values into the `{sha_before}` / `{sha_after}` template variables in the fix-reviewer prompts below.
+> **SHA capture (required):**
+> Before fixers: `sha_before=$(git rev-parse HEAD)`.
+> At each checkpoint (every 3 fixes, CRITICAL, or all done): `sha_after=$(git rev-parse HEAD)`.
+> After dispatching reviewer: `sha_before=$sha_after`.
 
-**Stage 1 — Spec Compliance** (after every 3 fixes or immediately for CRITICAL):
+**Stage 1 — Spec Compliance** (every 3 fixes or immediate for CRITICAL):
 ```
-You are a fix spec-reviewer for audit team "{team_name}".
+Fix spec-reviewer for "{team_name}".
 
-Review fixes between BASE_SHA ({sha_before}) and HEAD_SHA ({sha_after}):
-For each fix verify: Does the fix RESOLVE the original finding?
-- Finding still present after fix? → FAIL
-- Fix is a band-aid (suppresses warning, doesn't address root cause)? → FAIL
-- Tests added that reproduce the original issue? → Required for PASS
+Review fixes between {sha_before} and {sha_after}:
+- Finding still present? -> FAIL
+- Band-aid (suppresses warning, no root cause)? -> FAIL
+- Tests reproduce original issue? -> Required for PASS
 
-Output: PASS / FAIL per fix with specific reasoning.
+Output: PASS / FAIL per fix with reasoning.
 ```
 
-**Stage 2 — Code Quality** (only after Stage 1 passes):
+**Stage 2 — Code Quality** (after Stage 1 passes):
 ```
-You are a fix quality-reviewer for audit team "{team_name}".
+Fix quality-reviewer for "{team_name}".
 
-Review fixes between BASE_SHA ({sha_before}) and HEAD_SHA ({sha_after}):
-For each fix verify: Does the fix introduce NEW issues?
-- Security regression? Performance degradation? Broken tests?
-- Follows project conventions from CLAUDE.md?
-- Code is clean, minimal, no over-engineering?
+Review fixes between {sha_before} and {sha_after}:
+- Security regression? Perf degradation? Broken tests?
+- Follows CLAUDE.md conventions?
+- Clean, minimal, no over-engineering?
 
-Output: APPROVED / NEEDS_CHANGES with specific feedback.
+Output: APPROVED / NEEDS_CHANGES with feedback.
 ```
 
-Stage 1 MUST pass before Stage 2 runs. If Stage 1 fails → fixer retries before quality review.
+Stage 1 must pass before Stage 2. Failure -> fixer retries first.
 
-**Batch review checkpoints:**
-- After every 3 fixes → dispatch fix-reviewer (Stage 1 then Stage 2)
-- On any CRITICAL fix → immediate review (don't batch)
-- After all fixes → final full review before merge
+**Checkpoints:**
+- Every 3 fixes -> review (Stage 1 then 2)
+- CRITICAL -> immediate (don't batch)
+- After all fixes -> final review before merge
 
 ### Post-fix Verification
 
-Re-run the CLI commands that originally found each issue to confirm closure:
-
 ```
-Orchestrator: for each fixed finding:
-1. Re-run original detection command
-2. Verify the finding no longer appears
-3. Run full test suite — 0 regressions
-4. If finding persists → reassign to fixer with context
+For each fixed finding:
+1. Re-run detection command
+2. Verify finding gone
+3. Full test suite — 0 regressions
+4. Persists -> reassign with context
 ```
 
 ### Fix Attempt Limit (STOP Rule)
 
-**After 3 failed fix attempts on the same finding — STOP.**
+**3 failed attempts -> STOP.**
 
-1. First failure: reassign to same fixer with additional context
-2. Second failure: reassign to DIFFERENT fixer with full history
-3. Third failure: **STOP. Escalate to user.**
-   - Report: what was tried, why it failed, likely root cause
-   - Options: (a) user guidance, (b) mark WONTFIX with justification, (c) create tracking issue
-   - Do NOT attempt 4th automated fix
+1. First failure: reassign same fixer + context
+2. Second: different fixer + full history
+3. Third: **STOP. Escalate to user.**
+   - Report: attempts, failures, root cause
+   - Options: (a) user guidance, (b) WONTFIX, (c) tracking issue
+   - No 4th attempt
 
-Same rule for build/test failures: 3 failures → STOP, report to user.
+Same for build/test failures: 3 -> STOP.
 
 ### Pre-Completion Verification
 
-Before presenting options, orchestrator MUST:
-1. Run ALL quality gates (see Quality Gates section) — capture full output
-2. Run `git diff --stat` to confirm scope of changes
-3. Show results to user:
+Before presenting options:
+1. Run ALL quality gates — capture output
+2. `git diff --stat` for change scope
+3. Show:
    ```
    Quality Gates: PASS (0 errors)
-   Files changed: N files (+X, -Y lines)
-   Fixes applied: M of T findings resolved
-   Unresolved: list remaining findings with reasons
+   Files changed: N (+X, -Y)
+   Fixes: M of T resolved
+   Unresolved: list with reasons
    ```
-4. ONLY THEN present the 4 completion options
+4. THEN present completion options
 
 ### Fix Completion
 
-After all fixes verified:
-- **Option A:** Merge locally → `git merge audit-fix/YYYY-MM-DD`
-- **Option B:** Push + create PR → `gh pr create`
-- **Option C:** Keep branch for manual review
-- **Option D:** Discard → requires typed confirmation "discard"
+After verification:
+- **A:** Merge -> `git merge audit-fix/YYYY-MM-DD`
+- **B:** Push + PR -> `gh pr create`
+- **C:** Keep branch for manual review
+- **D:** Discard -> typed confirmation "discard"
 
 Cleanup worktree if used: `git worktree remove .worktrees/audit-fix`
 
-Team Lead: all quality gates = 0 errors → Shutdown → `TeamDelete`
+All gates = 0 errors -> Shutdown -> `TeamDelete`
 
 ---
 
 ## Quality Gates (mandatory before commit)
-
-Run the stack-appropriate commands:
 
 ```bash
 # Go
@@ -1020,7 +1002,7 @@ mvn compile -q && mvn checkstyle:check -q
 dotnet build && dotnet format --verify-no-changes && dotnet test
 ```
 
-All gates: **0 errors**. For full check — Level 1.
+All gates: **0 errors**. Full check = Level 1.
 
 ---
 

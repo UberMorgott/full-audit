@@ -1,13 +1,13 @@
 # Python Audit Checks
 
-> **Cross-references:** This file works with [README.md](README.md) (orchestration) and [universal.md](universal.md) (language-agnostic checks).
+> **Cross-references:** Works with [README.md](README.md) (orchestration), [universal.md](universal.md) (language-agnostic checks).
 >
-> **Required reading for all agents using this file:**
-> - **Confidence Scoring** (README.md) — assign 0-100 score to every finding. Level thresholds: L1≥75, L2≥60, L3≥40.
-> - **False Positive Detection** (universal.md) — check stack-specific auto-discard patterns before including findings.
-> - **CLI Finding Verification** (universal.md) — 5-step protocol for every CLI tool finding.
-> - **YAGNI Check** (universal.md) — verify recommendations are needed before suggesting "add X".
-> - **Anti-Rationalization Rules** (universal.md) — do not skip checks or soften findings.
+> **Required reading:**
+> - **Confidence Scoring** (README.md) — 0-100 per finding. Thresholds: L1>=75, L2>=60, L3>=40.
+> - **False Positive Detection** (universal.md) — check auto-discard patterns before including.
+> - **CLI Finding Verification** (universal.md) — 5-step protocol per CLI finding.
+> - **YAGNI Check** (universal.md) — verify need before suggesting additions.
+> - **Anti-Rationalization** (universal.md) — don't skip checks or soften findings.
 
 Applies when `pyproject.toml`, `requirements.txt`, `setup.py`, or `Pipfile` detected.
 All commands assume `cd {project_root}`.
@@ -16,29 +16,28 @@ All commands assume `cd {project_root}`.
 
 ## Level 1: Quick
 
-### Syntax check + lint
+### Syntax + lint
 ```bash
 ruff check . 2>&1
-# Or if ruff not available:
+# Or if ruff unavailable:
 # python -m py_compile $(find . -name "*.py" -not -path "./.venv/*") 2>&1
 # flake8 . 2>&1
 ```
 
-### Dependency vulnerabilities
+### Dependency vulns
 ```bash
 pip-audit 2>&1
 # Or: safety check 2>&1
-# Or universal (verify version first — v0.69.4-6 compromised, see tools.md):
+# Or (verify version — v0.69.4-6 compromised, see tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
-> Note: For projects using uv as package manager, replace pip-audit with uv-based dependency checking.
+> For `uv` projects, use uv-based dependency checking instead.
 
-> Tip: If tools aren't globally installed, prefix with `uv tool run` (e.g., `uv tool run ruff check .`, `uv tool run pip-audit`).
+> Tip: Prefix with `uv tool run` if tools not globally installed.
 
 ### Tests
 ```bash
-# Detect test runner
 if [ -f "pyproject.toml" ] && grep -q "pytest" pyproject.toml; then
   python -m pytest --tb=short -q 2>&1
 elif [ -d "tests" ]; then
@@ -50,36 +49,35 @@ fi
 
 ### Type check (if typed)
 ```bash
-# Check if mypy config exists or py.typed marker
 if grep -q "mypy" pyproject.toml 2>/dev/null || [ -f "mypy.ini" ] || [ -f ".mypy.ini" ]; then
   mypy . 2>&1
 fi
 ```
 
-### Python runtime currency
+### Runtime currency
 ```bash
 python --version 2>&1
 ```
-> If pip-audit or safety reports stdlib/CPython vulnerabilities, update Python runtime. Check python.org/downloads for latest patch release of your minor version.
+> If pip-audit/safety reports stdlib/CPython vulns, update runtime via python.org/downloads.
 
 **Pass criteria:** 0 errors in all commands.
 
 ---
 
-## Level 2: Full (includes Level 1)
+## Level 2: Full (includes L1)
 
-### Security scan — Bandit
+### Security — Bandit
 ```bash
 bandit -r . -x ./.venv,./tests -f json 2>&1
 ```
 
 Key rules:
-- `B101` — assert used for security (disabled in optimized mode)
-- `B102` — exec() usage
-- `B103` — set_bad_file_permissions
-- `B104` — bind to 0.0.0.0
+- `B101` — assert for security (disabled in optimized mode)
+- `B102` — exec()
+- `B103` — bad file permissions
+- `B104` — bind 0.0.0.0
 - `B105-B107` — hardcoded passwords/secrets
-- `B108` — hardcoded tmp directory
+- `B108` — hardcoded tmp dir
 - `B301-B303` — pickle/marshal/yaml deserialization
 - `B501-B504` — SSL/TLS issues
 - `B601-B610` — shell injection
@@ -90,19 +88,19 @@ Key rules:
 vulture . --min-confidence 80 2>&1
 ```
 
-### Complexity metrics
+### Complexity
 ```bash
-radon cc . -a -nc 2>&1     # Cyclomatic complexity (show only C+ grade)
-radon mi . -nc 2>&1         # Maintainability index (show only problematic)
+radon cc . -a -nc 2>&1     # Cyclomatic (C+ grade only)
+radon mi . -nc 2>&1         # Maintainability (problematic only)
 ```
 
-### Import sorting + formatting check
+### Import sorting + formatting
 ```bash
-ruff check --select I . 2>&1       # isort rules
+ruff check --select I . 2>&1       # isort
 ruff format --check . 2>&1         # formatting
 ```
 
-### Code coverage
+### Coverage
 ```bash
 pytest --cov=. --cov-report=term-missing 2>&1
 # Or:
@@ -124,70 +122,69 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 2: Code Review (Opus agents)
 
-> **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
+> **Reviewer mapping:** Security -> diff-scanner + impact-reviewer. Concurrency -> diff-scanner + history-reviewer. Resource leaks -> diff-scanner. Convention -> convention-checker. Stale comments/TODOs -> comment-checker.
 
-### Security review
+### Security
 
-- **SQL injection:** string formatting in SQL queries (`f"SELECT ... {user_input}"`, `%` formatting, `.format()`)
-  - Must use parameterized queries: `cursor.execute("SELECT ... WHERE id = ?", (user_id,))`
-- **Command injection:** `os.system()`, `subprocess.call(shell=True)`, `subprocess.Popen(shell=True)` with user input
-- **Path traversal:** `os.path.join(base, user_input)` without `os.path.realpath` + prefix check
-- **Deserialization:** `pickle.loads()`, `yaml.load()` (use `yaml.safe_load()`), `marshal.loads()` on untrusted data
-- **SSRF:** `requests.get(user_url)` without URL scheme validation
+- **SQL injection:** string formatting in queries (`f"SELECT ... {user_input}"`, `%`, `.format()`) — use parameterized: `cursor.execute("... WHERE id = ?", (user_id,))`
+- **Command injection:** `os.system()`, `subprocess.*(shell=True)` with user input
+- **Path traversal:** `os.path.join(base, user_input)` without `realpath` + prefix check
+- **Deserialization:** `pickle.loads()`, `yaml.load()` (use `safe_load`), `marshal.loads()` on untrusted data
+- **SSRF:** `requests.get(user_url)` without scheme validation
 - **Eval:** `eval()`, `exec()`, `compile()` with user data
 - **Template injection:** Jinja2 without autoescape, `render_template_string(user_input)`
-- **Hardcoded secrets:** API keys, passwords, tokens in source (not env vars)
-- **Debug mode:** `DEBUG=True` in production config
+- **Hardcoded secrets:** API keys/passwords/tokens in source (not env vars)
+- **Debug mode:** `DEBUG=True` in production
 
-### Concurrency (if async/threading used)
+### Concurrency (if async/threading)
 
-> Python 3.11+: Check for TaskGroup usage (structured concurrency). Python 3.12+: Check ExceptionGroup handling patterns.
+> 3.11+: Check TaskGroup. 3.12+: Check ExceptionGroup handling.
 
-- `threading.Thread` without daemon flag or join (zombie threads)
+- `threading.Thread` without daemon/join (zombie threads)
 - Shared mutable state without `threading.Lock`
-- `asyncio.create_task()` without awaiting or storing reference (fire-and-forget)
-- `async with` not used for async context managers
-- Blocking calls in async functions (`time.sleep` instead of `asyncio.sleep`, sync I/O)
-- No `asyncio.gather` error handling (`return_exceptions=True`)
-- Thread pool without `max_workers` limit
-- `global` keyword for mutable state in multi-threaded code
+- `asyncio.create_task()` without await/store (fire-and-forget)
+- Missing `async with` for async context managers
+- Blocking in async (`time.sleep` vs `asyncio.sleep`, sync I/O)
+- `asyncio.gather` without `return_exceptions=True`
+- Thread pool without `max_workers`
+- `global` mutable state in multi-threaded code
 
 ### Resource leaks
 
-- File open without `with` statement (no guaranteed close)
-- DB connection without context manager or explicit close
-- HTTP session not reused (`requests.get()` per call instead of `Session`)
-- Temp files without cleanup (`tempfile.NamedTemporaryFile(delete=False)` without cleanup)
+- File open without `with` (no guaranteed close)
+- DB connection without context manager/close
+- HTTP session not reused (`requests.get()` per call vs `Session`)
+- Temp files without cleanup (`NamedTemporaryFile(delete=False)`)
 - Socket/connection not closed in finally/context manager
-- Generator not fully consumed or closed (resource held)
+- Generator not consumed/closed (resource held)
 
-### Quick reference: Python vulnerability patterns
+### Vulnerability patterns quick reference
 
 | Vuln | Grep pattern | Fix |
 |------|-------------|-----|
-| SQL Injection | `f"SELECT`, `"SELECT.*".format`, `%s.*execute` with `%` | Parameterized queries: `cursor.execute("... WHERE id = ?", (id,))` |
-| Command Injection | `os.system`, `subprocess.*shell=True` | `subprocess.run([...], shell=False)`, whitelist commands |
+| SQL Injection | `f"SELECT`, `"SELECT.*".format`, `%s.*execute` | Parameterized: `cursor.execute("...?", (id,))` |
+| Cmd Injection | `os.system`, `subprocess.*shell=True` | `subprocess.run([...], shell=False)`, whitelist |
 | Path Traversal | `os.path.join.*request`, `open(.*request` | `os.path.realpath()` + prefix check |
-| Deserialization | `pickle.loads`, `yaml.load\(` (not `safe_load`) | `json`, `yaml.safe_load()` |
-| SSRF | `requests.get\(.*url`, `urllib.request.urlopen` | Validate URL scheme, block private IPs |
-| Eval / exec | `eval\(`, `exec\(`, `compile\(` | Never with user input; use AST or safe alternatives |
-| Weak RNG | `import random` (not `secrets`) for tokens | `secrets.token_hex()`, `secrets.token_urlsafe()` |
-| Debug in prod | `DEBUG\s*=\s*True`, `app.run(debug=True)` | Env-based config: `DEBUG = os.getenv("DEBUG") == "true"` |
-| Hardcoded secrets | `password\s*=\s*["']`, `api_key\s*=\s*["']` | Environment variables, secret manager |
-| Template injection | `render_template_string\(.*request` | Never pass user input to template rendering |
+| Deserialization | `pickle.loads`, `yaml.load\(` | `json`, `yaml.safe_load()` |
+| SSRF | `requests.get\(.*url`, `urllib.request.urlopen` | Validate scheme, block private IPs |
+| Eval/exec | `eval\(`, `exec\(`, `compile\(` | Never with user input; AST or safe alt |
+| Weak RNG | `import random` for tokens | `secrets.token_hex()`, `token_urlsafe()` |
+| Debug prod | `DEBUG\s*=\s*True`, `app.run(debug=True)` | `DEBUG = os.getenv("DEBUG") == "true"` |
+| Hardcoded secrets | `password\s*=\s*["']`, `api_key\s*=\s*["']` | Env vars, secret manager |
+| Template injection | `render_template_string\(.*request` | Never pass user input to templates |
 
 ---
 
-## Level 3: Deep (includes Level 2)
+## Level 3: Deep (includes L2)
 
 ### Error handling
 
-- Bare `except:` or `except Exception:` catching too broadly
-- `pass` in except block (silently swallowing errors)
+- Bare `except:`/`except Exception:` — too broad
+- `pass` in except (silently swallowing)
 - No logging in except blocks
 - `sys.exit()` outside `__main__`
-- `raise` without `from` (lost exception chain): `raise NewError() from original_error`
-- Return `None` on error instead of raising (hides failures)
+- `raise` without `from` (lost chain): use `raise X() from orig`
+- Return `None` on error vs raising (hides failures)
 
 ### Type safety
 
@@ -196,29 +193,26 @@ mypy --strict . 2>&1
 # Or: pyright . 2>&1
 ```
 
-Check:
-- `Any` type usage (should be specific)
-- Missing return type annotations on public functions
-- `# type: ignore` without specific error code
-- `cast()` usage (potential type unsafety)
-- `Optional` without None check before use
+- `Any` usage (should be specific)
+- Missing return annotations on public functions
+- `# type: ignore` without error code
+- `cast()` (potential unsafety)
+- `Optional` without None check
 
 ### Dependency management
 
 ```bash
-# Freshness
 pip list --outdated 2>&1
 
-# Unused dependencies (if pipreqs available)
+# Unused deps (if pipreqs available)
 pipreqs . --print 2>&1
 # Compare with requirements.txt / pyproject.toml
 ```
 
-Check:
-- `requirements.txt` has pinned versions (not `>=` or unpinned)
-- `pyproject.toml` has version bounds
-- No `pip install` in source code
-- Virtual environment used (`.venv/`, `venv/` in .gitignore)
+- `requirements.txt` pinned versions (not `>=` or unpinned)
+- `pyproject.toml` version bounds
+- No `pip install` in source
+- Virtual env in .gitignore
 - Lock file committed (`poetry.lock`, `Pipfile.lock`, `uv.lock`)
 
 ### License compliance
@@ -229,48 +223,48 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 
 ### Architecture
 
-- Circular imports (import at module level that creates cycle)
+- Circular imports (module-level cycles)
 - God modules (>500 lines)
-- Business logic in views/routes (should be in services/domain layer)
-- No `__init__.py` structure (flat package, hard to navigate)
-- Test files not mirroring source structure
+- Business logic in views/routes (belongs in services/domain)
+- No `__init__.py` structure (flat package)
+- Tests not mirroring source structure
 
 ### Performance
 
-- N+1 query patterns in ORM (`select_related`/`prefetch_related` missing in Django ORM, eager loading missing in SQLAlchemy)
-- Sync blocking calls in async context (`time.sleep`, sync I/O, `requests.*` inside `async def` — use `asyncio.sleep`, `httpx.AsyncClient`)
-- GIL-bound CPU work in hot paths — offload to `ProcessPoolExecutor` or C extension
-- Inefficient serialization in hot loops (`json.dumps`/`json.loads` per iteration — use `orjson` or `msgpack`)
-- Unbounded list/dict growth in long-running processes (caches, accumulators without eviction)
-- Missing database connection pooling (`SQLAlchemy` `pool_size`, Django `CONN_MAX_AGE`)
-- Large queryset iteration without `.iterator()` (loads all rows into memory)
+- N+1 queries (`select_related`/`prefetch_related` missing in Django, eager loading in SQLAlchemy)
+- Sync blocking in async (`time.sleep`, `requests.*` in `async def` — use `asyncio.sleep`, `httpx.AsyncClient`)
+- GIL-bound CPU in hot paths — offload to `ProcessPoolExecutor`/C extension
+- Repeated serialization in loops (`json.dumps/loads` — use `orjson`/`msgpack`)
+- Unbounded collection growth (no eviction)
+- Missing DB connection pooling (`pool_size`, `CONN_MAX_AGE`)
+- Large queryset without `.iterator()` (loads all into memory)
 
-### Task queue checks (Celery, RQ, Dramatiq)
+### Task queue (Celery, RQ, Dramatiq)
 
 <details><summary>Celery / task queue</summary>
 
-- Tasks are idempotent (safe to retry)
-- Retry with `max_retries` + exponential backoff (`retry_backoff=True`)
-- Result backend configured and cleaned up (results expire)
-- Dead letter queue / error handling for failed tasks
-- Task serialization: JSON preferred over pickle (security)
-- `task_acks_late=True` for at-least-once delivery
-- Worker concurrency configured (not unlimited)
-- Periodic tasks via `celery beat` with proper schedule (no drift)
+- Tasks idempotent (safe to retry)
+- `max_retries` + exponential backoff (`retry_backoff=True`)
+- Result backend configured, results expire
+- Dead letter queue for failed tasks
+- JSON serialization over pickle (security)
+- `task_acks_late=True` for at-least-once
+- Worker concurrency configured
+- `celery beat` periodic tasks with proper schedule
 
 </details>
 
-### Django/Flask/FastAPI specific
+### Django/Flask/FastAPI
 
 <details><summary>Django</summary>
 
-- `DEBUG = True` in production settings
-- `SECRET_KEY` hardcoded (should be env var)
+- `DEBUG = True` in production
+- `SECRET_KEY` hardcoded
 - `ALLOWED_HOSTS = ['*']`
-- CSRF middleware disabled or `@csrf_exempt` on POST endpoints
-- **Middleware order:** `MIDDLEWARE` list should follow: `SecurityMiddleware` → `SessionMiddleware` → `CommonMiddleware` → `CsrfViewMiddleware` → `AuthenticationMiddleware` → custom middleware → `MessageMiddleware`. Auth before CSRF = broken CSRF. Wrong order = silent security failures.
-- Raw SQL queries (`cursor.execute` with string formatting)
-- No rate limiting on auth endpoints
+- CSRF disabled or `@csrf_exempt` on POST
+- **Middleware order:** `SecurityMiddleware` -> `SessionMiddleware` -> `CommonMiddleware` -> `CsrfViewMiddleware` -> `AuthenticationMiddleware` -> custom -> `MessageMiddleware`. Auth before CSRF = broken. Wrong order = silent failures.
+- Raw SQL with string formatting
+- No rate limiting on auth
 - `FileField`/`ImageField` without upload validation
 - `JsonResponse` with internal error details
 
@@ -280,22 +274,22 @@ pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
 
 - `app.run(debug=True)` in production
 - `SECRET_KEY` hardcoded
-- No CSRF protection (use Flask-WTF)
+- No CSRF (use Flask-WTF)
 - `send_file()` with user-controlled path
 - No rate limiting (Flask-Limiter)
-- `jsonify()` with internal error details
-- **Middleware / before_request order:** `@app.before_request` handlers execute in registration order. Auth check must come before any data-access handler. Rate limiting (`Flask-Limiter`) should be registered before route handlers.
+- `jsonify()` with internal errors
+- **before_request order:** registration order matters. Auth before data-access. Rate limiting before routes.
 
 </details>
 
 <details><summary>FastAPI</summary>
 
 - No `Depends()` for auth on protected routes
-- `allow_origins=["*"]` in CORS middleware
+- `allow_origins=["*"]` in CORS
 - No rate limiting
-- Sync functions in async router (blocking event loop)
-- No `response_model` on endpoints (leaking internal fields)
+- Sync in async router (blocking loop)
+- No `response_model` (leaking internals)
 - Background tasks without error handling
-- **Middleware order:** `app.add_middleware()` calls execute in reverse order (last added = first to run). Correct order of `add_middleware()` calls: routes-specific → auth → CORS → TrustedHost → HTTPS redirect. CORS must wrap auth, not the other way around.
+- **Middleware order:** `add_middleware()` reverse order (last added = first run). Call order: routes -> auth -> CORS -> TrustedHost -> HTTPS redirect. CORS must wrap auth.
 
 </details>

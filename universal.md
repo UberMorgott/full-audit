@@ -1,18 +1,18 @@
 # Universal Audit Checks
 
 Language-agnostic checks. Apply to ANY project regardless of stack.
-These are code review tasks for Opus agents.
+Code review tasks for Opus agents.
 
-> **Note:** universal.md applies from Level 2 onwards. Level 1 (Quick) uses only stack-specific files for fast CLI scans.
+> **Note:** universal.md applies from Level 2 onwards. Level 1 (Quick) uses only stack-specific files.
 
-> **Note:** Stack-specific files (`go.md`, `python.md`, etc.) extend but do not repeat these checks. If a check here overlaps with a stack file, the stack file provides language-specific details.
+> **Note:** Stack-specific files (`go.md`, `python.md`, etc.) extend but don't repeat these. If overlap, stack file has language-specific details.
 
 ---
 
 ## Level 2: Git Hygiene (CLI, haiku)
 
-> Requires Unix shell with `sed` and `awk`. Works in Git Bash on Windows for most commands.
-> `skip_if: windows` for the "Large files" command below — `awk` piping from `git cat-file` may fail in Git Bash due to line ending issues. On Windows, use `git lfs ls-files` or `git ls-files | xargs ls -la | sort -k5 -rn | head -20` as a simpler alternative.
+> Requires Unix shell with `sed`/`awk`. Works in Git Bash on Windows for most commands.
+> `skip_if: windows` for "Large files" — `awk` piping from `git cat-file` may fail in Git Bash. Use `git lfs ls-files` or `git ls-files | xargs ls -la | sort -k5 -rn | head -20` instead.
 
 ```bash
 # Large files >1MB (skip_if: windows — see note above)
@@ -39,7 +39,7 @@ Verify responses include:
 - `Content-Security-Policy` (at least `default-src 'self'`)
 - `Strict-Transport-Security` (if HTTPS, `max-age>=31536000`)
 - `Permissions-Policy` (restrict camera, microphone, geolocation)
-- No `Server` header leaking version info
+- No `Server` header leaking version
 - No `X-Powered-By` header
 
 ---
@@ -47,13 +47,13 @@ Verify responses include:
 ## Level 2: CSRF Protection (Opus)
 
 - State-changing endpoints (POST/PUT/DELETE) protected against CSRF
-- If using cookies for auth: CSRF token or SameSite=Strict/Lax cookie flag
-- Double-submit cookie pattern or synchronizer token pattern implemented
-- Origin/Referer header validated on server side
-- GET requests do not cause side effects (safe methods)
+- If cookies for auth: CSRF token or SameSite=Strict/Lax cookie flag
+- Double-submit cookie or synchronizer token pattern implemented
+- Origin/Referer header validated server-side
+- GET requests cause no side effects
 - AJAX requests include CSRF header if required by framework
 
-> See also: YAGNI Check — verify CSRF protection is needed before including findings (e.g., token-based auth doesn't need CSRF).
+> See also: YAGNI Check — verify CSRF needed before including (e.g., token-based auth doesn't need CSRF).
 
 ---
 
@@ -61,42 +61,42 @@ Verify responses include:
 
 - Rate limiting on all public-facing API endpoints (not just login)
 - Per-user, per-IP, or per-API-key throttling
-- 429 Too Many Requests response with `Retry-After` header
+- 429 Too Many Requests with `Retry-After` header
 - Login/auth endpoints have stricter limits (prevent brute force)
 - Rate limits documented for API consumers
-- No rate limit bypass via header manipulation (X-Forwarded-For spoofing)
+- No bypass via header manipulation (X-Forwarded-For spoofing)
 
-> See also: YAGNI Check — verify rate limiting is needed before including findings (e.g., internal service behind API gateway).
+> See also: YAGNI Check — verify rate limiting needed (e.g., internal service behind API gateway).
 
 ---
 
 ## Level 2: Insecure Defaults & Dangerous Configuration (Opus)
 
-> Source: Trail of Bits `insecure-defaults` methodology. Only check prod-reachable code paths.
+> Source: Trail of Bits `insecure-defaults`. Only check prod-reachable code paths.
 
-**Hardcoded secrets & fallback patterns — grep for these regex:**
-- `getenv\(.*(SECRET|PASSWORD|TOKEN|KEY|PRIVATE|CREDENTIAL).*\)\s*(or|OR|\|\|)\s*["']` — fallback secret after env var lookup (only for security-sensitive vars; non-secret fallbacks like PORT, HOST are OK)
-- `DEFAULT_SECRET|default_password|changeme|password123|s3cr3t|hunter2` — well-known placeholder secrets
+**Hardcoded secrets & fallback patterns — grep:**
+- `getenv\(.*(SECRET|PASSWORD|TOKEN|KEY|PRIVATE|CREDENTIAL).*\)\s*(or|OR|\|\|)\s*["']` — fallback secret after env var lookup (only security-sensitive vars; PORT, HOST OK)
+- `DEFAULT_SECRET|default_password|changeme|password123|s3cr3t|hunter2` — placeholder secrets
 - `DEBUG\s*[:=]\s*(true|1|yes|on)` — debug mode enabled
 - `AUTH.*[:=]\s*(false|0|no|off|disabled)` — auth disabled
 - `VERIFY.*[:=]\s*(false|0|no|off)` — verification disabled
 
 **Weak crypto defaults:**
-- MD5 / SHA1 / DES / RC4 / Blowfish in security contexts (auth, token generation, integrity)
-- `math/rand` (Go) / `random` (Python) / `Math.random()` (JS) for security-sensitive values — must use crypto-secure RNG
-- Static or predictable IV/nonce in encryption
+- MD5/SHA1/DES/RC4/Blowfish in security contexts (auth, tokens, integrity)
+- `math/rand` (Go) / `random` (Python) / `Math.random()` (JS) for security values — must use crypto-secure RNG
+- Static/predictable IV/nonce in encryption
 - ECB mode in block ciphers
-- Key sizes below current minimum (RSA <2048, AES <128, ECDSA <256)
+- Key sizes below minimum (RSA <2048, AES <128, ECDSA <256)
 
 **Permissive access controls:**
 - `AllowAll` / `*` in CORS, firewall, permissions without justification
 - Default admin accounts or well-known credentials
-- Anonymous access to administrative functions
+- Anonymous access to admin functions
 - Default open permissions on file/directory creation
 
 **Silent security failures:**
 - Auth check that logs but doesn't block on failure
-- Validation that warns but continues processing
+- Validation that warns but continues
 - Rate limiter that counts but doesn't reject
 - Certificate validation disabled with TODO to re-enable
 
@@ -104,655 +104,639 @@ Verify responses include:
 
 ## Level 2: Timing Attacks (Opus)
 
-- Secret comparison (HMAC, tokens, API keys, passwords) must use constant-time comparison:
+- Secret comparison (HMAC, tokens, API keys, passwords) must use constant-time:
   - Go: `subtle.ConstantTimeCompare()`
   - Python: `hmac.compare_digest()`
   - Node.js: `crypto.timingSafeEqual()`
-  - Java: `MessageDigest.isEqual(byte[], byte[])` — constant-time for equal-length arrays only; length difference leaks timing info
+  - Java: `MessageDigest.isEqual(byte[], byte[])` — constant-time for equal-length only; length difference leaks timing
   - C#: `CryptographicOperations.FixedTimeEquals()`
   - Rust: `constant_time_eq` crate
-- Login/auth endpoints: response time should not reveal whether username exists (early return on "user not found" leaks info)
+- Login/auth: response time should not reveal whether username exists
 - Rate-limited endpoints: constant-time rejection (don't short-circuit)
 
 ---
 
 ## Level 2: Mass Assignment / Over-Posting (Opus)
 
-- JSON/form deserialization into structs/objects: ensure user cannot set fields they shouldn't
-  - Go: only exported JSON fields user can modify; sensitive fields (`IsAdmin`, `Role`, `CreatedAt`) excluded from request binding
-  - Python/Django: `ModelForm.Meta.fields` whitelist (never `__all__`); DRF: `read_only_fields` for computed/admin fields
-  - Java/Spring: `@JsonIgnoreProperties` or DTO pattern (don't bind directly to entity)
+- JSON/form deserialization: ensure user cannot set unauthorized fields
+  - Go: only exported JSON fields user can modify; sensitive fields (`IsAdmin`, `Role`, `CreatedAt`) excluded from binding
+  - Python/Django: `ModelForm.Meta.fields` whitelist (never `__all__`); DRF: `read_only_fields` for computed/admin
+  - Java/Spring: `@JsonIgnoreProperties` or DTO pattern (don't bind to entity)
   - C#: `[Bind(Include="...")]` or separate ViewModel
   - JS/TS: validate/pick only allowed fields from request body
-- Admin-only fields (role, permissions, internal IDs) never bindable from user input
+- Admin-only fields never bindable from user input
 - Separate DTOs for create/update vs internal representation
 
 ---
 
 ## Level 2: False Positive Detection (All agents)
 
-> **When to apply:** AFTER running checks and collecting raw findings. These filters reduce noise in the final report — they do NOT mean "skip the check entirely."
-
-Before including any finding in the report, apply these filters:
+> **When to apply:** AFTER collecting raw findings. Filters reduce noise — do NOT skip checks.
 
 ### Auto-discard (Score = 0)
 
-| Pattern | Why it's a false positive |
+| Pattern | Why false positive |
 |---------|--------------------------|
 | Issue on non-modified line (Diff Mode) | Pre-existing, not introduced by recent changes |
-| Pattern explicitly allowed in CLAUDE.md | Project convention, not a bug |
+| Pattern allowed in CLAUDE.md | Project convention, not bug |
 | `// nolint`, `# noqa`, `@SuppressWarnings` with explanation | Intentional suppression with documented reason |
 | Code in `vendor/`, `node_modules/`, `third_party/` | Not project's responsibility |
-| Generated code (protobuf `.pb.go`, swagger, ORM migrations) | Will be overwritten on regeneration |
-| Test code intentionally using anti-patterns | Testing error handling, edge cases |
-| TODO/FIXME in test files | Test improvement notes, not production issues |
+| Generated code (protobuf `.pb.go`, swagger, ORM migrations) | Overwritten on regeneration |
+| Test code using anti-patterns intentionally | Testing error handling, edge cases |
+| TODO/FIXME in test files | Test improvement notes, not production |
 
-### Requires verification before including (Score = 25-50)
+### Requires verification (Score = 25-50)
 
 | Pattern | Verify by |
 |---------|----------|
-| "Potential SQL injection" from SAST | Trace data flow — is input actually user-controlled? |
-| "Unused variable/function" | Check if used via reflection, templates, or dynamic dispatch |
-| "Hardcoded credential" | Is it a test fixture, example, or actual secret? Check git history |
-| "Insecure random" | Is it used for security (tokens, keys) or non-security (IDs, shuffling)? |
-| "Missing error handling" | Does the caller handle it? Is it a fatal-on-error context? |
-| "Deprecated function" | Is there a migration path? Is the replacement available in project's min version? |
+| "Potential SQL injection" from SAST | Trace data flow — input actually user-controlled? |
+| "Unused variable/function" | Used via reflection, templates, dynamic dispatch? |
+| "Hardcoded credential" | Test fixture, example, or actual secret? Check git history |
+| "Insecure random" | Used for security (tokens) or non-security (IDs, shuffling)? |
+| "Missing error handling" | Caller handles it? Fatal-on-error context? |
+| "Deprecated function" | Migration path exists? Replacement in min version? |
 
 ### Stack-specific false positives
 
 **Go:**
 - `shadow: declaration of "err"` in nested scopes — often intentional
-- `G104: Errors unhandled` on `defer file.Close()` — acceptable in read-only contexts
-- `SA1019: deprecated` on stdlib functions still supported for 2+ versions
+- `G104: Errors unhandled` on `defer file.Close()` — acceptable read-only
+- `SA1019: deprecated` on stdlib still supported 2+ versions
 
 **Python:**
-- `B101: assert` in test files — assert IS the test mechanism
+- `B101: assert` in test files — assert IS test mechanism
 - `S101: hardcoded password` on test fixtures — intentional
-- `C901: complexity` on CLI argument parsing — often unavoidable
+- `C901: complexity` on CLI parsing — often unavoidable
 
 **JavaScript/TypeScript:**
 - `no-explicit-any` in type assertion bridges — sometimes necessary
-- `@ts-ignore` with comment explaining why — documented workaround
-- `console.log` in CLI tools — that IS the output mechanism
+- `@ts-ignore` with explaining comment — documented workaround
+- `console.log` in CLI tools — IS output mechanism
 
 **Rust:**
-- `clippy::too_many_arguments` on FFI bindings — must match C API
+- `clippy::too_many_arguments` on FFI — must match C API
 - `unsafe` in well-tested low-level code with safety comments — acceptable if justified
-- `unwrap()` in tests and examples — standard practice
+- `unwrap()` in tests/examples — standard practice
 
 **Java:**
-- `SpotBugs: NP_NULL_ON_SOME_PATH` from Optional.get() after isPresent() check — false positive
+- `SpotBugs: NP_NULL_ON_SOME_PATH` from Optional.get() after isPresent() — false positive
 - `Error Prone: MissingSummary` on private methods — style, not bug
-- `PMD: LooseCoupling` on internal implementation classes — coupling is intentional for non-public APIs
-- `EI_EXPOSE_REP` (SpotBugs) on DTOs/records — these ARE data carriers by design
+- `PMD: LooseCoupling` on internal classes — intentional for non-public APIs
+- `EI_EXPOSE_REP` on DTOs/records — ARE data carriers by design
 
 **C#:**
-- `CA1062: null check` on parameters with `[NotNull]` attribute — already validated
+- `CA1062: null check` on `[NotNull]` parameters — already validated
 - `IDE0060: unused parameter` in interface implementations — must match signature
-- `CS8618: Non-nullable field` in EF Core entities — set by ORM, not constructor
-- `CA1822: Mark members as static` on methods that need to be virtual for testing/mocking
+- `CS8618: Non-nullable field` in EF Core entities — set by ORM
+- `CA1822: Mark as static` on methods needing virtual for testing/mocking
 
 ---
 
 ## Level 2: CLI Finding Verification Protocol (All agents)
 
-Every finding from CLI tools (gosec, bandit, semgrep, trivy, etc.) must pass 5 verification steps before inclusion:
+Every CLI tool finding must pass 5 steps:
 
 | Step | Question | Action if NO |
 |------|----------|-------------|
-| 1. **Technically correct?** | Is this a real issue in THIS code, not a generic warning? | Discard (score=0) |
-| 2. **Not pre-existing?** | Is this a pre-existing issue? (`git blame` check) | Full Audit: note age but keep at original severity. Diff Mode: downgrade to LOW or discard |
-| 3. **No justification?** | Is there a documented reason for the current implementation? (comment, ADR, CLAUDE.md) | Discard if justified |
-| 4. **Platform-relevant?** | Does this apply to the project's target platform/runtime? | Discard if platform mismatch |
-| 5. **Full context?** | Does the tool understand cross-file dependencies? (e.g., validation in middleware, not endpoint) | Verify manually before including |
+| 1. **Technically correct?** | Real issue in THIS code, not generic warning? | Discard (score=0) |
+| 2. **Not pre-existing?** | (`git blame`) | Full Audit: note age, keep severity. Diff: downgrade/discard |
+| 3. **No justification?** | Documented reason? (comment, ADR, CLAUDE.md) | Discard if justified |
+| 4. **Platform-relevant?** | Applies to project's target? | Discard if mismatch |
+| 5. **Full context?** | Tool understands cross-file deps? (validation in middleware) | Verify manually |
 
 ### Verification examples
 
-**Tool says: "SQL injection in `query.go:45`"**
-1. ✅ Uses string concatenation with user input → technically correct
-2. ✅ `git blame` shows recent commit → not pre-existing
-3. ✅ No comment explaining why → no justification
-4. ✅ Web server, not CLI tool → platform relevant
-5. ❌ Input is validated in middleware `auth.go:20` → **FALSE POSITIVE** — discard
+**"SQL injection in `query.go:45`"**
+1. ✅ String concatenation with user input → correct
+2. ✅ `git blame` recent → not pre-existing
+3. ✅ No explaining comment → no justification
+4. ✅ Web server → platform relevant
+5. ❌ Input validated in `auth.go:20` → **FALSE POSITIVE** — discard
 
-**Tool says: "Hardcoded password in `config_test.go:12`"**
-1. ❌ Test file with fixture data → **FALSE POSITIVE** — discard immediately
+**"Hardcoded password in `config_test.go:12`"**
+1. ❌ Test fixture → **FALSE POSITIVE** — discard
 
-> **Important:** If a CLI tool is not installed, report as BLOCKER per Anti-Rationalization Rules — do not silently skip.
+> **Important:** CLI tool not installed → report as BLOCKER per Anti-Rationalization Rules.
 
 ---
 
 ## Level 2: YAGNI Check for Recommendations (All agents)
 
-Before recommending "add X" or "implement Y", verify it's actually needed:
+Before recommending "add X", verify actually needed:
 
 ### Mandatory checks
 
-| Recommendation | Verify before suggesting |
+| Recommendation | Verify first |
 |---------------|------------------------|
-| "Add rate limiting" | Does the app have public endpoints? Is it behind an API gateway that already rate-limits? |
-| "Add CSRF protection" | Does the app use cookies for auth? (Token-based auth doesn't need CSRF) |
-| "Add input validation" | Is it already validated upstream? (middleware, framework, database constraints) |
-| "Add error handling" | Is the caller handling it? Is this a crash-is-correct context? |
-| "Add logging" | Is there structured logging elsewhere? Don't add inconsistent logging |
-| "Add tests" | Is this code already tested via integration tests? Don't suggest unit tests for trivially tested code |
-| "Use X library instead" | Is the current approach working, maintained, and understood by the team? |
-| "Add authentication" | Is this an internal service behind a service mesh? |
+| "Add rate limiting" | Has public endpoints? Behind API gateway? |
+| "Add CSRF protection" | Uses cookies for auth? (Token-based doesn't need CSRF) |
+| "Add input validation" | Already validated upstream? (middleware, framework, DB) |
+| "Add error handling" | Caller handling it? Crash-is-correct? |
+| "Add logging" | Structured logging elsewhere? |
+| "Add tests" | Already tested via integration? |
+| "Use X library instead" | Current approach working, maintained, understood? |
+| "Add authentication" | Internal service behind service mesh? |
 
-### The YAGNI test
+### YAGNI test
 
-For each recommendation, grep the codebase:
-1. Is the recommended feature actually used/needed anywhere?
-2. Are there existing patterns that already solve this?
-3. Would implementing this require changes to other parts of the codebase?
-4. Is the risk being mitigated actually reachable in this project's context?
+For each recommendation, grep codebase:
+1. Feature actually needed anywhere?
+2. Existing patterns solve this?
+3. Would implementing require other changes?
+4. Risk actually reachable in this project's context?
 
-If any answer suggests the recommendation is unnecessary, **do not include it** or downgrade to LOW with a note: "Consider if applicable to your deployment context."
+If unnecessary, **do not include** or downgrade to LOW: "Consider if applicable to your deployment."
 
 ---
 
 ## Audit Discipline: Anti-Rationalization Rules (All agents)
 
-> These rules prevent agents from skipping checks or softening findings.
+> Prevent agents from skipping checks or softening findings.
 
-### Red Flags — if you think this, STOP and reconsider
+### Red Flags — think this? STOP and reconsider
 
 | Agent thought | Reality | Correct action |
 |--------------|---------|---------------|
-| "This file is too simple to audit" | Simple files often contain hardcoded secrets, default configs | Audit it — simple ≠ safe |
-| "Tool not installed, skip this check" | Missing tool = missing coverage = risk | Report as **BLOCKER**, not SKIP |
-| "This is legacy code, no point checking" | Legacy = highest vulnerability density | Prioritize it — legacy ≠ exempt |
-| "The framework handles this" | Frameworks have defaults, configs, and escape hatches | Verify the framework IS handling it |
-| "This is just a style issue" | Style issues can mask bugs (shadowed variables, confusing names) | Evaluate impact, don't dismiss |
-| "Only 1 user hits this path" | 1 user with admin access = max impact | Assess by impact, not frequency |
-| "They probably know about this" | Audit exists because they want fresh eyes | Report it — assumption ≠ knowledge |
-| "This would be hard to exploit" | Attackers are creative, chained exploits exist | Report with realistic severity |
-| "I already checked something similar" | Each instance can have unique context | Check each instance individually |
-| "This is covered by other checks" | Overlapping checks catch different aspects | Don't skip — verify coverage |
-| "The deadline is tight, skip deep checks" | Skipping checks = shipping vulnerabilities | Report time constraint, don't skip silently |
-| "This is an internal tool, security doesn't matter" | Internal tools get compromised too (supply chain, lateral movement) | Apply same standards |
+| "File too simple to audit" | Simple files often contain secrets, default configs | Audit — simple ≠ safe |
+| "Tool not installed, skip" | Missing tool = missing coverage | Report as **BLOCKER** |
+| "Legacy code, no point" | Legacy = highest vuln density | Prioritize — legacy ≠ exempt |
+| "Framework handles this" | Frameworks have defaults, escape hatches | Verify framework IS handling it |
+| "Just style issue" | Can mask bugs (shadowed vars, confusing names) | Evaluate impact |
+| "Only 1 user hits this" | 1 admin user = max impact | Assess by impact, not frequency |
+| "They probably know" | Audit = fresh eyes | Report — assumption ≠ knowledge |
+| "Hard to exploit" | Chained exploits exist | Report with realistic severity |
+| "Already checked similar" | Each instance has unique context | Check individually |
+| "Covered by other checks" | Overlapping checks catch different aspects | Verify coverage |
+| "Deadline tight, skip deep" | Skipping = shipping vulns | Report constraint, don't skip |
+| "Internal tool, security meh" | Internal tools get compromised too | Apply same standards |
 
 ### Enforcement
 
-- Orchestrator reviews agent outputs for signs of rationalization (unusual SKIP counts, LOW-only findings, empty sections)
-- If an agent produces 0 findings for a complex codebase → flag for re-review by different agent
-- SKIP count >30% of total checks → investigate why
+- Orchestrator reviews for rationalization signs (unusual SKIP counts, LOW-only, empty sections)
+- 0 findings for complex codebase → re-review by different agent
+- SKIP >30% → investigate why
 
-### Proactive Self-Check (Before Claiming Completion)
+### Proactive Self-Check (Before Completion)
 
-Every agent MUST run this checklist before marking any task as completed:
-
+Every agent MUST run:
 - [ ] Every finding has file:line reference
-- [ ] Every finding has evidence (tool output, code snippet, or manual trace)
-- [ ] Every PASS/SKIP has justification (command output or documented reason)
-- [ ] No hedging language: "should", "probably", "seems to", "appears to", "likely"
-- [ ] No performative claims: "Great!", "Perfect!", "All clear!", "Looks good!"
-- [ ] Confidence score assigned to every finding
-- [ ] SKIP count is reasonable (<30% of total checks for this section)
-- [ ] If 0 findings for a section with >10 checks — re-review or flag to orchestrator
-
-This is proactive (agent self-checks) not just reactive (orchestrator reviews).
+- [ ] Every finding has evidence (tool output, code snippet, manual trace)
+- [ ] Every PASS/SKIP justified (command output or documented reason)
+- [ ] No hedging: "should", "probably", "seems to", "appears to", "likely"
+- [ ] No performative: "Great!", "Perfect!", "All clear!", "Looks good!"
+- [ ] Confidence score on every finding
+- [ ] SKIP <30% of total checks
+- [ ] 0 findings for >10-check section → re-review or flag
 
 ---
 
 ## Level 2: Cross-Stack Waste Detection (Opus)
 
-These checks apply to ANY project regardless of language or framework.
-
 #### 1. Config-Dependency Coherence
 
 **Automated (per-stack CLI):**
-- Node.js: `npx knip@latest` (primary) + `npx depcheck` (second opinion)
+- Node.js: `npx knip@latest` + `npx depcheck`
 - Go: `go mod tidy -diff`
-- Rust: `cargo udeps` (requires nightly)
+- Rust: `cargo udeps` (nightly)
 - Python: `pip-extra-reqs .` + `pip-missing-reqs .`
 - Ruby: `bundle-audit`
 
-**Manual verification** (for tool false negatives):
-For each dependency NOT flagged by tools but suspicious:
-- CSS frameworks: check #1 in Dead Asset Detection (template grep)
-- Runtime helpers (tslib, core-js): verify tsconfig/babel actually requires them
+**Manual verification** (tool false negatives):
+- CSS frameworks: check Dead Asset Detection (template grep)
+- Runtime helpers (tslib, core-js): verify tsconfig/babel requires them
 - Type-only packages (@types/*): verify corresponding runtime package exists
 
-For every installed dependency/package/module:
-- Is it referenced in source code, config files, OR build scripts?
-- If only in lock file (transitive) — fine
-- If in manifest (package.json, go.mod, Cargo.toml, requirements.txt, Gemfile) but not in source or config — **HIGH: unused dependency. Verify and remove.**
+For every manifest dependency:
+- Referenced in source, config, OR build scripts? If only in lock file (transitive) — fine
+- In manifest but not source/config → **HIGH: unused. Verify and remove.**
 
 #### 2. Declared-vs-Used Asset Audit
-Applies to ANY asset type with declarations that should have consumers:
-- **CSS classes** defined in global stylesheets → must be used in templates
-- **i18n/l10n keys** defined in locale files → must be used in source
-- **Environment variables** declared in .env.example/.env.template → must be read in code
-- **API routes** defined in router config → must have a handler AND a client caller
-- **Database migrations** columns added → must be referenced in models/queries
-- **Feature flags** defined in config → must be checked in code
-- **Config keys** defined in schema/defaults → must be read somewhere
+Any asset type with declarations needing consumers:
+- **CSS classes** in global stylesheets → used in templates
+- **i18n keys** in locale files → used in source
+- **Env vars** in .env.example → read in code
+- **API routes** in router config → have handler AND client caller
+- **DB migration columns** → referenced in models/queries
+- **Feature flags** in config → checked in code
+- **Config keys** in schema/defaults → read somewhere
 
-For each: zero consumers = dead declaration. Flag as HIGH.
+Zero consumers = dead declaration = HIGH.
 
-#### 3. Progress/Counter/Metric Data Flow Verification
-For every user-visible progress indicator, counter, or metric display:
-- Trace the value from SOURCE (where incremented/calculated) to SINK (where displayed)
-- Verify the data flows through the same variable/channel/event without silent resets
-- Check edge cases: what happens on completion event? Does the final value survive or get overwritten by defaults?
-- **Counter always shows 0/default despite activity = CRITICAL: broken data flow**
-- Common patterns to check:
-  - Event-driven: event payload has field with zero-value default → overwrites correct state
-  - Async: counter updated in wrong scope/closure
-  - Serialization: field excluded from JSON/serialization (e.g., `json:"-"`, `@JsonIgnore`, `[NonSerialized]`)
+#### 3. Progress/Counter/Metric Data Flow
+For every user-visible progress/counter/metric:
+- Trace SOURCE (incremented) → SINK (displayed)
+- Verify same variable/channel/event without silent resets
+- Edge: does final value survive completion or get overwritten by defaults?
+- **Always 0/default despite activity = CRITICAL: broken data flow**
+- Patterns: event payload zero-default overwrites state; async wrong scope; field excluded from serialization
 
 #### 4. Serialization Tag Audit
-For structs/classes that cross system boundaries (API, IPC, WebSocket, file I/O):
-- Check for fields excluded from serialization (`json:"-"`, `@Transient`, `[JsonIgnore]`, `transient`, `@Expose(false)`)
-- For each excluded field: is there UI or consumer code that expects this field?
-- **Excluded field + active consumer = CRITICAL: data silently lost in transit**
+For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
+- Fields excluded from serialization (`json:"-"`, `@Transient`, `[JsonIgnore]`, etc.)
+- Each excluded field: UI/consumer expecting it?
+- **Excluded + active consumer = CRITICAL: data silently lost**
 
 ---
 
-
 ## Level 3: XSS Prevention (Opus)
 
-- All user input escaped before rendering in HTML context
-- No raw HTML rendering with user data (e.g., `v-html`, `dangerouslySetInnerHTML`, `innerHTML`, `Html.Raw()`, `|safe` Jinja filter, `@Html.Raw()`)
-- Content-Security-Policy header blocks inline scripts (`script-src` without `unsafe-inline`)
-- URL parameters not reflected in page without sanitization
+- All user input escaped before HTML rendering
+- No raw HTML with user data (`v-html`, `dangerouslySetInnerHTML`, `innerHTML`, `Html.Raw()`, `|safe`, `@Html.Raw()`)
+- CSP blocks inline scripts (`script-src` without `unsafe-inline`)
+- URL params not reflected without sanitization
 - Rich text editors sanitize output (DOMPurify or equivalent)
-- SVG uploads sanitized (can contain embedded scripts)
-- JSON responses use `Content-Type: application/json` (not `text/html`)
+- SVG uploads sanitized (can contain scripts)
+- JSON responses use `Content-Type: application/json`
 
 ---
 
 ## Level 3: SSRF Prevention (Opus)
 
-- User-supplied URLs validated: only `http://` and `https://` schemes allowed
-- Private/internal IP ranges blocked:
+- User-supplied URLs: only `http://`/`https://` schemes
+- Private IP ranges blocked:
   - IPv4: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`
-  - IPv6: `::1`, `fc00::/7` (unique local), `fe80::/10` (link-local)
+  - IPv6: `::1`, `fc00::/7`, `fe80::/10`
 - DNS rebinding protection (resolve hostname, check IP before request)
-- Redirect following limited or disabled for user-supplied URLs
-- Cloud metadata endpoints blocked (169.254.169.254, metadata.google.internal)
-- URL validation applied before saving to config/DB, not just before use
+- Redirect following limited/disabled for user URLs
+- Cloud metadata blocked (169.254.169.254, metadata.google.internal)
+- URL validation before saving to config/DB, not just before use
 
 ---
 
 ## Level 3: Deserialization Safety (Opus)
 
-Unsafe deserialization = Remote Code Execution in many languages:
+Unsafe deserialization = RCE in many languages:
 
 | Language | Dangerous | Safe alternative |
 |----------|-----------|-----------------|
-| Go | `encoding/gob` with untrusted input, `yaml.v2/v3` with `interface{}` target, `encoding/json` into `interface{}` without depth limit | Typed structs with `KnownFields(true)` in `yaml.v3`, limit JSON depth |
+| Go | `encoding/gob` untrusted, `yaml.v2/v3` with `interface{}`, `encoding/json` into `interface{}` no depth limit | Typed structs, `KnownFields(true)` yaml.v3, limit JSON depth |
 | Python | `pickle.loads()`, `yaml.load()`, `marshal.loads()` | `json`, `yaml.safe_load()`, `msgpack` |
 | Java | `ObjectInputStream.readObject()`, `XMLDecoder` | JSON/Protobuf, `ObjectInputFilter` whitelist |
 | C# | `BinaryFormatter` (banned), `NetDataContractSerializer` | `System.Text.Json`, `[JsonSerializable]` source gen |
-| Rust | `bincode`/`serde` with `#[serde(deny_unknown_fields)]` missing | Typed deserialization with strict schemas |
-| JS/TS | `eval(JSON)`, custom deserializers without validation | `JSON.parse()` with schema validation (zod/joi) |
+| Rust | `bincode`/`serde` missing `#[serde(deny_unknown_fields)]` | Typed deserialization, strict schemas |
+| JS/TS | `eval(JSON)`, custom deserializers unvalidated | `JSON.parse()` + schema (zod/joi) |
 
-Check:
-- No deserialization of untrusted data into arbitrary types
-- Input size limits on deserialization (prevent memory exhaustion)
-- Schema validation before or during deserialization
+- No untrusted data deserialized into arbitrary types
+- Input size limits (prevent memory exhaustion)
+- Schema validation before/during deserialization
 - No polymorphic deserialization without type whitelist
 
 ---
 
-## Level 3: XXE (XML External Entity) Injection (Opus)
+## Level 3: XXE Injection (Opus)
 
-If project processes XML in any form:
+If project processes XML:
 
-- XML parser configured to disable external entities and DTD processing
-- Go: `encoding/xml` is safe by default — does not resolve external entities or process DTDs. `d.Strict = true` enforces syntax correctness only (not a security control). The real risk is third-party XML libraries (`libxml2` bindings, `etree`). Always verify against your Go version.
+- Parser disables external entities and DTD
+- Go: `encoding/xml` safe by default. Real risk: third-party XML libs (`libxml2`, `etree`)
 - Java: `DocumentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`
-- Python: `defusedxml` library instead of `xml.etree`, `lxml` with `resolve_entities=False`
+- Python: `defusedxml` instead of `xml.etree`, `lxml` with `resolve_entities=False`
 - C#: `XmlReaderSettings.DtdProcessing = DtdProcessing.Prohibit`
-- PHP 7.x: `libxml_disable_entity_loader(true)`; PHP 8.0+: safe by default (function deprecated), use `LIBXML_NOENT` flag avoidance or `libxml_set_external_entity_loader(null)` if needed
-- Check for: SOAP endpoints, RSS/Atom feeds, SAML, SVG uploads, Office file processing (OOXML = XML inside ZIP)
+- PHP 7.x: `libxml_disable_entity_loader(true)`; PHP 8.0+: safe by default
+- Check: SOAP, RSS/Atom, SAML, SVG uploads, Office files (OOXML = XML in ZIP)
 
 ---
 
-## Level 3: ReDoS (Regular Expression DoS) (Opus)
+## Level 3: ReDoS (Opus)
 
-- Regex patterns with nested quantifiers on overlapping groups: `(a+)+`, `(a|a)+`, `(.*a){10}`
-- User input used as regex pattern without sanitization (use `regexp.QuoteMeta` in Go, `re.escape()` in Python)
-- Regex applied to unbounded user input without length limit
-- Use RE2-compatible engines where possible (Go's `regexp` is safe by default — linear time; Python/Java/JS are not)
-- Tools: `vuln-regex-detector` (JS), `recheck` (Java), Semgrep has ReDoS rules
+- Nested quantifiers on overlapping groups: `(a+)+`, `(a|a)+`, `(.*a){10}`
+- User input as regex without sanitization (`regexp.QuoteMeta` Go, `re.escape()` Python)
+- Regex on unbounded input without length limit
+- Use RE2-compatible engines (Go `regexp` safe by default; Python/Java/JS not)
+- Tools: `vuln-regex-detector` (JS), `recheck` (Java), Semgrep ReDoS rules
 
 ---
 
 ## Level 3: Log Injection (Opus)
 
-- User input logged without sanitization of newlines (`\n`, `\r`) — attacker can forge log entries
-- Structured logging (JSON) mitigates but still check for:
+- User input logged without sanitizing `\n`/`\r` — attacker can forge log entries
+- Structured logging (JSON) mitigates but check:
   - Control characters in log values
-  - Log entries that could be interpreted as commands by log aggregators
-  - HTML/JS in logs viewed via web-based log viewers (XSS in log dashboards)
-- Prevention: strip/encode `\r\n` in user input before logging, use structured logging with separate fields
+  - Entries interpretable as commands by aggregators
+  - HTML/JS in logs via web viewers (XSS in dashboards)
+- Prevention: strip/encode `\r\n` before logging, structured logging with separate fields
 
 ---
 
 ## Level 3: Business Logic Abuse (Opus)
 
-> Not detectable by scanners — requires manual review.
+> Not scanner-detectable — manual review required.
 
-- **Negative values:** can user submit negative prices, quantities, durations?
-- **Boundary bypass:** can user skip required steps (verification, payment, approval)?
-- **Race conditions in business logic:** double-spend, duplicate submission, TOCTOU (time-of-check-to-time-of-use)
-- **Privilege escalation via parameters:** can user change their role/permissions by modifying request body?
-- **Abuse of bulk operations:** can user enumerate resources via bulk endpoints?
-- **Referral/discount abuse:** can same code be applied multiple times, self-referral?
-- **Rate limiting bypass via business logic:** rotating accounts, parallel sessions
+- **Negative values:** negative prices, quantities, durations?
+- **Boundary bypass:** skip required steps (verification, payment, approval)?
+- **Race conditions:** double-spend, duplicate submission, TOCTOU
+- **Privilege escalation via params:** change role/permissions in request body?
+- **Bulk abuse:** enumerate resources via bulk endpoints?
+- **Referral/discount abuse:** same code multiple times, self-referral?
+- **Rate limit bypass:** rotating accounts, parallel sessions
 
 ---
 
 ## Level 3: Webhook Security (Opus)
 
-> If the application receives or sends webhooks.
+> If app receives/sends webhooks.
 
-**Incoming webhooks:**
-- Signature validation (HMAC) on every incoming webhook
-- Replay protection: timestamp check + nonce/idempotency key
-- Webhook URL not user-controlled (or validated against SSRF)
+**Incoming:**
+- HMAC signature validation on every webhook
+- Replay protection: timestamp + nonce/idempotency key
+- URL not user-controlled (or SSRF-validated)
 - Payload size limit
-- Async processing (don't block on webhook handler)
+- Async processing
 
-**Outgoing webhooks:**
-- TLS verification on target URL
-- Timeout on delivery attempts
+**Outgoing:**
+- TLS verification on target
+- Delivery timeout
 - Retry with exponential backoff
-- Dead letter queue for failed deliveries
-- Secrets not included in webhook payloads
+- Dead letter queue for failures
+- No secrets in payloads
 
 ---
 
 ## Level 3: File Upload Hardening (Opus)
 
-> Extends Input Validation section with upload-specific checks.
-
-- File size limit enforced **before** reading into memory (streaming validation)
-- MIME type validated by magic bytes, not Content-Type header or extension
-- Archive bombs: limit decompression ratio and total size for ZIP/GZIP uploads
-- Path traversal via filename: sanitize filename from ZIP entries, strip `../`
-- Polyglot files: file that is valid as multiple types (e.g., GIFAR = GIF + JAR)
-- Image processing: use library with CVE track record check (ImageMagick policy.xml, libvips preferred)
-- Virus scanning on uploaded files (ClamAV or cloud service)
-- Store uploads outside webroot, serve via handler with auth check
-- Generated filenames (UUID) — never use user-supplied filename for storage
+- Size limit **before** reading into memory (streaming)
+- MIME by magic bytes, not Content-Type/extension
+- Archive bombs: limit decompression ratio and total size
+- Path traversal: sanitize ZIP entry filenames, strip `../`
+- Polyglot files (e.g., GIFAR = GIF + JAR)
+- Image processing: CVE-aware library (ImageMagick policy.xml, libvips preferred)
+- Virus scanning (ClamAV or cloud)
+- Store outside webroot, serve via auth handler
+- UUID filenames — never user-supplied for storage
 
 ---
 
 ## Level 3: IDOR / Access Control (Opus)
 
-**BOLA (Broken Object Level Authorization):**
-- Every endpoint validates that the authenticated user has access to the requested resource
-- Object IDs in URLs/params checked against user's ownership/permissions (not just existence)
-- No sequential/predictable IDs exposed without access check (use UUIDs or verify ownership)
-- Bulk endpoints validate access for each item in the list
+**BOLA:**
+- Every endpoint validates user access to requested resource
+- Object IDs checked against ownership/permissions (not just existence)
+- No sequential/predictable IDs without access check
+- Bulk endpoints validate per item
 
-**BFLA (Broken Function Level Authorization):**
-- Admin endpoints have explicit role/permission checks (not just authentication)
-- Privilege escalation paths checked: can a regular user access admin resources by changing IDs?
-- Horizontal access checked: can user A access user B's resources?
-- HTTP method override: does `X-HTTP-Method-Override` bypass method-based access control?
-- GraphQL/API: are mutations and sensitive queries restricted by role?
+**BFLA:**
+- Admin endpoints have explicit role/permission checks (not just auth)
+- Can regular user access admin resources by changing IDs?
+- Can user A access user B's resources?
+- `X-HTTP-Method-Override` bypass method-based access control?
+- GraphQL: mutations/sensitive queries restricted by role?
 
 ---
 
 ## Level 3: Session Management (Opus)
 
-- Session ID regenerated after login (prevent session fixation)
-- Session timeout: idle timeout (e.g., 30 min) + absolute timeout (e.g., 24h)
+- Session ID regenerated after login (prevent fixation)
+- Timeout: idle (30 min) + absolute (24h)
 - Concurrent session limits (if applicable)
-- Session invalidated on logout (server-side, not just client-side token deletion)
-- Secure cookie flags: `Secure`, `HttpOnly`, `SameSite=Strict` or `Lax`
-- Session binding: consider IP/User-Agent binding for sensitive apps
-- Session storage: server-side or encrypted JWT (not plain data in cookie)
+- Invalidated on logout (server-side)
+- Cookie flags: `Secure`, `HttpOnly`, `SameSite=Strict`/`Lax`
+- Session binding: IP/User-Agent for sensitive apps
+- Storage: server-side or encrypted JWT
 
 ---
 
 ## Level 3: JWT / Auth Audit (Opus)
 
-- Algorithm validation (no `alg: none` acceptance, no RS256/HS256 confusion)
-- Token expiry: access <=15min (sensitive) to <=1h (low-risk), refresh <=30d
-- Refresh token rotation (old token invalidated on use)
-- Rate limit on login endpoint (prevent brute force)
-- Secret/key not hardcoded or predictable
-- Logout invalidates token (blacklist or short-lived + refresh revocation)
-- Token stored securely (httpOnly cookie, not localStorage for sensitive apps)
-- CSRF protection if using cookies for auth
+- No `alg: none`, no RS256/HS256 confusion
+- Access token <=15min (sensitive) to <=1h, refresh <=30d
+- Refresh token rotation (old invalidated)
+- Rate limit on login (prevent brute force)
+- Secret/key not hardcoded/predictable
+- Logout invalidates token (blacklist or short-lived + revocation)
+- Token in httpOnly cookie (not localStorage for sensitive apps)
+- CSRF protection if cookies for auth
 - Password hashing: bcrypt/Argon2/scrypt (not MD5/SHA)
-- Account enumeration prevention: login/register/reset responses don't reveal if account exists
-- MFA bypass: if MFA enabled, ensure no fallback path that skips it
-- Credential stuffing protection: CAPTCHA, device fingerprint, progressive delays
+- Account enumeration prevention: responses don't reveal account existence
+- MFA: no fallback path skipping it
+- Credential stuffing: CAPTCHA, device fingerprint, progressive delays
 
 ---
 
 ## Level 3: API Contract Consistency (Opus)
 
-- Backend model JSON field names match frontend interface/type definitions
-- Nullable fields (backend: language-appropriate nullable type) match frontend optional (`field?: type`)
-- Enums: backend values match frontend constants
-- HTTP status codes: frontend handles 4xx/5xx appropriately
-- No dead endpoints (backend route without any frontend caller, or vice versa)
-- Request/response shapes documented (OpenAPI/Swagger or at least typed interfaces)
-- Pagination: backend supports it, frontend uses it
-- Error response format consistent across all endpoints
+- Backend JSON field names match frontend types
+- Nullable fields match frontend optional (`field?: type`)
+- Enum values match frontend constants
+- Frontend handles 4xx/5xx appropriately
+- No dead endpoints (backend without frontend caller or vice versa)
+- Request/response documented (OpenAPI or typed interfaces)
+- Pagination: backend supports, frontend uses
+- Error format consistent across endpoints
 
 ---
 
 ## Level 3: Logging & Observability (Opus)
 
-- Errors logged with context (not bare `log(err)` — include what operation, what input)
-- No PII in logs (emails, passwords, tokens, IP addresses)
-- Structured logging (JSON or key-value, not free-form strings)
+- Errors logged with context (operation, input — not bare `log(err)`)
+- No PII in logs
+- Structured logging (JSON/key-value)
 - Health check endpoint exists
-- Key operations logged: login/logout, CRUD on important entities, config changes, permission changes
-- Correct log levels (ERROR for errors, WARN for degradation, INFO for operations, DEBUG for dev)
-- Log rotation configured (not growing unbounded)
-- Request ID / correlation ID for tracing across services
-- Debug endpoints disabled in production (`/debug/pprof`, `/actuator`, `/__debug__`, `/swagger` if not public API)
-- **Log injection prevention:** user input sanitized before logging (strip `\r\n`, encode control characters). See also "Log Injection" section above
-- **Audit log integrity:** audit logs protected from modification by the application itself (append-only, separate permissions)
-- **Sensitive data in error context:** stack traces, request bodies, query parameters not logged if they may contain secrets
+- Key ops logged: login/logout, CRUD, config/permission changes
+- Correct log levels (ERROR/WARN/INFO/DEBUG)
+- Log rotation configured
+- Request/correlation ID for tracing
+- Debug endpoints disabled in prod (`/debug/pprof`, `/actuator`, `/__debug__`)
+- **Log injection:** sanitize user input (strip `\r\n`). See Log Injection section
+- **Audit log integrity:** append-only, separate permissions
+- **Sensitive error context:** stack traces/request bodies not logged if may contain secrets
 
 ---
 
 ## Level 3: Error Information Disclosure (Opus)
 
-- Stack traces not returned in production API responses
-- Internal paths, hostnames, database names not leaked in errors
-- Generic error messages to clients ("Internal server error"), details to logs
-- Framework default error pages disabled in production
-- Database error details not exposed (SQL syntax, table names)
-- Verbose error modes disabled (`DEBUG=False`, `ASPNETCORE_ENVIRONMENT=Production`, etc.)
+- No stack traces in production responses
+- No internal paths, hostnames, DB names in errors
+- Generic messages to clients, details to logs
+- Framework error pages disabled in production
+- DB error details not exposed
+- Verbose modes disabled (`DEBUG=False`, `ASPNETCORE_ENVIRONMENT=Production`)
 
 ---
 
 ## Level 3: Overengineering & Wheel Reinvention (Opus)
 
 **Reinventing wheels:** check `shared/`, `utils/`, `helpers/`, `common/`:
-- Is there a stdlib or dependency equivalent?
-- Manual implementations of: retry, debounce, throttle, cron, UUID, HTTP router, connection pool, rate limiter, LRU cache, event emitter
+- Stdlib/dependency equivalent exists?
+- Manual: retry, debounce, throttle, cron, UUID, HTTP router, pool, rate limiter, LRU cache, event emitter
 
 **Overengineering:**
-- Interface/trait/protocol with exactly 1 implementation (not for testing)
-- Factory for exactly 1 type
-- Generics/templates called with exactly 1 type
-- Event bus / pub-sub for <=2 subscribers
-- Abstraction layer that just delegates to another layer
-- Config for behavior that never changes
+- Interface with 1 implementation (not for testing)
+- Factory for 1 type
+- Generics called with 1 type
+- Pub-sub for <=2 subscribers
+- Abstraction that just delegates
+- Config for never-changing behavior
 
-**Workarounds & tech debt markers:**
-- `TODO` / `HACK` / `FIXME` / `XXX` markers (count and assess)
-- Lint suppression without explanation (examples per language: `//nolint`, `@ts-ignore`, `# noqa`, `#pragma warning disable`, `@SuppressWarnings`)
-- Copy-paste >10 lines (should be extracted)
-- Type system bypass (examples per language: `any`, `object`, `dynamic`, `interface{}`, `unsafe`)
-- Magic numbers (unexplained constants)
+**Tech debt markers:**
+- `TODO`/`HACK`/`FIXME`/`XXX` (count, assess)
+- Lint suppression without explanation
+- Copy-paste >10 lines (extract)
+- Type bypass (`any`, `object`, `dynamic`, `interface{}`, `unsafe`)
+- Magic numbers
 
 ---
 
 ## Level 3: Documentation Freshness (Opus)
 
-- README matches actual launch/build/deploy instructions
-- API endpoints documented and up-to-date
-- Environment variables documented
+- README matches actual build/deploy instructions
+- API endpoints documented, up-to-date
+- Env vars documented
 - Architecture docs match reality
-- CLAUDE.md / contributing guide rules match actual code patterns
-- Changelog maintained (if project uses one)
+- CLAUDE.md rules match code patterns
+- Changelog maintained (if used)
 - Deprecated features marked
 
 ---
 
 ## Level 3: Input Validation Completeness (Opus)
 
-- Endpoint x validation matrix (every endpoint validates its inputs)
-- File upload: MIME check by magic bytes (not just extension/Content-Type header)
-- Numeric inputs: boundary checks (min, max, NaN, Infinity)
-- String inputs: length limits, format validation
-- Server-side validation present (not just frontend)
-- Query/path params not passed raw to SQL, filesystem, or shell
-- JSON deserialized into explicit structs/classes (not raw dict/map)
-- Array/list inputs: size limits (prevent memory exhaustion)
-- Path traversal: user input in file paths validated (canonical path check, prefix validation)
-- Symlink resolution: `filepath.EvalSymlinks` (Go), `os.path.realpath` (Python) before prefix check
-- Regex with user input: escape or validate (ReDoS risk — see ReDoS section)
+- Endpoint x validation matrix
+- File upload: MIME by magic bytes
+- Numeric: boundary checks (min, max, NaN, Infinity)
+- String: length limits, format validation
+- Server-side validation (not just frontend)
+- Query/path params not raw to SQL/filesystem/shell
+- JSON into explicit structs (not raw dict/map)
+- Array inputs: size limits
+- Path traversal: canonical path + prefix validation
+- Symlink: `filepath.EvalSymlinks` (Go), `os.path.realpath` (Python) before prefix check
+- Regex with user input: escape/validate (see ReDoS)
 
 ---
 
 ## Level 3: Resilience Patterns (Opus)
 
-- Retry with exponential backoff + jitter (not fixed interval)
-- Idempotency on retry (same request doesn't cause duplicate side effects)
-- Circuit breaker for unstable external dependencies
-- Retry storm protection (not all instances retry at the same time)
-- Fallback behavior defined (what happens when dependency is down?)
-- Timeout cascade: external call timeout < handler timeout < server timeout
-- Bulkhead: failure in one subsystem doesn't cascade to others
-- Singleflight / dedup: concurrent identical requests coalesced (Go: `singleflight`, JS: `p-limit` / `p-queue`)
-- Thundering herd prevention: cache stampede protection (lock + populate, or probabilistic early expiration)
+- Retry: exponential backoff + jitter
+- Idempotency on retry
+- Circuit breaker for unstable deps
+- Retry storm protection
+- Fallback defined (dependency down?)
+- Timeout cascade: external < handler < server
+- Bulkhead: failure isolation
+- Singleflight/dedup (Go: `singleflight`, JS: `p-limit`/`p-queue`)
+- Thundering herd: cache stampede protection
 
 ---
 
 ## Level 3: Configuration Management (Opus)
 
-- No magic numbers (timeouts, limits, thresholds in config, not code)
-- Dev defaults not in production (debug flags, verbose logging, permissive CORS)
-- Config validated on startup (fail fast if misconfigured)
-- Hot reload without race conditions (if supported)
-- Secrets in env vars / secret manager (not in config files committed to git)
-- Config files have comments/documentation for non-obvious values
-- Debug endpoints disabled in production
-- **Config cliffs:** small config change causes catastrophic behavior shift (e.g., pool size 10→0 = unlimited, timeout 0 = no timeout vs infinite)
-- **Feature flags:** cannot be manipulated via request parameters by end users
+- No magic numbers (timeouts/limits in config)
+- Dev defaults not in production
+- Config validated on startup (fail fast)
+- Hot reload without races
+- Secrets in env vars/secret manager
+- Config comments for non-obvious values
+- Debug endpoints disabled in prod
+- **Config cliffs:** small change causes catastrophe (pool 10→0 = unlimited)
+- **Feature flags:** not manipulable via request params
 
 ---
 
 ## Level 3: State Management & Offline Resilience (Opus)
 
-> Especially relevant for desktop, mobile, and SPA applications.
+> Especially for desktop, mobile, SPA.
 
-- Connection loss shows UI status indicator
-- Reconnect without data duplication
-- Reconnect syncs state (no stale data displayed)
-- Crash recovery (app state persisted, restorable)
-- Loading / error / empty states in all data-fetching components
-- Optimistic updates rolled back on server error
-- Concurrent edits handled (last-write-wins or conflict resolution)
+- Connection loss → UI indicator
+- Reconnect without duplication
+- Reconnect syncs state
+- Crash recovery (state persisted)
+- Loading/error/empty states everywhere
+- Optimistic updates rolled back on error
+- Concurrent edits handled
 
 ---
 
 ## Level 3: Privacy / PII (Opus)
 
-- No PII in logs (emails, names, addresses, phone numbers)
-- No PII in URL params (visible in server logs, browser history)
-- Passwords hashed with modern algorithm (bcrypt, Argon2, scrypt — not MD5, SHA)
-- Data minimization (don't collect what you don't need)
-- Data deletion mechanism exists (user can request data removal)
-- PII encrypted at rest (if stored)
-- GDPR/privacy policy considerations (if applicable)
+- No PII in logs
+- No PII in URL params
+- Passwords: bcrypt/Argon2/scrypt (not MD5/SHA)
+- Data minimization
+- Deletion mechanism exists
+- PII encrypted at rest
+- GDPR considerations (if applicable)
 
 ---
 
 ## Level 3: Container & Image Security (Opus)
 
-> If the project uses Docker, Podman, or container orchestration.
+> If Docker/Podman/container orchestration used.
 
-**Dockerfile audit:**
-- Base image pinned by digest, not just tag (`FROM node:20@sha256:abc...` not `FROM node:latest`)
-- Multi-stage builds: final image has no build tools, source code, or test fixtures
-- No `RUN` as root in final stage — use `USER nonroot` or equivalent
-- No secrets in build args or environment variables in Dockerfile
-- `.dockerignore` exists and excludes: `.git`, `.env`, `node_modules`, `__pycache__`, test fixtures
-- `COPY` uses specific paths, not `COPY . .` (which may include secrets)
-- Health check defined (`HEALTHCHECK` instruction or orchestrator probe)
+**Dockerfile:**
+- Base image pinned by digest (`FROM node:20@sha256:abc...`)
+- Multi-stage: final image clean (no build tools, source, tests)
+- No root in final stage — `USER nonroot`
+- No secrets in build args/env
+- `.dockerignore` excludes `.git`, `.env`, `node_modules`, `__pycache__`, tests
+- `COPY` specific paths (not `COPY . .`)
+- Health check defined
 
 **Image scanning:**
-- `trivy image <image>` or equivalent scanner in CI
-- No CRITICAL/HIGH CVEs in base image
-- Image size reasonable (not shipping full OS when distroless/alpine suffices)
+- `trivy image` or equivalent in CI
+- No CRITICAL/HIGH CVEs in base
+- Reasonable image size
 
-**Runtime security:**
-- Containers run as non-root user
-- Read-only filesystem where possible (`--read-only`)
-- No privileged mode (`--privileged`) without justification
-- Network policies restrict container-to-container communication
-- Secrets injected via secret manager, not environment variables in compose files
-- Resource limits set (CPU, memory) to prevent DoS
+**Runtime:**
+- Non-root user
+- Read-only filesystem where possible
+- No `--privileged` without justification
+- Network policies restrict container communication
+- Secrets via secret manager, not compose env vars
+- Resource limits (CPU, memory)
 
-**Orchestration (if K8s/Docker Compose):**
-- No `hostPath` mounts to sensitive directories
-- Pod security standards enforced (restricted profile)
-- Service accounts have minimal permissions
-- Ingress/egress network policies defined
+**Orchestration (K8s/Compose):**
+- No `hostPath` to sensitive dirs
+- Pod security standards enforced
+- Minimal service account permissions
+- Network policies defined
 
 ---
 
 ## Level 3: CI/CD Pipeline Security (Opus)
 
-> If the project has CI/CD configuration files.
+> If CI/CD config exists.
 
-**Secret management:**
-- No hardcoded secrets in CI config files (`.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`)
-- Secrets stored in CI platform's secret manager (GitHub Secrets, GitLab CI Variables)
-- Secrets not logged in CI output (mask sensitive values)
-- Secrets not passed as command-line arguments (visible in process list)
+**Secrets:**
+- None hardcoded in CI config
+- Stored in platform secret manager
+- Not logged in output
+- Not in CLI arguments
 
-**Action/plugin security:**
-- GitHub Actions pinned by full SHA, not mutable tag (`uses: actions/checkout@abc123` not `@v4`)
-- Third-party actions reviewed for supply chain risk (see Trivy v0.69.4/v0.69.5/v0.69.6 incident)
-- Self-hosted runners: isolated, not shared across untrusted repos
-- Minimal permissions: `permissions:` block restricts token scope
+**Actions/plugins:**
+- GitHub Actions pinned by SHA (not `@v4`)
+- Third-party actions reviewed (Trivy v0.69 incident)
+- Self-hosted runners isolated
+- Minimal `permissions:` scope
 
 **Branch protection:**
-- Main/release branches require PR review before merge
-- Status checks (build, test, lint) required to pass
-- Force-push disabled on protected branches
-- Signed commits required (if applicable)
+- PR review required for main/release
+- Status checks must pass
+- Force-push disabled
+- Signed commits (if applicable)
 
 **Build integrity:**
-- Build artifacts have checksums or signatures
+- Artifacts have checksums/signatures
 - Reproducible builds where possible
-- No arbitrary code execution from PR content (e.g., `pull_request_target` with checkout of PR head)
-- Cache poisoning: CI cache keys include dependency lock file hashes
+- No code execution from PR content (`pull_request_target` + PR checkout)
+- Cache keys include lock file hashes
 
 ---
 
 ## Level 3: Supply Chain (Opus)
 
-- Lock files committed (e.g., `package-lock.json`, `go.sum`, `Cargo.lock`, `poetry.lock`, `packages.lock.json`)
-- No `latest` / `*` / unbounded versions in manifests
-- Binaries in repo have provenance documentation
-- CI actions pinned by SHA, not by mutable tag (see Trivy v0.69.4/v0.69.5/v0.69.6 incident)
-- Dependencies from trusted registries (not random git URLs)
-- Minimal dependency count (each dependency justified)
-- Sub-dependency audit: transitive deps checked for known vulns
-- Dependency confusion: private package names don't conflict with public registries
-- **Single-maintainer risk:** critical dependencies with 1 maintainer and no org backing
-- **Unmaintained dependencies:** no commits >2 years, no response to issues
-- **High-risk features in deps:** FFI, deserialization, network access, native code — justify each
-- **SBOM:** generated for releases (see SBOM section below)
-- **Binary provenance:** release binaries have reproducible builds or signed checksums
+- Lock files committed
+- No `latest`/`*`/unbounded versions
+- Repo binaries have provenance docs
+- CI actions pinned by SHA
+- Deps from trusted registries
+- Minimal dep count (each justified)
+- Transitive deps checked for vulns
+- No dependency confusion with public registries
+- **Single-maintainer risk:** critical deps, 1 maintainer, no org
+- **Unmaintained:** no commits >2y, no issue response
+- **High-risk dep features:** FFI, deserialization, network, native — justify
+- **SBOM:** generated for releases
+- **Binary provenance:** reproducible builds or signed checksums
 
 > `skip_if` no CI/CD: check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines.yml` first.
 
@@ -760,338 +744,266 @@ If project processes XML in any form:
 
 ## Level 3: SBOM & Software Composition (Opus)
 
-> Software Bill of Materials — increasingly required for enterprise and regulated industries.
+> Increasingly required for enterprise/regulated.
 
-- SBOM generated for release artifacts:
-  - Go: `cyclonedx-gomod` or `syft`
-  - Node.js: `syft` or `@cyclonedx/cyclonedx-npm`
-  - Python: `cyclonedx-py` or `syft`
+- SBOM for releases:
+  - Go: `cyclonedx-gomod`/`syft`
+  - Node.js: `syft`/`@cyclonedx/cyclonedx-npm`
+  - Python: `cyclonedx-py`/`syft`
   - Rust: `cargo-cyclonedx`
-  - Java: `cyclonedx-maven-plugin` / `cyclonedx-gradle-plugin`
-  - C#: `CycloneDX` NuGet package
-- Format: CycloneDX or SPDX (machine-readable)
-- SBOM includes transitive dependencies
-- SBOM stored alongside release artifacts
-- CI pipeline generates SBOM automatically on release
+  - Java: `cyclonedx-maven-plugin`/`cyclonedx-gradle-plugin`
+  - C#: `CycloneDX` NuGet
+- Format: CycloneDX or SPDX
+- Includes transitive deps
+- Stored alongside releases
+- CI generates automatically
 
 ---
 
 ## Level 3: Cryptographic Key Management (Opus)
 
-- **Key storage:** Keys in environment variables, secret manager, or HSM — never in source code or config files committed to git
-- **Key rotation:** mechanism exists, documented schedule (at minimum: on compromise, on employee departure, annually)
-- **Key derivation:** PBKDF2-HMAC-SHA256 (≥600,000 iterations) or PBKDF2-HMAC-SHA1 (≥1,300,000 iterations), bcrypt (cost ≥13 new systems; ≥12 minimum legacy), Argon2id for password-derived keys
-- **Asymmetric keys:** RSA ≥2048 bits, ECDSA ≥P-256, Ed25519 preferred for new implementations
-- **Symmetric keys:** AES-128 minimum, AES-256 preferred. Generated via crypto-secure RNG
-- **TLS configuration:** TLS 1.2 minimum, TLS 1.3 preferred. No SSLv3, TLS 1.0, TLS 1.1
-- **Certificate management:** automated renewal (Let's Encrypt / ACME), no expired certs in production
-- **Key separation:** different keys for different purposes (signing vs encryption vs auth)
-- **Backup keys:** encrypted backup exists, tested restoration procedure
+- **Storage:** env vars, secret manager, HSM — never source/committed config
+- **Rotation:** mechanism + schedule (compromise, departure, annually)
+- **Derivation:** PBKDF2-HMAC-SHA256 ≥600k iter, PBKDF2-HMAC-SHA1 ≥1.3M, bcrypt cost ≥13 (new)/≥12 (legacy), Argon2id
+- **Asymmetric:** RSA ≥2048, ECDSA ≥P-256, Ed25519 preferred
+- **Symmetric:** AES-128 min, AES-256 preferred. Crypto-secure RNG
+- **TLS:** 1.2 min, 1.3 preferred. No SSLv3/TLS 1.0/1.1
+- **Certs:** automated renewal (ACME), no expired in prod
+- **Separation:** different keys for signing/encryption/auth
+- **Backup:** encrypted, tested restoration
 
 ---
 
 ## Level 3: Concurrency Safety (Opus)
 
-> Language-agnostic concurrency patterns. Stack files provide language-specific details.
+> Language-agnostic. Stack files have language-specific details.
 
 **Data races:**
-- Shared mutable state protected by mutex/lock or made immutable
-- No concurrent reads and writes to maps/dicts/collections without synchronization
-- Atomic operations used for simple counters/flags instead of full mutex
+- Shared mutable state: mutex/lock or immutable
+- No concurrent read/write to maps/collections without sync
+- Atomics for simple counters/flags
 
 **Deadlocks:**
-- Lock ordering: when acquiring multiple locks, always in consistent order
-- No lock held while calling external services or performing I/O (risk of indefinite blocking)
-- Timeout on lock acquisition where possible
+- Consistent lock ordering
+- No locks held during external calls/I/O
+- Lock acquisition timeout where possible
 
 **Resource lifecycle:**
-- Goroutines/threads/tasks have clear ownership and shutdown mechanism
-- No fire-and-forget goroutines/threads that leak on error
-- Context/cancellation propagated through async call chains
-- Worker pools have bounded size (prevent thread/goroutine explosion under load)
+- Clear ownership and shutdown for goroutines/threads/tasks
+- No fire-and-forget that leaks on error
+- Context/cancellation propagated
+- Bounded worker pools
 
-**Concurrency patterns:**
-- Producer-consumer: bounded channel/queue to prevent memory exhaustion
-- Fan-out/fan-in: proper error propagation from workers to coordinator
-- Singleton initialization: thread-safe (sync.Once, std::once_flag, Lazy<T>, etc.)
-- Shutdown: graceful drain of in-flight requests before process exit
+**Patterns:**
+- Producer-consumer: bounded queue
+- Fan-out/fan-in: error propagation to coordinator
+- Singleton: thread-safe init (sync.Once, etc.)
+- Shutdown: graceful drain before exit
 
 ---
 
 ## Level 3: Sharp Edges & Footgun Design (Opus)
 
-> Source: Trail of Bits `sharp-edges` methodology. Review API design for footgun potential.
+> Trail of Bits `sharp-edges`. Review API design for footgun potential.
 
-**How to execute:** For each public API/function/config in the codebase, ask: "What happens if a developer uses this wrong?" Grep for the patterns below and assess each match.
+For each public API/function/config: "What if developer uses this wrong?"
 
-Evaluate against 3 developer archetypes: **malicious** (actively exploiting), **lazy** (skipping docs, using defaults), **confused** (misunderstanding semantics).
+Evaluate against: **malicious**, **lazy** (skipping docs), **confused** (misunderstanding semantics).
 
-**Categories — grep for and assess:**
-1. **Algorithm selection pitfalls** — API offers multiple algorithms/modes, wrong choice = vulnerability. Grep: `ECB`, `MD5`, `SHA1`, `DES`, `RC4` in non-test code
-2. **Dangerous defaults** — default configuration is insecure, security requires opt-in. Grep: `default`, `Default`, constructor calls without security params
-3. **Primitive vs semantic types** — accepting `string` where typed value needed. Grep: function signatures taking `string` for URLs, SQL, emails, file paths
-4. **Config cliffs** — small config change causes catastrophic behavior shift. Review: config files, constructor defaults, zero-value behavior
-5. **Silent failures** — operation appears to succeed but security property not enforced. Grep: `log` + `continue`/`return nil` in auth/validation code
-6. **Stringly-typed security** — security decisions based on string matching. Grep: role/permission checks using string literals (`"admin"`, `"user"`)
+**Categories — grep and assess:**
+1. **Algorithm pitfalls** — wrong choice = vulnerability. Grep: `ECB`, `MD5`, `SHA1`, `DES`, `RC4` non-test
+2. **Dangerous defaults** — insecure by default. Grep: constructors without security params
+3. **Primitive vs semantic types** — `string` where typed value needed (URLs, SQL, emails, paths)
+4. **Config cliffs** — small change → catastrophe. Review defaults, zero-values
+5. **Silent failures** — appears to succeed, security not enforced. Grep: `log` + `continue`/`return nil` in auth
+6. **Stringly-typed security** — string matching for roles (`"admin"`, `"user"`)
 
 ---
 
 ## Level 3: Root Cause Analysis (Opus)
 
-> For CRITICAL and HIGH findings, go beyond "what's wrong" to "why it happened."
+> For CRITICAL/HIGH: beyond "what's wrong" to "why."
 
-### 4-Phase Root Cause Protocol
+### 4-Phase Protocol
 
 **Phase 1: Investigation**
-1. Read the error/vulnerability in full context (not just the line — 20+ lines around it)
-2. Trace the data flow: where does the input come from? Where does it go?
-3. Check git history: when was this introduced? By what change? Was it a regression?
+1. Read vulnerability in full context (20+ lines)
+2. Trace data flow: input source → destination
+3. Git history: when introduced? Regression?
 
 **Phase 2: Pattern Analysis**
-1. Find working examples of the same pattern elsewhere in the codebase
-2. Compare broken vs working: what's different?
-3. Identify the root cause category:
-   - **Missing validation** — input not checked
-   - **Wrong abstraction** — API makes incorrect usage easy
-   - **Configuration drift** — dev/prod divergence
-   - **Incomplete migration** — partially updated pattern
-   - **Knowledge gap** — developer didn't know about the risk
+1. Find working examples of same pattern in codebase
+2. Compare broken vs working
+3. Root cause category:
+   - **Missing validation**
+   - **Wrong abstraction** — API makes misuse easy
+   - **Config drift** — dev/prod divergence
+   - **Incomplete migration**
+   - **Knowledge gap**
 
-**Phase 3: Impact Assessment**
-1. Is this a one-off mistake or systemic pattern?
-2. How many code paths are affected? (→ feeds into Variant Analysis)
-3. What's the blast radius if exploited?
+**Phase 3: Impact**
+1. One-off or systemic?
+2. Code paths affected? (→ Variant Analysis)
+3. Blast radius?
 
 **Phase 4: Recommendation**
-1. Fix for this specific instance
-2. Prevention for future instances (linter rule, code review checklist, architectural change)
-3. Detection for similar existing issues (→ Variant Analysis grep patterns)
+1. Fix this instance
+2. Prevent future (linter, checklist, architecture)
+3. Detect existing (→ Variant Analysis patterns)
 
-### Root Cause STOP Rule
+### STOP Rule
 
-**After 3 failed root cause hypotheses — STOP and escalate.**
+**3 failed hypotheses → STOP, escalate.**
+1. First fails: refine
+2. Second fails: question assumptions, try different layer
+3. Third fails: **STOP.** Report what investigated, ruled out, remaining hypotheses, next step
 
-1. First hypothesis fails: refine based on new data
-2. Second hypothesis fails: step back, question assumptions, try different layer
-3. Third hypothesis fails: **STOP.** Report to orchestrator:
-   - What was investigated
-   - What was ruled out
-   - Remaining hypotheses ranked by likelihood
-   - Recommended next step (different agent, user input, external expertise)
-
-Do NOT continue guessing. Systematic analysis that concludes "unknown" is more valuable than a wrong root cause.
+Systematic "unknown" > wrong root cause.
 
 ### Output format
 
 ```
-Root Cause: [category from Phase 2]
-Introduced: [commit SHA or "original code"]
+Root Cause: [category]
+Introduced: [SHA or "original"]
 Pattern: [systemic / isolated]
-Fix: [specific fix for this instance]
-Prevention: [systemic fix to prevent recurrence]
-Variants: [grep pattern for Variant Analysis]
+Fix: [this instance]
+Prevention: [recurrence prevention]
+Variants: [grep pattern]
 ```
 
 ---
 
 ## Level 3: Variant Analysis (Opus)
 
-> Source: Trail of Bits `variant-analysis` methodology. Run AFTER code review — not standalone. When a vulnerability is found during review, search for similar patterns before closing the task.
+> Trail of Bits `variant-analysis`. Run AFTER review. When vulnerability found, search similar patterns.
 
-After finding any CRITICAL or HIGH vulnerability:
-1. **Understand** the root cause pattern, not just the instance (see Root Cause Analysis section above)
-2. **Exact match** — `grep -rn` codebase for identical pattern
-3. **Identify abstraction points** — what makes this pattern generalizable? (same API misuse, same developer mistake, same library)
-4. **Generalize** — broaden grep pattern to catch near-misses
-5. **Triage** — assess each variant for exploitability
+After CRITICAL/HIGH:
+1. **Understand** root cause pattern (see Root Cause Analysis)
+2. **Exact match** — `grep -rn` for identical pattern
+3. **Abstraction points** — what's generalizable? (API misuse, library)
+4. **Generalize** — broaden grep for near-misses
+5. **Triage** exploitability
 
-Output: append variants to the same finding with `[VARIANT]` prefix.
+Output: `[VARIANT]` prefix on same finding.
 
 ---
 
 ## Level 3: Functional UI/UX Testing (Opus)
 
-> Addresses #1 user complaint: "audits find code issues but miss ~70% of broken UI — dead links, inactive buttons, non-working features."
-> This section applies to ANY project with a web UI. For frontend-specific details, see `frontend.md → Functional UI Testing (Playwright)`.
-> **Static analysis by default.** Start dev server ONLY if user explicitly requested runtime testing or project CLAUDE.md requires it. Otherwise — static analysis of routes, links, and handler wiring.
+> #1 complaint: audits miss ~70% broken UI. Applies to any web UI project.
+> See `frontend.md → Functional UI Testing (Playwright)` for details.
+> **Static analysis by default.** Dev server only if user explicitly requested.
 
-### Static analysis (no server required)
+### Static (no server)
 
-**Dead routes & orphan pages:**
+**Dead routes & orphans:**
 ```bash
-# Find route definitions
 grep -rn 'path:.*/' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.vue' --include='*.svelte' 2>&1
-# Find all internal link targets
 grep -rn 'href="/' --include='*.html' --include='*.vue' --include='*.tsx' --include='*.jsx' --include='*.svelte' 2>&1
-# Cross-reference: every href target should match a defined route
 ```
 
-Check:
-- Every route in router config has a corresponding component file
-- Every `<a href="/...">` points to a defined route
-- No orphan pages (component exists but no route points to it)
-- Route guards/middleware reference existing auth functions
-- Dynamic route params (`:id`, `[slug]`) have fallback for invalid values
+- Every route has component file
+- Every `<a href="/...">` matches defined route
+- No orphan pages
+- Route guards reference existing auth
+- Dynamic params have invalid-value fallback
 
-**Button & handler wiring:**
+**Buttons & handlers:**
 ```bash
-# Buttons without click handlers (potential dead buttons)
 grep -rn '<button' --include='*.vue' --include='*.tsx' --include='*.jsx' --include='*.svelte' | grep -v '@click\|onClick\|on:click\|disabled\|type="submit"' 2>&1
-# Links with href="#" or href="" (placeholder links)
 grep -rn 'href=["'"'"']#\?["'"'"']' --include='*.vue' --include='*.tsx' --include='*.html' --include='*.svelte' 2>&1
 ```
 
-Check:
-- Every `<button>` has a click handler, is a submit button, or is explicitly `disabled` with reason
-- No `href="#"` or `href=""` placeholder links
-- Event handlers reference existing functions (not typos)
-- Conditional rendering (`v-if`, `{condition &&}`) conditions are reachable
-- `disabled` attributes have matching enable conditions
+- Every `<button>` has handler, is submit, or disabled with reason
+- No `href="#"`/`href=""` placeholders
+- Handlers reference existing functions
+- Conditional rendering reachable
+- `disabled` has enable conditions
 
-**Form validation completeness:**
-- Every `<form>` has submit handler
-- Required fields have validation (client-side at minimum)
-- Error messages defined for each validation rule
-- Form submit button is not permanently disabled
+**Forms:** submit handler, validation, error messages, button not permanently disabled
 
-**API integration wiring:**
-- Every API call function is actually invoked from UI
-- Response handlers cover success, error, and loading states
-- No orphan API functions (defined but never called)
-- API base URL is configurable (not hardcoded localhost)
+**API wiring:** every call invoked from UI, handlers cover success/error/loading, no orphan functions, base URL configurable
 
-### Runtime checks — DOM mode (requires dev server — ask user permission first)
+### Runtime — DOM mode (needs dev server + user permission)
 
-> Only run if: user requested runtime testing, project has dev server, and Playwright MCP is available.
->
-> **IMPORTANT: DOM snapshots only — NO screenshots.** Use `browser_snapshot` (returns accessibility tree as text — fast, zero vision tokens) instead of `browser_take_screenshot` (returns image — slow, expensive). Screenshots only if user explicitly requests visual regression.
+> `browser_snapshot` only — NO screenshots unless user requests visual regression.
 
-**Navigation audit:**
-Per route from router config:
-1. `browser_navigate(url)` → `browser_snapshot` → verify page has content (not blank/error)
-2. `browser_console_messages` → collect JS errors
-3. `browser_network_requests` → collect failed requests (4xx, 5xx)
-4. For each internal link in snapshot → `browser_click` → `browser_snapshot` → verify navigation worked
+**Navigation:** per route → navigate → snapshot → verify content, console errors, failed requests, internal links work
 
-**Interactive elements (DOM diff method):**
-Per page: take `browser_snapshot` (= baseline), then for each interactive element:
-1. `browser_click` element → `browser_snapshot` → compare with baseline
-2. If DOM unchanged after click → **dead element**, report it
-3. If DOM changed → element works, record what changed
+**Interactive (DOM diff):** snapshot baseline → click each element → compare. Unchanged = dead.
+- Buttons → DOM change; Forms → fill/submit/verify; Modals → open/close; Dropdowns → select; Tabs → swap
 
-Specific checks:
-- Buttons: click → DOM must change (new content, modal, state change)
-- Forms: `browser_fill_form` → submit → verify success/validation in DOM
-- Modals: click trigger → verify modal appears in snapshot → close → verify gone
-- Dropdowns: `browser_select_option` → verify selection in snapshot
-- Tabs: click → verify content swap in snapshot
+**Console:** zero `console.error` on load, zero failed requests, no CORS, no mixed content
 
-**Console health:**
-- Zero `console.error` on page load per route (excluding known third-party)
-- Zero failed network requests on page load
-- No CORS errors
-- No mixed content warnings
-
-**Reporting format per broken element:**
-
-| Page/Route | Element (snapshot ref) | Expected | Actual | Console errors |
-|------------|----------------------|----------|--------|----------------|
-
+| Page/Route | Element | Expected | Actual | Console errors |
+|------------|---------|----------|--------|----------------|
 
 ---
 
 ## Level 3: Business Logic & Domain Correctness (Opus)
 
-> Source: Deep pipeline/workflow review. Not detectable by static analysis or SAST tools.
+> Deep review. Not detectable by SAST.
 
-**Scope:** Review ALL domain-specific logic, not just security. Focus on correctness.
+**Pipeline/Workflow:**
+- State machine: all transitions valid, no stuck states
+- Cancel/pause/resume: clean shutdown, no orphans
+- Progress accuracy: counters match work
+- File processing: groups/batches vs individual correct
+- Error propagation to user
 
-**Pipeline/Workflow Logic:**
-- State machine correctness: all transitions valid, no stuck states
-- Cancellation/pause/resume semantics: clean shutdown, no orphaned goroutines
-- Progress tracking accuracy: counters match actual work done
-- File processing: correct handling of groups/batches vs individual items
-- Error propagation: errors from sub-operations surface correctly to user
-
-**Heuristic & Classification Logic:**
-- Detection heuristics: false positive rate, false negative rate
-- Feature extraction: are all relevant signals actually used? (dead parameters = dead detection)
-- Fallback behavior: when primary detection fails, is fallback reasonable?
-- Priority/ordering: when multiple matches, is the right one selected?
+**Heuristics:**
+- False positive/negative rates
+- Dead parameters = dead detection
+- Reasonable fallback
+- Correct priority/ordering on multiple matches
 
 **Edge Cases:**
-- Empty input (zero files, empty directories, zero-byte files)
-- Malformed input (corrupted files, wrong extensions, unexpected formats)
-- Large input (memory-bounded? streaming? or load-all-at-once?)
-- Permission errors (read-only dirs, locked files, Windows ACLs)
-- Path edge cases (spaces, unicode, very long paths, dotfiles, symlinks)
-- Concurrent operations (parallel requests, race conditions, TOCTOU)
+- Empty/malformed/large input
+- Permission errors
+- Path edge cases (spaces, unicode, long, symlinks)
+- Concurrent operations
 
-**Tool Invocation Safety:**
-- External process construction: no shell interpolation, proper quoting
-- Timeout enforcement: subprocesses bounded by context/timeout
-- Output capture: bounded memory (streaming vs ReadAll)
-- Cleanup: temp files, child processes terminated on cancel
-- Partial results: what happens when tool fails mid-operation?
+**Tool Safety:**
+- No shell interpolation, proper quoting
+- Timeout enforcement
+- Bounded output capture
+- Cleanup (temp files, child processes)
+- Partial failure handling
 
 **Config Consistency:**
-- Config fields that exist but are never read (dead config = misleading)
-- Config fields that are read but never set (missing defaults)
-- Config validated on startup? (fail-fast vs silent bad config)
+- Fields never read (dead config)
+- Fields read but never set
+- Startup validation?
 
-**Report format:** File:line, Category (logic bug / edge case / robustness / heuristic), Severity, Evidence, Root Cause, Fix.
+Report: File:line, Category, Severity, Evidence, Root Cause, Fix.
 
 ---
 
-## Level 3: UI/UX Functional Audit — Playwright DOM Mode (Opus)
+## Level 3: UI/UX Functional Audit — Playwright DOM (Opus)
 
-> Requires: running dev server. If project has no dev server, skip with note.
-> **IMPORTANT: DOM mode only — NO screenshots.** Use `browser_snapshot` (accessibility tree, text) instead of `browser_take_screenshot` (image, expensive).
+> Needs dev server. No screenshots — `browser_snapshot` only.
 
-Extends the existing Functional UI Testing section with structured methodology.
+**Pre-flight:** start server, wait ready (30s), navigate root, snapshot
 
-**Pre-flight:**
-1. Start dev server (detect from package.json scripts or project CLAUDE.md)
-2. Wait for server readiness (curl loop, max 30s)
-3. Navigate to root URL, take initial snapshot
+**Per-page:** navigate → snapshot → verify content, console errors, failed requests
 
-**Per-page audit protocol:**
-1. `browser_navigate` → `browser_snapshot` → verify content renders (not blank/error)
-2. `browser_console_messages` → collect JS errors (fail on any console.error on load)
-3. `browser_network_requests` → collect failed requests (4xx, 5xx)
+**Interactive:**
+- Buttons: click → DOM changed? Dead if not
+- Forms: fill → submit → feedback
+- Nav items → page changes
+- Toggles → state flips
+- Modals → appear/disappear
 
-**Interactive element testing:**
-For each interactive element in DOM snapshot:
-- Buttons: click → snapshot → verify DOM changed. Unchanged = dead button.
-- Forms: fill → submit → verify success/validation feedback
-- Navigation: click each nav item → verify page content changes
-- Toggles/switches: click → verify aria-checked/state flipped
-- Modals: trigger → verify appears → close → verify gone
+**States:** empty (friendly message), loading (spinner), error (friendly), version/status (valid data)
 
-**State verification:**
-- Empty state: navigate with no data → verify user-friendly message (not blank)
-- Loading state: snapshot during async operation → verify spinner/skeleton
-- Error state: trigger error condition → verify user-friendly error (not raw exception)
-- Version/status displays: verify show valid data (not raw HTML, not undefined)
+**Responsive:** 3 breakpoints (375/768/1920px) → no cutoff/overlap
 
-**Responsive check:**
-- `browser_resize` to 3 breakpoints: mobile (375px), tablet (768px), desktop (1920px)
-- Per breakpoint: snapshot → verify no content cut off, no overlapping elements
+**Keyboard:** Tab order, Enter/Space activation, Escape dismissal
 
-**Keyboard accessibility:**
-- Tab through all interactive elements → verify focus order makes sense
-- Enter/Space on focused buttons → verify activation
-- Escape on modals → verify dismissal
+**i18n:** language switch → ALL strings change, report hardcoded
 
-**i18n consistency (if multilingual):**
-- Switch language → snapshot → verify ALL visible strings changed
-- Report any hardcoded strings that don't change with locale
+**Timers:** no error flooding, cleanup on navigation
 
-**Poll/timer behavior:**
-- Check for console error flooding (repeated errors without backoff)
-- Verify cleanup on page navigation (no orphaned timers/intervals)
-
-**Report format:**
 | Page/Route | Element | Expected | Actual | Severity | Console errors |
 |------------|---------|----------|--------|----------|----------------|
 
@@ -1099,82 +1011,53 @@ For each interactive element in DOM snapshot:
 
 ## Level 3: Architecture Decision Review (Opus)
 
-Evaluate design decisions, not just code quality. Focus on trade-offs and alternatives.
+Evaluate design decisions. Focus on trade-offs.
 
-**Communication Patterns:**
-- How do components communicate? (HTTP, RPC, events, polling, WebSocket)
-- Is the chosen pattern appropriate for the use case?
-- Silent failures: messages dropped without feedback? Queue overflow handling?
-- Event delivery guarantees: at-least-once? at-most-once? exactly-once?
-- Latency: is polling acceptable or should push be used?
+**Communication:** patterns (HTTP/RPC/events/polling/WS), appropriateness, silent failures, delivery guarantees, latency
 
-**Data Flow:**
-- State ownership: who owns each piece of state? Clear boundaries?
-- Event shape stability: are event payloads typed/versioned?
-- Parsing: structured fields or regex/string parsing of messages?
-- State object size: flat vs nested? Maintainable at current field count?
+**Data Flow:** state ownership, event typing/versioning, parsing (structured vs string), state object size
 
-**External Dependencies:**
-- Download integrity: checksums/signatures verified?
-- API rate limits: handled? Cached? Graceful degradation?
-- Version checking: sequential or parallel? Blocking or background?
-- Retry logic: exists in config? Actually implemented?
+**External Deps:** download integrity, rate limits/caching, version check strategy, retry implementation
 
-**Configuration:**
-- Dead config fields: defined but never read?
-- Missing implementations: config promises features that don't work?
-- Validation: fail-fast on invalid config or silent defaults?
-- Migration: what happens when schema changes?
+**Config:** dead fields, missing implementations, validation, migration
 
-**Scalability:**
-- Memory: bounded or load-all-at-once?
-- CPU: O(n²) patterns? Unnecessary re-scans?
-- Concurrency: sequential where parallel would help? Config exists but unused?
-- I/O: streaming or buffered? Appropriate for expected data sizes?
+**Scalability:** memory bounded?, O(n²)?, parallelism used?, I/O streaming?
 
-**Extensibility:**
-- Plugin/extension interface: clean contract? Boilerplate duplication?
-- Registration pattern: how to add new X? (X = recipe, tool, handler, etc.)
-- Composition: can features be combined? Or monolithic?
+**Extensibility:** plugin contract, registration pattern, composability
 
-**Report format per decision:**
-| Decision | What was chosen | Alternatives | Trade-offs | Rating (Good/Acceptable/Needs Improvement) | Recommendation |
-|----------|----------------|--------------|------------|---------------------------------------------|----------------|
+| Decision | Chosen | Alternatives | Trade-offs | Rating | Recommendation |
+|----------|--------|--------------|------------|--------|----------------|
 
-**Rating criteria:**
-- **Good:** Appropriate for the use case, well-implemented, minimal friction for changes
-- **Acceptable:** Works but has known limitations or tech debt
-- **Needs Improvement:** Causes real problems (bugs, UX issues, maintenance burden)
+- **Good:** appropriate, minimal friction
+- **Acceptable:** works, has limitations
+- **Needs Improvement:** causes real problems
+
 ---
 
 ## Level 2+: Stack Currency (Web search, Sonnet)
 
-Read manifest files -> extract runtime/framework/library versions -> web search latest for each.
-
-Rate each as:
+Read manifests → extract versions → web search latest.
 
 | Status | Definition |
 |--------|-----------|
 | **Current** | Latest or latest-1 minor |
-| **Behind** | 2+ minor versions behind |
-| **EOL** | End of life / no security patches |
-| **Vulnerability** | Known unpatched CVE |
-
-Output table:
+| **Behind** | 2+ minor behind |
+| **EOL** | No security patches |
+| **Vulnerability** | Unpatched CVE |
 
 | Dependency | Current | Latest | Status | CVEs | Notes |
 |-----------|---------|--------|--------|------|-------|
 
-Include runtime version (Go 1.x, Node.js x, Python 3.x, etc.) as first row.
+Runtime version as first row.
 
-**Action thresholds:**
-- **Current:** no action needed
-- **Behind:** create LOW finding, recommend update plan
-- **EOL:** create HIGH finding, migration plan needed
-- **Vulnerability:** create CRITICAL/HIGH finding based on CVE severity, immediate patch required
-- `Go: check govulncheck stdlib findings — if stdlib vuln reported, update go directive in go.mod to fixed version`
-- `Python: check python --version against python.org; if pip-audit reports CPython vuln, update runtime`
-- `Node.js: check node --version against nodejs.org; if npm audit reports core vuln, update runtime`
-- `Rust: check rustc --version; run rustup update if cargo audit reports stdlib vuln`
-- `Java: check java --version against adoptium.net LTS releases`
-- `.NET: check dotnet --version against dotnet.microsoft.com patch releases`
+**Thresholds:**
+- **Current:** no action
+- **Behind:** LOW, recommend update
+- **EOL:** HIGH, migration plan
+- **Vulnerability:** CRITICAL/HIGH per CVE, immediate patch
+- `Go: govulncheck → update go.mod directive`
+- `Python: pip-audit → update runtime`
+- `Node.js: npm audit → update runtime`
+- `Rust: cargo audit → rustup update`
+- `Java: check against adoptium.net LTS`
+- `.NET: check against dotnet.microsoft.com patches`
