@@ -6,6 +6,58 @@ First-time only. Install per detected stack. Check if tool exists before install
 
 ---
 
+## Pre-Audit Tool Integrity Protocol
+
+Before running ANY audit, the orchestrator MUST ensure tools are:
+1. **Latest version** — always install with `@latest` tag, never pin versions in audit
+2. **Integrity-verified** — check against supply chain compromise
+
+### Version + Integrity Check Sequence (run BEFORE Wave 1)
+
+For npm-based tools:
+```bash
+# 1. Update to latest
+npm install -g knip@latest purgecss@latest i18n-unused@latest dotenv-check@latest
+
+# 2. Verify package integrity
+# Check publish date — packages compromised often show sudden version bumps
+npm view knip time --json | tail -5
+npm view purgecss time --json | tail -5
+
+# 3. Check publisher identity — verify maintainer hasn't changed
+npm view knip maintainers
+npm view purgecss maintainers
+
+# 4. Check for known vulnerabilities in audit tools themselves
+npm audit --registry https://registry.npmjs.org
+
+# 5. Verify checksum (npm v9+)
+npm cache ls knip 2>/dev/null | head -5
+
+# 6. Cross-reference: check if package was flagged
+# Search npm advisories and Socket.dev for recent alerts
+```
+
+### Red flags — STOP and investigate:
+- Maintainer changed in last 30 days
+- Version bump > 2 major versions since last audit
+- Package age < 6 months with sudden popularity spike
+- `postinstall` script added in recent version
+- Dependencies added that weren't there before (check `npm view <pkg> dependencies`)
+
+### For Go tools:
+```bash
+# Always install latest
+go install golang.org/x/tools/cmd/deadcode@latest
+go install github.com/securego/gosec/v2/cmd/gosec@latest
+go install honnef.co/go/tools/cmd/staticcheck@latest
+
+# Verify checksum against Go sumdb
+GONOSUMCHECK= go install ...  # forces sum verification
+```
+
+---
+
 ## Go
 
 ```bash
@@ -37,15 +89,25 @@ go install github.com/sonatype-nexus-community/nancy@latest
 ## Node.js / Frontend
 
 Tools run via `npx` — no global install needed:
-- `knip` — dead code/exports
+- `knip` — dead code, unused deps, unused exports, unused files. `npx knip@latest`
+- `purgecss` — dead CSS detection. CLI: `purgecss --css src/app.css --content 'src/**/*.svelte' --output /dev/null --rejected` (dry-run showing unused selectors)
+- `i18n-unused` — dead i18n keys. Config: `.i18n-unused.yml`. `npx i18n-unused display-unused-keys`
+- `dotenv-check` — dead env vars. `npx dotenv-check@latest`
 - `vue-tsc` — Vue TypeScript check
 - `license-checker` — license compliance
 
 Optional global:
 ```bash
-npm install -g npm-check-updates   # ncu — interactive dependency update
-npm install -g snyk                # Alternative vuln scanner with fix suggestions
+npm install -g knip@latest             # dead code, unused deps/exports/files
+npm install -g purgecss@latest         # dead CSS detection
+npm install -g i18n-unused@latest      # dead i18n keys
+npm install -g dotenv-check@latest     # dead environment variables
+npm install -g npm-check-updates       # ncu — interactive dependency update
+npm install -g snyk                    # Alternative vuln scanner with fix suggestions
 ```
+
+ESLint plugin (add to project):
+- `eslint-plugin-unused-imports` — per-file dead import autofix. Install as ESLint plugin.
 
 Additional `npx` tools (no install needed):
 - `npx depcheck` — find unused dependencies

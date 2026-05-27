@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0] — 2026-05-28
+
+### Added
+- **Pre-audit tool integrity protocol** (tools.md) — mandatory supply chain verification before ANY audit: npm version check, maintainer identity validation, publish date verification, checksum validation, Go sumdb verification. Red flags list for compromised packages. Runs BEFORE Wave 1.
+- **Automated CLI waste detection** (frontend.md, README.md) — `waste-scanner` agent now runs `knip@latest`, `purgecss@latest`, `i18n-unused@latest`, `dotenv-check@latest` CLI tools instead of manual greps. Manual reasoning checks (CSS framework utilization, dead UI features, missing i18n keys) remain as Opus-only tasks in `impact-reviewer`.
+- **`waste-scanner` agent** (README.md, Wave 1, L2+) — new haiku agent that runs automated cross-reference checks CLI tools like knip miss: dependency utilization (depcheck/cargo udeps/pip-extra-reqs), CSS framework utilization, dead CSS classes, dead i18n keys, tsconfig/eslint strictness verification, env var coherence. 1 per project, runs in parallel with cli-scanners.
+- **`impact-reviewer` expanded responsibilities** (README.md, Wave 2) — three new cross-file checks: serialization tag audit (fields with `json:"-"`/`@JsonIgnore`/`[NonSerialized]` that have active consumers), progress/counter data flow tracing (source to display, silent reset detection), dead UI features (state variables without reachable triggers).
+- **Dead Asset Detection** (frontend.md, L2) — 6 cross-reference checks that CLI tools miss: CSS framework utilization, dead CSS classes, dead i18n/localization keys, dependency utilization audit beyond knip/depcheck, dead imports enforcement, dead UI features (state without triggers). All checks are framework-agnostic — work for React, Vue, Svelte, Angular, Solid, or vanilla JS.
+- **Cross-Stack Waste Detection** (universal.md, L2) — 4 universal waste detection checks for any tech stack: config-dependency coherence (with per-stack tooling: depcheck, go mod tidy, cargo udeps, pip-extra-reqs), declared-vs-used asset audit (CSS classes, i18n keys, env vars, API routes, DB columns, feature flags, config keys), progress/counter/metric data flow verification (source-to-sink tracing, zero-value default detection), serialization tag audit (fields excluded from serialization but expected by consumers).
+
 ## [1.4.0] — 2026-05-26
 
 ### Added

@@ -121,6 +121,51 @@ semgrep --config=auto . 2>&1
 
 ---
 
+### Dead Asset Detection (L2)
+
+#### Automated (CLI — run by `waste-scanner` agent)
+
+```bash
+# 1. Comprehensive dead code scan (covers: unused deps, imports, exports, files, types)
+npx knip@latest --reporter compact 2>&1
+
+# 2. Dead CSS classes in global stylesheets
+# List CSS files that are NOT scoped to components (global/shared only)
+purgecss --css <global-css-files> --content 'src/**/*.{svelte,vue,jsx,tsx,html}' --rejected --output /dev/null 2>&1
+
+# 3. Dead i18n keys (if project has locale files)
+# Configure .i18n-unused.yml first, then:
+npx i18n-unused display-unused-keys 2>&1
+
+# 4. Dead environment variables (if .env exists)
+npx dotenv-check@latest 2>&1
+
+# 5. TypeScript strictness verification
+# Check tsconfig.json for:
+#   "noUnusedLocals": true
+#   "noUnusedParameters": true
+# If not set → MEDIUM finding. Then run:
+npx svelte-check 2>&1  # or vue-tsc --noEmit, or tsc --noEmit
+```
+
+Findings from tools above: adopt directly, severity = tool's severity or HIGH default.
+
+#### Manual (reasoning — run by `impact-reviewer-frontend`)
+
+These CANNOT be automated by CLI tools and require Opus-level reasoning:
+
+1. **CSS Framework Utilization** — If knip/depcheck does NOT flag a CSS framework (because it's `@import`-ed in CSS, not JS), manually verify: grep component templates for framework-specific class patterns. Zero hits = CRITICAL.
+
+2. **Dead UI Features** — Find state variables controlling visibility (collapsed, expanded, isOpen, showX). Verify trigger (button/toggle) exists AND is visible. State + no trigger = HIGH.
+
+3. **Missing i18n keys** — Reverse check: keys USED in components but MISSING from locale files = BUG (silent fallback to key string).
+
+4. **Dependency Utilization (tool false negatives)** — For deps NOT flagged by knip/depcheck but suspicious:
+   - CSS frameworks: see #1 above (template grep)
+   - Runtime helpers (tslib, core-js): verify tsconfig/babel actually requires them
+   - Type-only packages (@types/*): verify corresponding runtime package exists
+---
+
 ## Level 2: Code Review (Opus agents)
 
 > **Reviewer mapping:** Security checks → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Convention compliance → convention-checker. Stale comments/TODOs → comment-checker.
@@ -328,3 +373,4 @@ npm outdated 2>&1
 - Custom hook/composable used in exactly 1 place (inline it)
 - Abstraction layer over small utility (just use the utility)
 - Multiple state management solutions in same app
+

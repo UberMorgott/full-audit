@@ -295,6 +295,62 @@ This is proactive (agent self-checks) not just reactive (orchestrator reviews).
 
 ---
 
+## Level 2: Cross-Stack Waste Detection (Opus)
+
+These checks apply to ANY project regardless of language or framework.
+
+#### 1. Config-Dependency Coherence
+
+**Automated (per-stack CLI):**
+- Node.js: `npx knip@latest` (primary) + `npx depcheck` (second opinion)
+- Go: `go mod tidy -diff`
+- Rust: `cargo udeps` (requires nightly)
+- Python: `pip-extra-reqs .` + `pip-missing-reqs .`
+- Ruby: `bundle-audit`
+
+**Manual verification** (for tool false negatives):
+For each dependency NOT flagged by tools but suspicious:
+- CSS frameworks: check #1 in Dead Asset Detection (template grep)
+- Runtime helpers (tslib, core-js): verify tsconfig/babel actually requires them
+- Type-only packages (@types/*): verify corresponding runtime package exists
+
+For every installed dependency/package/module:
+- Is it referenced in source code, config files, OR build scripts?
+- If only in lock file (transitive) — fine
+- If in manifest (package.json, go.mod, Cargo.toml, requirements.txt, Gemfile) but not in source or config — **HIGH: unused dependency. Verify and remove.**
+
+#### 2. Declared-vs-Used Asset Audit
+Applies to ANY asset type with declarations that should have consumers:
+- **CSS classes** defined in global stylesheets → must be used in templates
+- **i18n/l10n keys** defined in locale files → must be used in source
+- **Environment variables** declared in .env.example/.env.template → must be read in code
+- **API routes** defined in router config → must have a handler AND a client caller
+- **Database migrations** columns added → must be referenced in models/queries
+- **Feature flags** defined in config → must be checked in code
+- **Config keys** defined in schema/defaults → must be read somewhere
+
+For each: zero consumers = dead declaration. Flag as HIGH.
+
+#### 3. Progress/Counter/Metric Data Flow Verification
+For every user-visible progress indicator, counter, or metric display:
+- Trace the value from SOURCE (where incremented/calculated) to SINK (where displayed)
+- Verify the data flows through the same variable/channel/event without silent resets
+- Check edge cases: what happens on completion event? Does the final value survive or get overwritten by defaults?
+- **Counter always shows 0/default despite activity = CRITICAL: broken data flow**
+- Common patterns to check:
+  - Event-driven: event payload has field with zero-value default → overwrites correct state
+  - Async: counter updated in wrong scope/closure
+  - Serialization: field excluded from JSON/serialization (e.g., `json:"-"`, `@JsonIgnore`, `[NonSerialized]`)
+
+#### 4. Serialization Tag Audit
+For structs/classes that cross system boundaries (API, IPC, WebSocket, file I/O):
+- Check for fields excluded from serialization (`json:"-"`, `@Transient`, `[JsonIgnore]`, `transient`, `@Expose(false)`)
+- For each excluded field: is there UI or consumer code that expects this field?
+- **Excluded field + active consumer = CRITICAL: data silently lost in transit**
+
+---
+
+
 ## Level 3: XSS Prevention (Opus)
 
 - All user input escaped before rendering in HTML context

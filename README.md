@@ -1,6 +1,6 @@
 # Full Audit
 
-> **Version 1.5.0** — 2026-05-27
+> **Version 1.6.0** — 2026-05-28
 
 Universal codebase audit system for Claude Code. Works with any project, any stack, via GitHub reference.
 
@@ -312,6 +312,7 @@ Present approaches with trade-offs. User selects one. Selected approach determin
 TeamCreate("audit-{level}")
   +-- Team Lead (you, Opus) -- orchestrator
        |-- cli-scanner-{N} (haiku) -- build, lint, vuln
+       |-- waste-scanner (haiku) -- cross-reference waste detection
        |-- diff-scanner-{N} (opus) -- surface scan, obvious bugs
        |-- history-reviewer-{N} (opus) -- git blame, regressions
        |-- comment-checker (opus) -- TODO/FIXME compliance
@@ -328,6 +329,7 @@ TeamCreate("audit-{level}")
 | Role | `subagent_type` | `model` | Example `name` |
 |------|----------------|---------|----------------|
 | CLI scanner | `general-purpose` | `haiku` | `cli-scanner-go` |
+| Waste scanner | `general-purpose` | `haiku` | `waste-scanner` |
 | Diff scanner | `general-purpose` | `opus` | `diff-scanner-go` |
 | History reviewer | `general-purpose` | `opus` | `history-reviewer-go` |
 | Comment checker | `general-purpose` | `opus` | `comment-checker` |
@@ -399,6 +401,18 @@ Wave 1 — CLI + research (parallel, haiku + sonnet):
       → 1 scanner per stack (e.g., cli-scanner-go, cli-scanner-frontend)
   - cli-scanner-universal (haiku): [universal.md L2 CLI]
       git hygiene (large files, suspicious files, .gitignore)
+  - waste-scanner (haiku): [cross-reference waste detection, L2+]
+      Runs automated CLI tools with supply chain verification:
+      1. Pre-audit integrity check: verifies tool versions are @latest, checks maintainer identity,
+         validates publish dates, runs npm audit on tools themselves (see tools.md integrity protocol)
+      2. Comprehensive dead code: `npx knip@latest --reporter compact` (unused deps, imports, exports, files, types)
+      3. Dead CSS: `purgecss --rejected` on global stylesheets against component templates
+      4. Dead i18n keys: `npx i18n-unused display-unused-keys` (if locale files exist)
+      5. Dead env vars: `npx dotenv-check@latest` (if .env exists)
+      6. Dependency second opinion: `npx depcheck` (Node) / `cargo udeps` (Rust) / `pip-extra-reqs` (Python)
+      7. tsconfig/eslint strictness: verify noUnusedLocals, noUnusedParameters, no-unused-imports enabled
+      Outputs structured findings from tool results. Manual reasoning checks delegated to impact-reviewer.
+      → 1 per project (not per stack)
   - web-researcher (sonnet): [universal.md Stack Currency]
       version checks, CVE search for all deps
 
@@ -413,6 +427,9 @@ Wave 2 — code review (parallel, opus, after Wave 1):
       Project-specific rules from CLAUDE.md, naming, structure compliance
   - impact-reviewer-{N} (opus): [{stack}.md L2 Code Review — cross-file]
       Changes break dependent code? API contracts maintained? Import chains valid?
+      Serialization tag audit: fields with json:"-", @JsonIgnore, [NonSerialized] etc. that have active UI/API consumers
+      Progress/counter data flow: trace counters from source to display, verify no silent resets
+      Dead UI features: state variables without reachable triggers
 
 Scoring Phase (after final review wave, before report assembly):
   - scoring-agent-{N} (haiku): [batch of findings from after final review wave (Wave 2 at Level 2, Wave 3 at Level 3)]
@@ -475,6 +492,7 @@ Wave N is complete when ALL tasks tagged wave-N have status=completed (any outco
 |-------|---------|---------|---------|
 | cli-scanner-{N} | ✅ | ✅ | ✅ |
 | cli-scanner-universal | — | ✅ | ✅ |
+| waste-scanner | — | ✅ | ✅ |
 | web-researcher | — | ✅ | ✅ |
 | diff-scanner-{N} | — | ✅ | ✅ |
 | history-reviewer-{N} | — | ✅ | ✅ |
