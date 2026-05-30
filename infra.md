@@ -6,15 +6,15 @@
 
 ## Tools (pin via tools.md integrity protocol; record in versions.lock)
 
-| Target            | Tool          | Pin            | Purpose                          |
-|-------------------|---------------|----------------|----------------------------------|
-| Dockerfile        | hadolint      | `2.14.0`       | Dockerfile lint + best practices |
-| IaC / config      | trivy config  | `0.69.3`       | Misconfig scan (Docker/K8s/TF)   |
-| IaC / config      | checkov       | `3.2.530`      | Policy-as-code misconfig         |
-| Terraform         | tfsec         | `1.28.14`      | Terraform-specific security      |
-| Kubernetes        | kube-linter   | `0.8.3`        | K8s manifest correctness/security|
-| GitHub Actions    | actionlint    | `1.7.12`       | Workflow syntax + shell lint     |
-| GitHub Actions    | zizmor        | `1.25.2`       | Actions supply-chain/security    |
+| Target            | Tool          | Pin            | Purpose                                          |
+|-------------------|---------------|----------------|--------------------------------------------------|
+| Dockerfile        | hadolint      | `2.14.0`       | Dockerfile lint + best practices                 |
+| IaC / config      | trivy config  | `0.69.3`       | Misconfig scan (Docker/K8s/TF)                   |
+| IaC / config      | checkov       | `3.2.530`      | Policy-as-code misconfig                         |
+| Terraform         | tfsec         | `1.28.14`      | Terraform-specific security (deprecated → Trivy) |
+| Kubernetes        | kube-linter   | `0.8.3`        | K8s manifest correctness/security                |
+| GitHub Actions    | actionlint    | `1.7.12`       | Workflow syntax + shell lint                     |
+| GitHub Actions    | zizmor        | `1.25.2`       | Actions supply-chain/security                    |
 
 > `skip_if: no_tool(name)` per tool. `skip_if: windows` only where a tool ships
 > Unix-only; prefer container/cross-platform builds otherwise.
@@ -37,8 +37,10 @@
   > skip_if: no_tool(trivy)
 - `checkov -d .` — policy violations; cross-check against trivy (dedupe overlaps).
   > skip_if: no_tool(checkov)
-- `tfsec .` if Terraform present — open security groups, public buckets,
-  unencrypted storage, plaintext secrets in `*.tfvars`.
+- `tfsec .` if Terraform present — OPTIONAL deprecated second opinion (tfsec is in
+  maintenance, consolidated into Trivy; `trivy config` / `checkov` above are the
+  primary Terraform scanners). Surfaces open security groups, public buckets,
+  unencrypted storage, plaintext secrets in `*.tfvars` not already flagged above.
   > skip_if: no_tool(tfsec)
 - `kube-linter lint <manifests>` if K8s present — missing resource limits,
   `privileged: true`, host network/PID, missing readiness/liveness probes.
