@@ -2,6 +2,21 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.1] — 2026-05-31
+
+### Fixed
+- **Second live run remediation** — fixed 10 instruction defects caught running the audit against a real Go marketplace monorepo. All doc-only; the new v1.10.0 features (reproduction wave / Wave 2.5, verified mode `+V`, `infra.md`, `audit-bugs.json`) all validated working on this run.
+- **DEFECT-1 piped-exit-code caution** (go.md + README stack-command-mapping) — piping a tool into `| head`/`| grep`/`| tail` clobbers `$?` (reflects the pipe stage, not the tool), silently masking failures the CLI-scanner trust policy depends on; capture exit before any pipe (`cmd; ec=$?` / `set -o pipefail`; PowerShell `$LASTEXITCODE`).
+- **DEFECT-2 osv-scanner-missing SCA fallback** (README waste-scanner step 0 + web-researcher note + infra.md) — when the sole universal SCA is absent, per-stack vuln tools (govulncheck/`npm audit`/`pip-audit`/`cargo audit`) cover their own ecosystem; note remaining cross-ecosystem coverage as an Audit Limitation.
+- **DEFECT-3 golangci-config precedence** (go.md) — if the repo has `.golangci.yml`/`.golangci.yaml`, run `golangci-lint run ./...` (honors config) and report active linters; the explicit `--enable` list is ONLY for config-less repos.
+- **DEFECT-4 fuzz/race Windows-guard wording** (go.md) — reworded the bash `skip_if: windows` so Windows runs the PowerShell twin instead of skipping the check entirely; PS fuzz twin now guards the zero-`*_test.go` case (no `Select-String -Path $null` throw).
+- **DEFECT-5 gitleaks tracked/ignored/untracked tie-break** (go.md SK3) — explicit precedence: tracked (`git ls-files --error-unmatch` exit 0) ⇒ REAL regardless of check-ignore; else ignored ⇒ INFO; else untracked-and-not-ignored ⇒ INFO-pending.
+- **DEFECT-6 deadcode test-helper FPs** (go.md) — test-only helpers (`testutil`, `Setup*`/`Seed*`) called only from `_test.go` / behind build tags are commonly mis-reported unreachable; cross-check `_test.go` callers before reporting.
+- **DEFECT-7 gosec //nolint post-filter** (go.md gosec + README False-Positive Whitelist) — gosec does not honor inline `//nolint:gosec`; post-filter its findings against those directives before scoring.
+- **DEFECT-8 Phase-0 infra tool enumeration** (README Step 2c) — when infra/CI artifacts are detected, extend the Go-only tool-check list with the infra.md tools (hadolint, trivy, checkov, tfsec, kube-linter, actionlint, zizmor) + osv-scanner.
+- **DEFECT-9 monorepo node_modules/vendor exclusion** (README monorepo handling) — exclude `node_modules/`, `vendor/`, `.git/`, and build/dist dirs when enumerating package-root manifests (avoids 100+ phantom roots).
+- **DEFECT-10 SCA/CVE reproduction method** (README Wave 2.5 plan + reproduction-agent prompt) — for SCA/CVE findings, reproduction = re-run the scanner, capture exit code + the pinned vulnerable version from the lockfile (no fabricated test).
+
 ## [1.10.0] — 2026-05-30
 
 ### Added

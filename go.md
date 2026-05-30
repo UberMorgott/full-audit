@@ -11,6 +11,8 @@
 
 Applies when `go.mod` detected. Commands assume `cd {go_module_root}`.
 
+> **Exit-code caution (piped commands):** the CLI-scanner trust policy keys on the tool's real exit code. Piping a command into `| head`/`| grep`/`| tail` makes `$?` reflect the LAST pipe stage (e.g. `head`), masking a tool failure. Capture the exit BEFORE any pipe — bash: `cmd 2>err; ec=$?` (or `set -o pipefail`); PowerShell: read `$LASTEXITCODE` immediately after the native call, before piping. (`2>&1` alone is fine — it only merges stderr; the clobber comes from the `|`.)
+
 ---
 
 ## Level 1: Quick
@@ -52,6 +54,7 @@ go test -timeout 60s -count=1 ./... 2>&1
 
 > v2 (golangci-lint v2.12.2): `-E` removed. `--enable` takes ONE linter per flag (repeat the flag); comma lists no longer parse. `enable-all`/`disable-all` replaced by `linters.default`. Prefer the config file below over a long CLI.
 > Install: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2`
+> **Config precedence:** if the repo already has `.golangci.yml`/`.golangci.yaml`, run `golangci-lint run ./...` with NO `--enable` flags (it honors the project config) and report which linters are active. The explicit `--enable` list below is ONLY for repos with no config file — running it against a configured repo fights the project's own linter selection.
 
 ```bash
 golangci-lint run ./... \
@@ -124,10 +127,11 @@ gosec ./... 2>&1
 # requires: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
 govulncheck ./... 2>&1
 ```
+> **Post-filter `//nolint:gosec` (FP suppression):** gosec does NOT honor inline `//nolint:gosec` directives by default — a mechanical run reports phantom HIGHs for findings the author already suppressed. Before scoring, drop any gosec finding whose `file:line` carries a `//nolint:gosec` directive (same line or the line above). (Matches the README False-Positive Whitelist `// nolint: reason` rule.)
 
 ### Race detector + fuzz + coverage
 ```bash
-# skip_if: windows  (uses `which`; on Windows use the PowerShell block below)
+# DEFAULT (bash). On Windows do NOT skip the race check — run the PowerShell twin below instead (it is the Windows equivalent, not an optional extra).
 # Race detector (requires gcc for CGO)
 which gcc > /dev/null 2>&1 || { echo "SKIP: gcc not found (required for -race). Install MinGW-w64."; exit 0; }
 CGO_ENABLED=1 go test -race -timeout 60s -count=1 ./... 2>&1
@@ -138,7 +142,7 @@ if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) { Write-Output "SKIP: 
 $env:CGO_ENABLED=1; go test -race -timeout 60s -count=1 ./... 2>&1
 ```
 ```bash
-# skip_if: windows  (uses grep/[ -z ]; on Windows use the PowerShell block below)
+# DEFAULT (bash). On Windows do NOT skip fuzzing — run the PowerShell twin below instead (Windows equivalent, not an optional extra).
 # Fuzz: find tests, run each 30s
 FUZZ_FILES=$(grep -r "func Fuzz" --include="*_test.go" -l . 2>/dev/null)
 if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
@@ -153,7 +157,10 @@ fi
 ```
 ```powershell
 # Windows equivalent
-$hits = Select-String -Path (Get-ChildItem -Recurse -Filter *_test.go) -Pattern 'func (Fuzz[A-Za-z0-9_]+)' -List
+# Guard the zero-match case: with no *_test.go files Get-ChildItem returns nothing and
+# Select-String -Path $null throws — collect files first, skip cleanly if none.
+$testFiles = Get-ChildItem -Recurse -Filter *_test.go -ErrorAction SilentlyContinue
+$hits = if ($testFiles) { Select-String -Path $testFiles.FullName -Pattern 'func (Fuzz[A-Za-z0-9_]+)' -List } else { $null }
 if (-not $hits) { Write-Output "SKIP: no fuzz tests found" } else {
   $hits | Select-Object -ExpandProperty Path
   # Derive the first fuzz target name + its package dir from discovery (no hardcoded placeholder):
@@ -179,6 +186,7 @@ go test -count=1 ./... 2>&1
 
 ### Dead code + modules
 > **deadcode vs staticcheck U1000 (SK10):** they diverge on methods satisfying an interface (e.g. a `String()` satisfying `fmt.Stringer`). U1000 treats an interface-satisfying method as used (reachable), so it can MISS a method that is dead whole-program; `deadcode` does whole-program reachability analysis and is authoritative here. Reconcile both — don't treat a clean U1000 as complete dead-code coverage.
+> **Test-only-helper false positives:** `deadcode ./...` analyzes the non-test build, so helpers called ONLY from `_test.go` (or behind build tags) — e.g. `testutil` packages, `Setup*`/`Seed*` fixtures — are commonly reported unreachable. Cross-check each reported symbol for `_test.go` callers before reporting it as dead.
 ```bash
 deadcode ./... 2>&1  # requires: go install golang.org/x/tools/cmd/deadcode@v0.45.0
 go mod verify 2>&1
@@ -199,10 +207,12 @@ gitleaks detect --source . --no-git --redact --report-path "${TMPDIR:-/tmp}/gitl
 # Full (+ git history) — AUTHORITATIVE for the committed-secrets verdict:
 gitleaks detect --source . --redact --report-path "${TMPDIR:-/tmp}/gitleaks-report.json" 2>&1
 ```
-> **Post-filter `--no-git` hits (SK3):** the working-tree scan flags files regardless of git status — a gitignored/untracked runtime artifact (e.g. a generated `id_ed25519_*` key) is NOT a committed secret. For each hit, check status and downgrade ignored/untracked paths to INFO:
-> - `git check-ignore <path>` (exit 0 ⇒ ignored ⇒ INFO), or `git ls-files --error-unmatch <path>` (non-zero ⇒ untracked ⇒ INFO).
-> - PowerShell: `git check-ignore -q $path; if ($LASTEXITCODE -eq 0) { 'INFO: ignored, not committed' }`
-> Only paths that are tracked (or confirmed by the git-history form above) count as committed-secret findings.
+> **Post-filter `--no-git` hits (SK3):** the working-tree scan flags files regardless of git status — a gitignored/untracked runtime artifact (e.g. a generated `id_ed25519_*` key) is NOT a committed secret. For each hit, classify by git status with this precedence (check tracked FIRST — it wins regardless of `check-ignore`):
+> 1. **tracked** — `git ls-files --error-unmatch <path>` exit 0 ⇒ REAL committed-secret finding (regardless of `check-ignore`).
+> 2. else **ignored** — `git check-ignore <path>` exit 0 ⇒ INFO (ignored, not committed).
+> 3. else (**untracked AND not ignored**) ⇒ INFO-pending (new uncommitted file — re-evaluate once committed).
+> - PowerShell: `git ls-files --error-unmatch $path; if ($LASTEXITCODE -eq 0) { 'REAL' } else { git check-ignore -q $path; if ($LASTEXITCODE -eq 0) { 'INFO: ignored' } else { 'INFO-pending: untracked' } }`
+> Only tracked paths (or hits confirmed by the git-history form above) count as committed-secret findings.
 
 ### Semgrep SAST
 > skip_if: no_tool(semgrep)

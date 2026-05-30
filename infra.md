@@ -46,7 +46,10 @@
   `privileged: true`, host network/PID, missing readiness/liveness probes.
   > skip_if: no_tool(kube-linter)
 - Image SCA: `trivy image <built-image>` if an image is built in this repo, OR
-  `trivy fs .` for filesystem-level dependency CVEs (no build needed).
+  `trivy fs .` for filesystem-level dependency CVEs (no build needed). Universal
+  lockfile SCA is `osv-scanner` (README waste-scanner step 0); if it is missing,
+  these `trivy` scans + per-stack vuln tools cover their own scope — note any
+  remaining cross-ecosystem gap under Audit Limitations.
 - Secrets in infra files: defer to `universal.md` gitleaks pass; here, manually
   flag inline credentials in compose `environment:`, Dockerfile `ENV`, `*.tfvars`.
 
