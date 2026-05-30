@@ -1,5 +1,20 @@
 # Changelog
 
+> Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
+
+## [1.9.0] — 2026-05-30
+
+### Added
+- **`versions.lock`** — single source of truth mirroring the ~62 tool pins in `tools.md` (maintainer-facing; not fetched at runtime). Carries the Trivy `security_hold` (no bump until `0.70.0`).
+- **`scripts/check_versions.py`** — stdlib-only weekly version-drift + CVE checker (npm/pypi/go/cargo/nuget via registries + OSV.dev); respects `security_hold`; emits an advisory `version-report.md`.
+- **`scripts/lint_docs.py`** — stdlib-only doc self-test: cross-ref resolution, code-fence balance, README↔CHANGELOG version match, table-column consistency, `versions.lock`↔docs pin-drift.
+- **CI** — `.github/workflows/version-check.yml` (weekly cron → advisory PR) and `.github/workflows/lint.yml` (lint on push/PR). Maintainer-only; zero friction for skill users.
+
+### Changed
+- **Model tiers abstraction** — introduced `FAST` (haiku) / `RESEARCH` (sonnet) / `DEEP` (opus) tier vocabulary; replaced ~100 inline model literals across README/universal/stack files with tier tokens so model names can be swapped per environment without touching assignments.
+- **Bootstrap fetch hardening** — README fetch step now resolves `releases/latest` → concrete release tag instead of dangling `{pinned_sha}`/`{release_tag}` placeholders (which silently fell back to mutable `main`).
+- **Dedup** — merged two near-duplicate Playwright UI-testing sections in `universal.md`; collapsed the repeated Trivy supply-chain warning to a one-liner + `tools.md` pointer across stack files (pin and security signal preserved); deduped a duplicated MCP prefix-legend in README.
+
 ## [1.8.0] — 2026-05-30
 
 ### Changed

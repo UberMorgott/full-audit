@@ -29,7 +29,7 @@ ruff check . 2>&1   # install pinned: pip install ruff==0.15.15
 ```bash
 pip-audit 2>&1   # install pinned: pip install pip-audit==2.10.0
 # Or (safety -> replaced by pip-audit; safety needs login/account): pip install pip-audit==2.10.0
-# Or (verify version — v0.69.4-6 compromised, see tools.md):
+# Or — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -123,7 +123,7 @@ gitleaks detect --source . --no-git --redact --report-path .gitleaks-report.json
 
 ---
 
-## Level 2: Code Review (Opus agents)
+## Level 2: Code Review (DEEP agents)
 
 > **Reviewer mapping:** Security -> diff-scanner + impact-reviewer. Concurrency -> diff-scanner + history-reviewer. Resource leaks -> diff-scanner. Convention -> convention-checker. Stale comments/TODOs -> comment-checker.
 

@@ -32,7 +32,7 @@ dotnet format --verify-no-changes 2>&1
 ### Dependency vulnerabilities
 ```bash
 dotnet list package --vulnerable --include-transitive 2>&1
-# Universal (verify version — v0.69.4-6 compromised, see tools.md):
+# Universal — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
 trivy version 2>&1 | head -1
 trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
@@ -92,7 +92,7 @@ gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2
 
 ---
 
-## Level 2: Code Review (Opus agents)
+## Level 2: Code Review (DEEP agents)
 
 > **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
 

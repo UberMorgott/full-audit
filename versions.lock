@@ -1,0 +1,339 @@
+# versions.lock — single source of truth for pinned tool versions (maintainer-facing).
+# NOT fetched by the audit skill at runtime. Updated via scripts/check_versions.py + .github/workflows/version-check.yml.
+# Version pins are duplicated inline across *.md; this file mirrors tools.md (the canonical source).
+#
+# ecosystem values understood by the checker: npm | pypi | go | cargo | choco | nuget | maven
+#   - choco and maven have no clean queryable JSON API here -> the checker marks them "manual".
+# security_hold: present -> the checker NEVER flags the tool as behind for versions inside the
+#   hold range; it only flags once latest >= the stated safe-resume version.
+tools:
+
+  # ---- npm ----
+  - name: knip
+    ecosystem: npm
+    version: 6.14.2
+    install_id: knip
+    files: [tools.md, README.md, frontend.md, universal.md]
+  - name: purgecss
+    ecosystem: npm
+    version: 8.0.0
+    install_id: purgecss
+    files: [tools.md, README.md, frontend.md]
+  - name: i18n-unused
+    ecosystem: npm
+    version: 0.19.0
+    install_id: i18n-unused
+    files: [tools.md, README.md, frontend.md]
+  - name: i18next-cli
+    ecosystem: npm
+    version: 1.58.1
+    install_id: i18next-cli
+    files: [tools.md]
+  - name: dotenv-check
+    ecosystem: npm
+    version: 1.0.4
+    install_id: dotenv-check
+    note: "unmaintained — docs recommend replacing with dotenv-linter (cargo); pin kept for traceability"
+    files: [tools.md]
+  - name: vue-tsc
+    ecosystem: npm
+    version: 3.3.2
+    install_id: vue-tsc
+    files: [tools.md, frontend.md]
+  - name: license-checker-evergreen
+    ecosystem: npm
+    version: 6.3.1
+    install_id: license-checker-evergreen
+    files: [tools.md, README.md, frontend.md, universal.md]
+  - name: npm-check-updates
+    ecosystem: npm
+    version: 22.2.1
+    install_id: npm-check-updates
+    files: [tools.md]
+  - name: snyk
+    ecosystem: npm
+    version: 1.1305.0
+    install_id: snyk
+    files: [tools.md]
+  - name: eslint-plugin-unused-imports
+    ecosystem: npm
+    version: 4.4.1
+    install_id: eslint-plugin-unused-imports
+    files: [tools.md]
+  - name: audit-ci
+    ecosystem: npm
+    version: 7.1.0
+    install_id: audit-ci
+    files: [tools.md]
+
+  # ---- pypi ----
+  - name: ruff
+    ecosystem: pypi
+    version: 0.15.15
+    install_id: ruff
+    files: [tools.md, README.md, python.md]
+  - name: pip-audit
+    ecosystem: pypi
+    version: 2.10.0
+    install_id: pip-audit
+    files: [tools.md, README.md, python.md, universal.md]
+  - name: bandit
+    ecosystem: pypi
+    version: 1.9.4
+    install_id: bandit
+    files: [tools.md, python.md]
+  - name: mypy
+    ecosystem: pypi
+    version: 2.1.0
+    install_id: mypy
+    files: [tools.md, python.md]
+  - name: vulture
+    ecosystem: pypi
+    version: 2.16
+    install_id: vulture
+    files: [tools.md, python.md]
+  - name: radon
+    ecosystem: pypi
+    version: 6.0.1
+    install_id: radon
+    files: [tools.md, python.md]
+  - name: pip-licenses
+    ecosystem: pypi
+    version: 5.5.5
+    install_id: pip-licenses
+    files: [tools.md, README.md, python.md]
+  - name: pipreqs
+    ecosystem: pypi
+    version: 0.5.0
+    install_id: pipreqs
+    files: [tools.md, python.md]
+  - name: uv
+    ecosystem: pypi
+    version: 0.11.17
+    install_id: uv
+    files: [tools.md]
+  - name: semgrep
+    ecosystem: pypi
+    version: 1.164.0
+    install_id: semgrep
+    files: [tools.md, README.md, python.md, go.md, rust.md, java.md, csharp.md, frontend.md]
+  - name: detect-secrets
+    ecosystem: pypi
+    version: 1.5.0
+    install_id: detect-secrets
+    files: [tools.md]
+  - name: checkov
+    ecosystem: pypi
+    version: 3.2.530
+    install_id: checkov
+    files: [tools.md]
+
+  # ---- go (install_id = full module path, lowercased for proxy queries) ----
+  - name: staticcheck
+    ecosystem: go
+    version: 0.7.0
+    install_id: honnef.co/go/tools
+    files: [tools.md, README.md, go.md]
+  - name: govulncheck
+    ecosystem: go
+    version: 1.3.0
+    install_id: golang.org/x/vuln
+    files: [tools.md, README.md, go.md, universal.md]
+  - name: gosec
+    ecosystem: go
+    version: 2.26.1
+    install_id: github.com/securego/gosec/v2
+    files: [tools.md, README.md, go.md]
+  - name: golangci-lint
+    ecosystem: go
+    version: 2.12.2
+    install_id: github.com/golangci/golangci-lint/v2
+    files: [tools.md, README.md, go.md]
+  - name: deadcode
+    ecosystem: go
+    version: 0.45.0
+    install_id: golang.org/x/tools
+    files: [tools.md, README.md, go.md]
+  - name: go-licenses
+    ecosystem: go
+    version: 2.0.1
+    install_id: github.com/google/go-licenses/v2
+    files: [tools.md, README.md, go.md, universal.md]
+  - name: errcheck
+    ecosystem: go
+    version: 1.20.0
+    install_id: github.com/kisielk/errcheck
+    files: [tools.md, go.md]
+  - name: goleak
+    ecosystem: go
+    version: 1.3.0
+    install_id: go.uber.org/goleak
+    files: [tools.md, go.md]
+  - name: betteralign
+    ecosystem: go
+    version: 0.11.0
+    install_id: github.com/dkorunic/betteralign
+    files: [tools.md, go.md]
+  - name: nancy
+    ecosystem: go
+    version: 2.0.0
+    install_id: github.com/sonatype-nexus-community/nancy
+    files: [tools.md]
+  - name: gitleaks
+    ecosystem: go
+    version: 8.30.1
+    install_id: github.com/gitleaks/gitleaks/v8
+    note: "also installed via choco on Windows (choco install gitleaks --version=8.30.1); Go module used here for queryability"
+    files: [tools.md, README.md, go.md, universal.md, frontend.md, python.md, rust.md, java.md, csharp.md]
+  - name: osv-scanner
+    ecosystem: go
+    version: 2.3.8
+    install_id: github.com/google/osv-scanner/v2
+    files: [tools.md]
+  - name: trufflehog
+    ecosystem: go
+    version: 3.95.3
+    install_id: github.com/trufflesecurity/trufflehog/v3
+    files: [tools.md]
+
+  # ---- cargo ----
+  - name: dotenv-linter
+    ecosystem: cargo
+    version: 3.3.0
+    install_id: dotenv-linter
+    files: [tools.md, README.md, frontend.md]
+  - name: cargo-audit
+    ecosystem: cargo
+    version: 0.22.1
+    install_id: cargo-audit
+    files: [tools.md, rust.md]
+  - name: cargo-deny
+    ecosystem: cargo
+    version: 0.19.8
+    install_id: cargo-deny
+    files: [tools.md, rust.md]
+  - name: cargo-outdated
+    ecosystem: cargo
+    version: 0.19.0
+    install_id: cargo-outdated
+    files: [tools.md]
+  - name: cargo-geiger
+    ecosystem: cargo
+    version: 0.13.0
+    install_id: cargo-geiger
+    files: [tools.md]
+  - name: cargo-tarpaulin
+    ecosystem: cargo
+    version: 0.35.4
+    install_id: cargo-tarpaulin
+    files: [tools.md, rust.md]
+  - name: cargo-llvm-cov
+    ecosystem: cargo
+    version: 0.8.7
+    install_id: cargo-llvm-cov
+    files: [tools.md, rust.md]
+  - name: cargo-bloat
+    ecosystem: cargo
+    version: 0.12.1
+    install_id: cargo-bloat
+    files: [tools.md]
+  - name: cargo-udeps
+    ecosystem: cargo
+    version: 0.1.61
+    install_id: cargo-udeps
+    files: [tools.md, rust.md]
+  - name: cargo-supply-chain
+    ecosystem: cargo
+    version: 0.3.7
+    install_id: cargo-supply-chain
+    files: [tools.md]
+  - name: cargo-vet
+    ecosystem: cargo
+    version: 0.10.2
+    install_id: cargo-vet
+    files: [tools.md, README.md, rust.md, universal.md]
+
+  # ---- choco (no clean JSON API -> checker marks "manual", does not fail run) ----
+  - name: trivy
+    ecosystem: choco
+    version: 0.69.3
+    install_id: trivy
+    security_hold: "v0.69.4-0.69.6 compromised (supply-chain) — do NOT bump until 0.70.0"
+    files: [tools.md, universal.md, go.md, rust.md, python.md, frontend.md, java.md, csharp.md]
+  - name: syft
+    ecosystem: choco
+    version: 1.42.4
+    install_id: syft
+    note: "community choco pkg lags upstream (e.g. 1.44.0); Anchore signed release binary preferred for high assurance"
+    files: [tools.md, universal.md]
+  - name: mingw
+    ecosystem: choco
+    version: 15.2.0
+    install_id: mingw
+    note: "Windows race-detector prereq (gcc); not an audit tool"
+    files: [tools.md]
+
+  # ---- nuget / dotnet ----
+  - name: SonarAnalyzer.CSharp
+    ecosystem: nuget
+    version: 10.18.0.124379
+    install_id: SonarAnalyzer.CSharp
+    files: [tools.md, csharp.md]
+  - name: security-scan
+    ecosystem: nuget
+    version: 5.6.7
+    install_id: security-scan
+    note: "interim-only per docs; prefer Roslyn analyzers + SonarAnalyzer.CSharp"
+    files: [tools.md]
+  - name: dotnet-outdated-tool
+    ecosystem: nuget
+    version: 4.7.2
+    install_id: dotnet-outdated-tool
+    files: [tools.md, README.md]
+  - name: nuget-license
+    ecosystem: nuget
+    version: 4.0.10
+    install_id: nuget-license
+    files: [tools.md, README.md]
+  - name: NuGone
+    ecosystem: nuget
+    version: 2.1.1
+    install_id: NuGone
+    files: [tools.md, csharp.md]
+
+  # ---- maven / gradle plugins (no clean queryable JSON API here -> checker marks "manual") ----
+  - name: spotbugs-gradle-plugin
+    ecosystem: maven
+    version: 6.5.5
+    install_id: com.github.spotbugs.spotbugs-gradle-plugin
+    files: [tools.md, java.md]
+  - name: spotbugs-maven-plugin
+    ecosystem: maven
+    version: 4.9.8.3
+    install_id: com.github.spotbugs.spotbugs-maven-plugin
+    files: [tools.md, java.md]
+  - name: pmd-java
+    ecosystem: maven
+    version: 7.25.0
+    install_id: net.sourceforge.pmd.pmd-java
+    files: [tools.md, java.md]
+  - name: maven-pmd-plugin
+    ecosystem: maven
+    version: 3.27.0
+    install_id: org.apache.maven.plugins.maven-pmd-plugin
+    files: [tools.md, java.md]
+  - name: checkstyle
+    ecosystem: maven
+    version: 13.4.2
+    install_id: com.puppycrawl.tools.checkstyle
+    files: [tools.md, README.md, java.md]
+  - name: maven-checkstyle-plugin
+    ecosystem: maven
+    version: 3.6.0
+    install_id: org.apache.maven.plugins.maven-checkstyle-plugin
+    files: [tools.md, java.md]
+  - name: dependency-check
+    ecosystem: maven
+    version: 12.2.2
+    install_id: org.owasp.dependency-check-maven
+    files: [tools.md, README.md, java.md]

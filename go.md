@@ -111,9 +111,8 @@ linters:
 
 **Option A — Trivy (vuln + secrets + licenses):**
 ```bash
-# IMPORTANT: v0.69.4/v0.69.5/v0.69.6 are compromised (CVE-2026-33634). Pin a clean release:
-#   choco install trivy --version=0.69.3 --require-checksums -y   # last clean Chocolatey build
-#   (move to 0.70.0 once approved on community.chocolatey.org/packages/trivy)
+# ⚠️ Trivy: pin `0.69.3` — v0.69.4–0.69.6 are compromised (supply-chain); do NOT bump until 0.70.0. Detail: tools.md.
+#   choco install trivy --version=0.69.3 --require-checksums -y
 trivy version 2>&1 | head -1
 trivy fs --scanners vuln,secret,license --severity HIGH,CRITICAL . 2>&1
 ```
@@ -195,11 +194,11 @@ semgrep --config=auto . 2>&1
 
 ---
 
-## Level 2: Code Review (Opus agents)
+## Level 2: Code Review (DEEP agents)
 
 > **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
 
-Manual review tasks for Opus agents using Serena/Grep.
+Manual review tasks for DEEP agents using Serena/Grep.
 
 ### Security review (OWASP + STRIDE)
 

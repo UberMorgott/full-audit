@@ -15,7 +15,7 @@ Not part of L1-2-3 hierarchy. Run independently when:
 - Investigating API-related performance issues
 - Adding external API integrations
 
-**Team:** `TeamCreate("audit-api")`. 3 `code-reviewer-{N}` (opus).
+**Team:** `TeamCreate("audit-api")`. 3 `code-reviewer-{N}` (DEEP).
 
 ---
 

@@ -32,7 +32,7 @@ npm run lint 2>&1
 ### Dependency vulnerabilities
 ```bash
 npm audit 2>&1
-# Or (verify version — v0.69.4-6 compromised, see tools.md):
+# Or — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -166,7 +166,7 @@ Tool findings: adopt directly, severity = tool's or HIGH default.
 
 #### Manual (reasoning — `impact-reviewer-frontend`)
 
-Require Opus-level reasoning, not automatable:
+Require DEEP-level reasoning, not automatable:
 
 1. **CSS Framework Utilization** — If knip misses CSS framework (`@import`-ed in CSS, not JS), grep templates for framework class patterns. Zero hits = CRITICAL.
 
@@ -180,7 +180,7 @@ Require Opus-level reasoning, not automatable:
    - @types/*: verify corresponding runtime package exists
 ---
 
-## Level 2: Code Review (Opus agents)
+## Level 2: Code Review (DEEP agents)
 
 > **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Leaks → diff-scanner. Conventions → convention-checker. Stale comments → comment-checker.
 

@@ -1,7 +1,9 @@
 # Universal Audit Checks
 
 Language-agnostic checks. Apply to ANY project regardless of stack.
-Code review tasks for Opus agents.
+Code review tasks for DEEP agents.
+
+> Model tiers: FAST=haiku, RESEARCH=sonnet, DEEP=opus (current defaults; see README "Model tiers" legend). Section tags below name the tier, not a fixed model.
 
 > **Note:** universal.md applies from Level 2 onwards. Level 1 (Quick) uses only stack-specific files.
 
@@ -9,7 +11,7 @@ Code review tasks for Opus agents.
 
 ---
 
-## Level 2: Git Hygiene (CLI, haiku)
+## Level 2: Git Hygiene (CLI, FAST)
 
 > Requires Unix shell with `sed`/`awk`. Works in Git Bash on Windows for most commands.
 > `skip_if: windows` for "Large files" — `awk` piping from `git cat-file` may fail in Git Bash. Use `git lfs ls-files` or `git ls-files | xargs ls -la | sort -k5 -rn | head -20` instead.
@@ -30,7 +32,7 @@ done
 
 ---
 
-## Level 2: HTTP Security Headers (Opus)
+## Level 2: HTTP Security Headers (DEEP)
 
 Verify responses include:
 - `X-Content-Type-Options: nosniff`
@@ -44,7 +46,7 @@ Verify responses include:
 
 ---
 
-## Level 2: CSRF Protection (Opus)
+## Level 2: CSRF Protection (DEEP)
 
 - State-changing endpoints (POST/PUT/DELETE) protected against CSRF
 - If cookies for auth: CSRF token or SameSite=Strict/Lax cookie flag
@@ -57,7 +59,7 @@ Verify responses include:
 
 ---
 
-## Level 2: Rate Limiting (Opus)
+## Level 2: Rate Limiting (DEEP)
 
 - Rate limiting on all public-facing API endpoints (not just login)
 - Per-user, per-IP, or per-API-key throttling
@@ -70,7 +72,7 @@ Verify responses include:
 
 ---
 
-## Level 2: Insecure Defaults & Dangerous Configuration (Opus)
+## Level 2: Insecure Defaults & Dangerous Configuration (DEEP)
 
 > Source: Trail of Bits `insecure-defaults`. Only check prod-reachable code paths.
 
@@ -102,7 +104,7 @@ Verify responses include:
 
 ---
 
-## Level 2: Timing Attacks (Opus)
+## Level 2: Timing Attacks (DEEP)
 
 - Secret comparison (HMAC, tokens, API keys, passwords) must use constant-time:
   - Go: `subtle.ConstantTimeCompare()`
@@ -116,7 +118,7 @@ Verify responses include:
 
 ---
 
-## Level 2: Mass Assignment / Over-Posting (Opus)
+## Level 2: Mass Assignment / Over-Posting (DEEP)
 
 - JSON/form deserialization: ensure user cannot set unauthorized fields
   - Go: only exported JSON fields user can modify; sensitive fields (`IsAdmin`, `Role`, `CreatedAt`) excluded from binding
@@ -290,7 +292,7 @@ Every agent MUST run:
 
 ---
 
-## Level 2: Cross-Stack Waste Detection (Opus)
+## Level 2: Cross-Stack Waste Detection (DEEP)
 
 #### 1. Config-Dependency Coherence
 
@@ -338,7 +340,7 @@ For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
 
 ---
 
-## Level 3: XSS Prevention (Opus)
+## Level 3: XSS Prevention (DEEP)
 
 - All user input escaped before HTML rendering
 - No raw HTML with user data (`v-html`, `dangerouslySetInnerHTML`, `innerHTML`, `Html.Raw()`, `|safe`, `@Html.Raw()`)
@@ -350,7 +352,7 @@ For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
 
 ---
 
-## Level 3: SSRF Prevention (Opus)
+## Level 3: SSRF Prevention (DEEP)
 
 - User-supplied URLs: only `http://`/`https://` schemes
 - Private IP ranges blocked:
@@ -363,7 +365,7 @@ For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
 
 ---
 
-## Level 3: Deserialization Safety (Opus)
+## Level 3: Deserialization Safety (DEEP)
 
 Unsafe deserialization = RCE in many languages:
 
@@ -383,7 +385,7 @@ Unsafe deserialization = RCE in many languages:
 
 ---
 
-## Level 3: XXE Injection (Opus)
+## Level 3: XXE Injection (DEEP)
 
 If project processes XML:
 
@@ -397,7 +399,7 @@ If project processes XML:
 
 ---
 
-## Level 3: ReDoS (Opus)
+## Level 3: ReDoS (DEEP)
 
 - Nested quantifiers on overlapping groups: `(a+)+`, `(a|a)+`, `(.*a){10}`
 - User input as regex without sanitization (`regexp.QuoteMeta` Go, `re.escape()` Python)
@@ -407,7 +409,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Log Injection (Opus)
+## Level 3: Log Injection (DEEP)
 
 - User input logged without sanitizing `\n`/`\r` — attacker can forge log entries
 - Structured logging (JSON) mitigates but check:
@@ -418,7 +420,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Business Logic Abuse (Opus)
+## Level 3: Business Logic Abuse (DEEP)
 
 > Not scanner-detectable — manual review required.
 
@@ -432,7 +434,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Webhook Security (Opus)
+## Level 3: Webhook Security (DEEP)
 
 > If app receives/sends webhooks.
 
@@ -452,7 +454,7 @@ If project processes XML:
 
 ---
 
-## Level 3: File Upload Hardening (Opus)
+## Level 3: File Upload Hardening (DEEP)
 
 - Size limit **before** reading into memory (streaming)
 - MIME by magic bytes, not Content-Type/extension
@@ -466,7 +468,7 @@ If project processes XML:
 
 ---
 
-## Level 3: IDOR / Access Control (Opus)
+## Level 3: IDOR / Access Control (DEEP)
 
 **BOLA:**
 - Every endpoint validates user access to requested resource
@@ -483,7 +485,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Session Management (Opus)
+## Level 3: Session Management (DEEP)
 
 - Session ID regenerated after login (prevent fixation)
 - Timeout: idle (30 min) + absolute (24h)
@@ -495,7 +497,7 @@ If project processes XML:
 
 ---
 
-## Level 3: JWT / Auth Audit (Opus)
+## Level 3: JWT / Auth Audit (DEEP)
 
 - No `alg: none`, no RS256/HS256 confusion
 - Access token <=15min (sensitive) to <=1h, refresh <=30d
@@ -512,7 +514,7 @@ If project processes XML:
 
 ---
 
-## Level 3: API Contract Consistency (Opus)
+## Level 3: API Contract Consistency (DEEP)
 
 - Backend JSON field names match frontend types
 - Nullable fields match frontend optional (`field?: type`)
@@ -525,7 +527,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Logging & Observability (Opus)
+## Level 3: Logging & Observability (DEEP)
 
 - Errors logged with context (operation, input — not bare `log(err)`)
 - No PII in logs
@@ -542,7 +544,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Error Information Disclosure (Opus)
+## Level 3: Error Information Disclosure (DEEP)
 
 - No stack traces in production responses
 - No internal paths, hostnames, DB names in errors
@@ -553,7 +555,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Overengineering & Wheel Reinvention (Opus)
+## Level 3: Overengineering & Wheel Reinvention (DEEP)
 
 **Reinventing wheels:** check `shared/`, `utils/`, `helpers/`, `common/`:
 - Stdlib/dependency equivalent exists?
@@ -576,7 +578,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Documentation Freshness (Opus)
+## Level 3: Documentation Freshness (DEEP)
 
 - README matches actual build/deploy instructions
 - API endpoints documented, up-to-date
@@ -588,7 +590,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Documentation Concision (Opus)
+## Level 3: Documentation Concision (DEEP)
 
 > Applies to all prose docs/notes/rules: README, CLAUDE.md, ADRs, `/docs`, design notes, AND this audit's own report output.
 
@@ -602,7 +604,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Input Validation Completeness (Opus)
+## Level 3: Input Validation Completeness (DEEP)
 
 - Endpoint x validation matrix
 - File upload: MIME by magic bytes
@@ -618,7 +620,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Defense-in-Depth Validation (Opus)
+## Level 3: Defense-in-Depth Validation (DEEP)
 
 > Consumed by code-reviewer-security; applied by fixers on CRITICAL/HIGH data-flow fixes.
 
@@ -629,7 +631,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Resilience Patterns (Opus)
+## Level 3: Resilience Patterns (DEEP)
 
 - Retry: exponential backoff + jitter
 - Idempotency on retry
@@ -643,7 +645,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Configuration Management (Opus)
+## Level 3: Configuration Management (DEEP)
 
 - No magic numbers (timeouts/limits in config)
 - Dev defaults not in production
@@ -657,7 +659,7 @@ If project processes XML:
 
 ---
 
-## Level 3: State Management & Offline Resilience (Opus)
+## Level 3: State Management & Offline Resilience (DEEP)
 
 > Especially for desktop, mobile, SPA.
 
@@ -671,7 +673,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Privacy / PII (Opus)
+## Level 3: Privacy / PII (DEEP)
 
 - No PII in logs
 - No PII in URL params
@@ -683,7 +685,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Container & Image Security (Opus)
+## Level 3: Container & Image Security (DEEP)
 
 > If Docker/Podman/container orchestration used.
 
@@ -717,7 +719,7 @@ If project processes XML:
 
 ---
 
-## Level 3: CI/CD Pipeline Security (Opus)
+## Level 3: CI/CD Pipeline Security (DEEP)
 
 > If CI/CD config exists.
 
@@ -747,7 +749,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Supply Chain (Opus)
+## Level 3: Supply Chain (DEEP)
 
 - Lock files committed
 - No `latest`/`*`/unbounded versions
@@ -768,7 +770,7 @@ If project processes XML:
 
 ---
 
-## Level 3: SBOM & Software Composition (Opus)
+## Level 3: SBOM & Software Composition (DEEP)
 
 > Increasingly required for enterprise/regulated.
 
@@ -786,7 +788,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Cryptographic Key Management (Opus)
+## Level 3: Cryptographic Key Management (DEEP)
 
 - **Storage:** env vars, secret manager, HSM — never source/committed config
 - **Rotation:** mechanism + schedule (compromise, departure, annually)
@@ -800,7 +802,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Concurrency Safety (Opus)
+## Level 3: Concurrency Safety (DEEP)
 
 > Language-agnostic. Stack files have language-specific details.
 
@@ -828,7 +830,7 @@ If project processes XML:
 
 ---
 
-## Level 3: Sharp Edges & Footgun Design (Opus)
+## Level 3: Sharp Edges & Footgun Design (DEEP)
 
 > Trail of Bits `sharp-edges`. Review API design for footgun potential.
 
@@ -846,7 +848,7 @@ Evaluate against: **malicious**, **lazy** (skipping docs), **confused** (misunde
 
 ---
 
-## Level 3: Root Cause Analysis (Opus)
+## Level 3: Root Cause Analysis (DEEP)
 
 > For CRITICAL/HIGH: beyond "what's wrong" to "why."
 
@@ -899,7 +901,7 @@ Variants: [grep pattern]
 
 ---
 
-## Level 3: Variant Analysis (Opus)
+## Level 3: Variant Analysis (DEEP)
 
 > Trail of Bits `variant-analysis`. Run AFTER review. When vulnerability found, search similar patterns.
 
@@ -914,7 +916,7 @@ Output: `[VARIANT]` prefix on same finding.
 
 ---
 
-## Level 3: Functional UI/UX Testing (Opus)
+## Level 3: Functional UI/UX Testing (DEEP)
 
 > #1 complaint: audits miss ~70% broken UI. Applies to any web UI project.
 > See `frontend.md → Functional UI Testing (Playwright DOM mode)` for details.
@@ -954,19 +956,31 @@ grep -rn 'href=["'"'"']#\?["'"'"']' --include='*.vue' --include='*.tsx' --includ
 
 > `browser_snapshot` only — NO screenshots unless user requests visual regression.
 
+**Pre-flight:** start server, wait ready (30s), navigate root, snapshot
+
 **Navigation:** per route → navigate → snapshot → verify content, console errors, failed requests, internal links work
 
 **Interactive (DOM diff):** snapshot baseline → click each element → compare. Unchanged = dead.
-- Buttons → DOM change; Forms → fill/submit/verify; Modals → open/close; Dropdowns → select; Tabs → swap
+- Buttons → DOM change; Forms → fill/submit/verify feedback; Nav items → page changes; Toggles → state flips; Modals → open/close (appear/disappear); Dropdowns → select; Tabs → swap
+
+**States:** empty (friendly message), loading (spinner), error (friendly), version/status (valid data)
+
+**Responsive:** 3 breakpoints (375/768/1920px) → no cutoff/overlap
+
+**Keyboard:** Tab order, Enter/Space activation, Escape dismissal
+
+**i18n:** language switch → ALL strings change, report hardcoded
+
+**Timers:** no error flooding, cleanup on navigation
 
 **Console:** zero `console.error` on load, zero failed requests, no CORS, no mixed content
 
-| Page/Route | Element | Expected | Actual | Console errors |
-|------------|---------|----------|--------|----------------|
+| Page/Route | Element | Expected | Actual | Severity | Console errors |
+|------------|---------|----------|--------|----------|----------------|
 
 ---
 
-## Level 3: Business Logic & Domain Correctness (Opus)
+## Level 3: Business Logic & Domain Correctness (DEEP)
 
 > Deep review. Not detectable by SAST.
 
@@ -1005,37 +1019,7 @@ Report: File:line, Category, Severity, Evidence, Root Cause, Fix.
 
 ---
 
-## Level 3: UI/UX Functional Audit — Playwright DOM (Opus)
-
-> Needs dev server. No screenshots — `browser_snapshot` only.
-
-**Pre-flight:** start server, wait ready (30s), navigate root, snapshot
-
-**Per-page:** navigate → snapshot → verify content, console errors, failed requests
-
-**Interactive:**
-- Buttons: click → DOM changed? Dead if not
-- Forms: fill → submit → feedback
-- Nav items → page changes
-- Toggles → state flips
-- Modals → appear/disappear
-
-**States:** empty (friendly message), loading (spinner), error (friendly), version/status (valid data)
-
-**Responsive:** 3 breakpoints (375/768/1920px) → no cutoff/overlap
-
-**Keyboard:** Tab order, Enter/Space activation, Escape dismissal
-
-**i18n:** language switch → ALL strings change, report hardcoded
-
-**Timers:** no error flooding, cleanup on navigation
-
-| Page/Route | Element | Expected | Actual | Severity | Console errors |
-|------------|---------|----------|--------|----------|----------------|
-
----
-
-## Level 3: Architecture Decision Review (Opus)
+## Level 3: Architecture Decision Review (DEEP)
 
 Evaluate design decisions. Focus on trade-offs.
 
@@ -1060,7 +1044,7 @@ Evaluate design decisions. Focus on trade-offs.
 
 ---
 
-## Level 2+: Stack Currency (Web search, Sonnet)
+## Level 2+: Stack Currency (Web search, RESEARCH)
 
 Read manifests → extract versions → web search latest.
 

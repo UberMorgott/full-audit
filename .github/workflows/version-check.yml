@@ -1,0 +1,70 @@
+name: version-check
+
+# Maintainer-facing version-drift workflow.
+# Runs scripts/check_versions.py against versions.lock (which mirrors tools.md),
+# then opens/updates an advisory PR carrying version-report.md.
+# It NEVER edits the inline *.md pins — a human reviews the report and bumps manually.
+# The audit skill itself does not use any of this at runtime.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # weekly, Monday 06:00 UTC
+  workflow_dispatch: {}    # manual run
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  drift-report:
+    runs-on: ubuntu-latest
+    steps:
+      # SHA pinning note: for strict supply-chain hardening (mirroring this repo's own
+      # stance on pinning Actions by immutable commit SHA), these actions SHOULD be
+      # pinned to a full commit SHA rather than a moving major tag. A major tag (@v4/@v7)
+      # is accepted here because this is an internal, maintainer-only advisory workflow
+      # with no access to production secrets.
+      - name: Checkout
+        uses: actions/checkout@v4   # TODO supply-chain: pin to commit SHA
+
+      - name: Set up Python
+        uses: actions/setup-python@v5   # TODO supply-chain: pin to commit SHA
+        with:
+          python-version: "3.12"
+
+      - name: Run version-drift checker
+        # Stdlib-only; always exits 0. The report is the artifact, the PR is the signal.
+        run: python scripts/check_versions.py
+
+      - name: Open/update advisory PR with version-report.md
+        uses: peter-evans/create-pull-request@v7   # TODO supply-chain: pin to commit SHA
+        with:
+          branch: automated/version-report
+          base: main
+          add-paths: |
+            version-report.md
+          commit-message: "chore: weekly version-drift report"
+          title: "chore: weekly version-drift report"
+          labels: maintenance
+          body: |
+            ## Weekly version-drift report (advisory)
+
+            This PR carries a freshly generated `version-report.md` produced by
+            `scripts/check_versions.py` from `versions.lock` (which mirrors `tools.md`,
+            the canonical source of pinned tool versions).
+
+            **This is advisory only.** A human reviews the report and bumps the inline
+            `*.md` pins manually. This workflow does NOT auto-edit any skill docs and
+            does NOT change the pins.
+
+            Things to check in the report:
+            - **Behind (non-held)** — tools with a newer stable upstream release.
+            - **CVE hits** — pinned versions with OSV.dev advisories; investigate before bumping.
+            - **Security holds** — e.g. Trivy is intentionally held at `0.69.3`
+              (v0.69.4–0.69.6 compromised) until `0.70.0`. Do NOT bump a held tool while
+              the report shows it as held.
+            - **Manual / check-failed** — choco/maven ecosystems and any network failures
+              need a manual look.
+
+            Merging this PR only updates the generated `version-report.md`; it never
+            touches the audit playbooks.
