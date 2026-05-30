@@ -17,6 +17,8 @@ Applies when `package.json` detected. Framework auto-selected:
 
 All commands assume `cd {frontend_root}`.
 
+> **Detect the package manager from the lockfile** and substitute it in every command below: `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun, `package-lock.json` → npm. `npx` works under all (bundled with Node); `pnpm dlx` / `pnpm exec` is the pnpm-native form. Run scripts via the detected manager (`pnpm build` / `npm run build`).
+
 ---
 
 ## Level 1: Quick
@@ -30,16 +32,17 @@ npm run lint 2>&1
 ```
 
 ### Dependency vulnerabilities
+> Lockfile-aware (per the package-manager preamble): `pnpm-lock.yaml` → `pnpm audit`; `yarn.lock` → `yarn npm audit` (Berry) / `yarn audit` (classic); `bun.lockb` → `bun audit`; `package-lock.json` → `npm audit`. Plain `npm audit` hard-fails (`ENOLOCK`) on a non-npm lockfile and scans nothing. `skip_if: no_tool` (manager absent).
 ```bash
-npm audit 2>&1
+npm audit 2>&1  # substitute the lockfile-matched command above
 # Or — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
-> Vulns found → `npm audit fix`. Breaking: `npm audit fix --force` (review). Report unfixable as findings.
+> Vulns found → `<pm> audit fix` (npm/pnpm/yarn). Breaking: `npm audit fix --force` (review). Report unfixable as findings.
 
 ### Tests (if configured)
-> skip_if: windows (bash `if`/`grep`). PowerShell: `Select-String '"vitest"' package.json` etc., or run the matching command directly.
+> skip_if: windows (bash `if`/`grep`) — Windows runs the PowerShell twin below instead of skipping. Substitute the detected manager for `npx`/`npm` (e.g. `pnpm exec vitest run`).
 ```bash
 if grep -q '"vitest"' package.json; then
   npx vitest run 2>&1
@@ -51,6 +54,19 @@ elif grep -q '"@angular/core"' package.json; then
 elif grep -q '"test"' package.json; then
   npm test 2>&1
 fi
+```
+```powershell
+# PowerShell (Windows). Substitute the detected manager for npx/npm (e.g. pnpm exec vitest run).
+if (Select-String '"vitest"' package.json -Quiet) {
+  npx vitest run 2>&1
+} elseif (Select-String '"jest"' package.json -Quiet) {
+  npx jest --passWithNoTests 2>&1
+} elseif (Select-String '"@angular/core"' package.json -Quiet) {
+  # Angular: Karma/Jasmine via Angular CLI (CI-safe: headless, no watch)
+  npx ng test --watch=false --browsers=ChromeHeadless 2>&1
+} elseif (Select-String '"test"' package.json -Quiet) {
+  npm test 2>&1
+}
 ```
 
 **E2E (if configured):** Playwright or Cypress.
@@ -78,8 +94,9 @@ node --version 2>&1
 
 **Vue:**
 ```bash
-npx --yes vue-tsc@3.3.2 --noEmit 2>&1  # pin alongside typescript@~5.8
+npx --yes vue-tsc@3.3.2 -b --noEmit 2>&1  # pin alongside typescript@~5.8
 ```
+> Use `-b` (build mode) for solution-style/referenced tsconfig (`files: []` + `references`); plain `--noEmit` silently checks the empty file set (0 output, exit 0) and hides all app type errors. Matches real Vue `build`/`type-check` scripts.
 
 **React / generic TS:**
 ```bash
@@ -138,14 +155,20 @@ semgrep --config=auto . 2>&1
 
 #### Automated (CLI — `waste-scanner` agent)
 
+> `npx --yes <tool>@ver` works under any package manager (npx ships with Node); pnpm-native form is `pnpm dlx <tool>@ver`.
+
 ```bash
 # 1. Dead code (unused deps, imports, exports, files, types)
-npx --yes knip@6.14.2 --reporter compact 2>&1
+# Run BEFORE the Wave-1 build, OR exclude dist/build dirs — knip (no config) reports build artifacts as unused files (~62 FPs once dist/ exists). Add --no-progress.
+npx --yes knip@6.14.2 --reporter compact --no-progress 2>&1
 
 # 2. Dead CSS in global stylesheets
+# skip_if: tailwind>=4 or build-time-CSS-plugin — purgecss can't see plugin-generated utilities (Tailwind 4 @tailwindcss/vite, CSS-in-JS, etc.); it false-flags the ENTIRE stylesheet as dead. Fall back to the manual template-usage grep (manual check #1). Keep this command for plain/static CSS.
 # Pinned: npm install --save-dev --save-exact purgecss@8.0.0 (or npx --yes purgecss@8.0.0)
-# --output needs a writable dir; use a temp dir, not a null device. Windows: $env:TEMP\purgecss (NOT /dev/null; PS has no /dev/null — equivalents are $null / NUL)
-npx --yes purgecss@8.0.0 --css <global-css-files> --content 'src/**/*.{svelte,vue,jsx,tsx,html}' --rejected --output "$TMPDIR/purgecss" 2>&1
+# --output needs a writable dir; use a temp dir, not a null device (NOT /dev/null; PS has no /dev/null — equivalents are $null / NUL)
+# bash:
+npx --yes purgecss@8.0.0 --css <global-css-files> --content 'src/**/*.{svelte,vue,jsx,tsx,html}' --rejected --output "${TMPDIR:-/tmp}/purgecss" 2>&1
+# PowerShell (Windows): --output "$env:TEMP\purgecss"
 
 # 3. Dead i18n keys (if locale files exist)
 npx --yes i18n-unused@0.19.0 display-unused 2>&1
@@ -159,7 +182,7 @@ dotenv-linter 2>&1
 # 5. TS strictness verification
 # tsconfig.json should have "noUnusedLocals": true, "noUnusedParameters": true
 # Missing → MEDIUM finding. Then:
-npx --yes svelte-check@4.4.8 2>&1  # or vue-tsc@3.3.2 --noEmit, or tsc --noEmit
+npx --yes svelte-check@4.4.8 2>&1  # or vue-tsc@3.3.2 -b --noEmit (use -b for solution-style tsconfig; see L2 TS check), or tsc --noEmit
 ```
 
 Tool findings: adopt directly, severity = tool's or HIGH default.

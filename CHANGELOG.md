@@ -2,6 +2,18 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.3] — 2026-05-31
+
+### Fixed
+- **First live run of the frontend stack** (against a real Vue3 + Vite + Tailwind4 + pnpm project) — fixed 7 instruction defects. All doc-only; the v1.10.x features (reproduction wave / Wave 2.5, verified mode `+V`, `audit-bugs.json`, monorepo D9, SCA re-run-scanner D10) all re-validated working on this run.
+- **F7 package-manager detection preamble** (frontend.md, + README stack-command-mapping + waste-scanner) — frontend.md was npm-centric but real Vue projects use pnpm/yarn/bun; added a preamble: detect the PM from the lockfile (`pnpm-lock.yaml`/`yarn.lock`/`bun.lockb`/`package-lock.json`) and substitute it in every command; `npx` works under any PM (ships with Node), `pnpm dlx` is the pnpm-native form. Covers F1 + F7 systemically.
+- **F1 lockfile-aware vuln scan** (frontend.md L1 + README stack-map Vuln cell) — plain `npm audit` hard-fails (`ENOLOCK`) on a non-npm lockfile and silently scans nothing, missing real vulns; now lockfile-aware: `pnpm audit` / `yarn npm audit` (Berry) / `yarn audit` (classic) / `bun audit` / `npm audit`; `skip_if: no_tool`.
+- **F2 `vue-tsc -b --noEmit` for solution-style tsconfig** (frontend.md L2 TS check + dead-asset TS step) — plain `vue-tsc --noEmit` on a solution-style root tsconfig (`files: []` + `references`) checks the EMPTY file set (0 output, exit 0) and false-PASSes, hiding all app type errors; use `-b` (build mode) to resolve project references, matching real Vue `build`/`type-check` scripts.
+- **F3 purgecss Tailwind-4 caveat/skip** (frontend.md purgecss step + universal.md JS/TS FP table) — on Tailwind 4 (`@tailwindcss/vite`)/CSS-in-JS/build-time-CSS plugins, utilities are generated at build (not in source CSS), so purgecss false-flags the entire stylesheet as dead; added `skip_if: tailwind>=4 or build-time-CSS-plugin` + fall back to the manual template-usage grep. Kept the command for plain/static CSS.
+- **F4 knip dist exclusion** (frontend.md waste-scanner step 1 + README waste-scanner) — Wave-1 build runs before the waste-scanner, so `dist/` exists and config-less knip reports build artifacts as unused files (~62 FPs); run knip before the build OR exclude `dist`/build dirs; added `--no-progress`.
+- **F5 purgecss PowerShell `$env:TEMP`** (frontend.md purgecss step) — `$TMPDIR` is unset on Windows PowerShell (it's `$env:TEMP`); the PS-facing command now uses `$env:TEMP\purgecss`, bash keeps a temp dir (`${TMPDIR:-/tmp}/purgecss`), so both shells have a valid output dir.
+- **F6 tests PowerShell twin** (frontend.md L1 Tests block) — the bash `grep`/`if` tests block had `skip_if: windows` but no real PS detector (unlike the L3 dev-server block); added a PowerShell twin (`Select-String` to detect vitest/jest/Angular in package.json scripts → run the detected runner), so Windows runs the check instead of skipping.
+
 ## [1.10.2] — 2026-05-31
 
 ### Fixed

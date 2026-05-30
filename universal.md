@@ -200,6 +200,7 @@ Verify responses include:
 - `no-explicit-any` in type assertion bridges — sometimes necessary
 - `@ts-ignore` with explaining comment — documented workaround
 - `console.log` in CLI tools — IS output mechanism
+- `purgecss` reporting an entire stylesheet as dead on Tailwind 4 (`@tailwindcss/vite`)/CSS-in-JS/build-time-CSS plugins — utilities are generated at build, not present in source CSS, so purgecss can't see them — ignore; use the manual template-usage grep instead
 
 **Rust:**
 - `clippy::too_many_arguments` on FFI — must match C API
