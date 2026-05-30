@@ -274,3 +274,39 @@ choco install syft --version=1.42.4 -y       # Windows (community pkg lags upstr
 > **Local:** verify checksum. `trivy version` to confirm.
 >
 > Ref: [GHSA-69fq-xp46-6x23](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23)
+
+---
+
+## Infrastructure & CI
+
+Pin per the integrity protocol. These are GitHub-released binaries (integrity = pinned
+release binary + SHA256 checksum verification, mirroring trufflehog/syft) unless a
+checksum-gated package manager is used. See `infra.md` for usage.
+
+```bash
+# hadolint — Dockerfile linter
+choco install hadolint --version=2.14.0 --require-checksums -y   # Windows
+# > skip_if: windows  (bash/sha256sum; on Windows use choco above or download the .exe + Get-FileHash)
+VER=2.14.0
+curl -sSfLO "https://github.com/hadolint/hadolint/releases/download/v${VER}/hadolint-Linux-x86_64"
+curl -sSfLO "https://github.com/hadolint/hadolint/releases/download/v${VER}/hadolint-Linux-x86_64.sha256"
+sha256sum -c "hadolint-Linux-x86_64.sha256" && \
+  install -m 0755 hadolint-Linux-x86_64 /usr/local/bin/hadolint
+
+# tfsec — Terraform security scanner
+# DEPRECATED: superseded by `trivy config` (merged into Trivy). Pin kept for compatibility.
+go install github.com/aquasecurity/tfsec/cmd/tfsec@v1.28.14   # proxy + checksum DB = tamper-evident
+# Or: choco install tfsec --version=1.28.14 --require-checksums -y   # Windows
+
+# kube-linter — Kubernetes manifest linter
+go install golang.stackrox.io/kube-linter/cmd/kube-linter@v0.8.3   # proxy + checksum DB = tamper-evident
+# Or: pinned GitHub release binary from github.com/stackrox/kube-linter/releases/tag/v0.8.3 + verify checksums.txt
+
+# actionlint — GitHub Actions workflow linter
+go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12   # proxy + checksum DB = tamper-evident
+# (bundles shellcheck integration if shellcheck is on PATH)
+
+# zizmor — GitHub Actions supply-chain/security auditor
+pipx install zizmor==1.25.2          # preferred (isolated)
+# Or: cargo install zizmor --version 1.25.2 --locked   # builds from crates.io source
+```

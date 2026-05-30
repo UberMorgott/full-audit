@@ -30,3 +30,8 @@ version-report.md
 
 # Live audit-run artifacts (skill-error logs, target findings) — kept local
 test-runs/
+
+# Audit artifacts
+audit-bugs.json
+audit-filtered.md
+.worktrees/

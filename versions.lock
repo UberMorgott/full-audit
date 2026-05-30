@@ -126,7 +126,13 @@ tools:
     ecosystem: pypi
     version: 3.2.530
     install_id: checkov
-    files: [tools.md]
+    files: [tools.md, infra.md]
+  - name: zizmor
+    ecosystem: pypi
+    version: 1.25.2
+    install_id: zizmor
+    note: "GitHub Actions security auditor (zizmorcore/zizmor); installed via pipx, also available via cargo"
+    files: [tools.md, infra.md]
 
   # ---- go (install_id = full module path, lowercased for proxy queries) ----
   - name: staticcheck
@@ -189,12 +195,28 @@ tools:
     ecosystem: go
     version: 2.3.8
     install_id: github.com/google/osv-scanner/v2
-    files: [tools.md]
+    files: [tools.md, README.md, infra.md]
   - name: trufflehog
     ecosystem: go
     version: 3.95.3
     install_id: github.com/trufflesecurity/trufflehog/v3
     files: [tools.md]
+  - name: tfsec
+    ecosystem: go
+    version: 1.28.14
+    install_id: github.com/aquasecurity/tfsec
+    note: "DEPRECATED — superseded by `trivy config` (merged into Trivy); pin kept for compatibility. Also installable via choco."
+    files: [tools.md, infra.md]
+  - name: kube-linter
+    ecosystem: go
+    version: 0.8.3
+    install_id: golang.stackrox.io/kube-linter
+    files: [tools.md, infra.md]
+  - name: actionlint
+    ecosystem: go
+    version: 1.7.12
+    install_id: github.com/rhysd/actionlint
+    files: [tools.md, infra.md]
 
   # ---- cargo ----
   - name: dotenv-linter
@@ -259,7 +281,13 @@ tools:
     version: 0.69.3
     install_id: trivy
     security_hold: "v0.69.4-0.69.6 compromised (supply-chain) — do NOT bump until 0.70.0"
-    files: [tools.md, universal.md, go.md, rust.md, python.md, frontend.md, java.md, csharp.md]
+    files: [tools.md, universal.md, go.md, rust.md, python.md, frontend.md, java.md, csharp.md, infra.md]
+  - name: hadolint
+    ecosystem: choco
+    version: 2.14.0
+    install_id: hadolint
+    note: "Dockerfile linter; choco on Windows (checker marks manual), pinned GitHub release binary + SHA256 elsewhere"
+    files: [tools.md, infra.md]
   - name: syft
     ecosystem: choco
     version: 1.42.4

@@ -2,6 +2,17 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.0] — 2026-05-30
+
+### Added
+- **Reproduction wave (Wave 2.5)** — new `reproduction-agent`; independently reproduces every CRITICAL/HIGH finding via a failing test or CLI command before it is trusted. Static-by-default (never starts servers/DBs; live-runtime-only findings → `SKIPPED: requires runtime`). REPRODUCED floors score at 90; NOT_REPRODUCED caps at 25 (−1 severity); conflict rule re-runs once when scoring ≥75 disagrees.
+- **Verified mode (`+V`)** — orthogonal trust axis: level sets depth, verified mode sets trust. Runs Wave 2.5. OFF by default at L1/L2; ALWAYS ON at L3. Request via "verified"/"+V".
+- **`infra.md`** — Docker / Kubernetes / Terraform / GitHub Actions auditing (hadolint, trivy config, checkov, tfsec, kube-linter, actionlint, zizmor). Phase 0 now detects `Dockerfile`/`*.tf`/workflows/K8s manifests and fetches it.
+- **osv-scanner SCA layer** — lockfile-accurate CVEs across all ecosystems as the first dependency check in the waste-scanner step.
+- **PR mode** — audit a pull request by number via a detached worktree + `gh` base-branch resolution; implies Diff-Mode scope.
+- **Machine-readable `audit-bugs.json`** — structured artifact alongside the markdown report (not committed); integrity rules tie it to the markdown findings.
+- **Explicit monorepo step** in Phase 0 (enumerate package roots, scope with user, per-package agents); documented the `versions.lock` contract.
+
 ## [1.9.1] — 2026-05-30
 
 ### Fixed
