@@ -53,6 +53,18 @@
 - Secrets in infra files: defer to `universal.md` gitleaks pass; here, manually
   flag inline credentials in compose `environment:`, Dockerfile `ENV`, `*.tfvars`.
 
+### no_tool fallback — manual review (L1+L2)
+
+> When hadolint/trivy/checkov are all unavailable (offline/Windows with no install
+> path), these tool-gated checks are skipped — run this manual checklist instead so
+> Dockerfile/compose still get reviewed (mirrors the osv-scanner no_tool fallback):
+- Non-root `USER` directive present (no implicit root; no `USER root` as the final user).
+- Base image pinned by digest (`@sha256:...`), not a mutable `:tag`/`:latest`.
+- No `0.0.0.0` bind for internal services (compose `ports:`, app config).
+- No inline credentials in Dockerfile `ENV`/`ARG` or compose `environment:`.
+- Resource limits set (compose `deploy.resources.limits`, K8s `requests`/`limits`).
+> Note the manual pass under Audit Limitations (no tool-verified misconfig coverage).
+
 ## Level 3 — deep (privilege, network, supply chain)
 
 - `zizmor .github/workflows/` — template injection, excessive `GITHUB_TOKEN`

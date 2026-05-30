@@ -2,6 +2,19 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.2] — 2026-05-31
+
+### Fixed
+- **First live run of the Python stack** — fixed 7 instruction defects + 1 Windows signal caught running the audit against a real aiogram/FastAPI chatbot. All doc-only; the v1.10.0/1.10.1 features (reproduction wave / Wave 2.5, verified mode `+V`, `audit-bugs.json`, osv-scanner-missing SCA fallback, Phase-0 infra tool enumeration) all re-validated working on this run.
+- **DEFECT-P1 build/lint scope-to-source** (python.md L1 + README stack-command-mapping + Quality Gates) — a bare `.` walks non-code trees (e.g. a `data/` knowledge base), flooding output and exceeding Windows MAX_PATH; scope to source roots (`compileall src tests`, `ruff check src tests`) or `extend-exclude` data/asset/KB dirs.
+- **DEFECT-P2 pip-audit project scope** (python.md) — bare `pip-audit` scans the active venv (mixes project deps with installed audit tools); prescribe `pip-audit -r requirements.txt` (or a project-only venv) and flag unpinned `>=` requirements resolving to latest, not the deployed version.
+- **DEFECT-P3 semgrep offline rulesets** (python.md, parity with go.md v1.9.1) — `--config=auto` needs network and dies offline (exit 2, zero output); offline rulesets (`p/python`, `p/security-audit`, `p/secrets`) now primary, `--config=auto` demoted to online-only, added `skip_if: no_tool(semgrep)` + no-network fallback to bandit (offline SAST twin).
+- **DEFECT-P4 mypy L2 informational** (python.md L1 note + new L2 step + README Quality Gates) — untyped projects (no mypy config) missed type-checking until L3; mypy now runs informationally at L2 (`mypy src --ignore-missing-imports`, best-effort) to catch real type bugs earlier.
+- **DEFECT-P5 vulture framework-callback FP** (universal.md Python FP table) — `vulture --min-confidence 80` flags framework-dispatch callback params (aiogram/aiogram-dialog handler args `button`/`widget`/`start_data`, Django views, pydantic `@field_validator cls`) as unused (~40 FPs); added an ignore row — required by the dispatch contract, not dead.
+- **DEFECT-P6 infra no_tool manual-review fallback** (infra.md L1/L2 + README infra note) — every infra tool (hadolint/trivy/checkov) is tool-gated; added a runnable manual-review checklist (non-root `USER`, digest-pinned base image, no `0.0.0.0` bind, no inline creds, resource limits) mirroring the osv-scanner no_tool fallback.
+- **DEFECT-P7 gitleaks Windows choco cross-ref** (python.md) — the install line showed only `go install ...` (needs Go toolchain); added `Windows: choco install gitleaks --version=8.30.1 (see tools.md)`.
+- **Windows long-path clone note** (README Pre-conditions) — Windows clones of repos with deep trees / very long filenames (e.g. `data/kb/`) can fail `git checkout` with "Filename too long" (MAX_PATH); enable `git config core.longpaths true` (and OS long-path support) before cloning, or scope to source dirs.
+
 ## [1.10.1] — 2026-05-31
 
 ### Fixed

@@ -194,6 +194,7 @@ Verify responses include:
 - `B101: assert` in test files — assert IS test mechanism
 - `S101: hardcoded password` on test fixtures — intentional
 - `C901: complexity` on CLI parsing — often unavoidable
+- `vulture` unused-variable/param on framework callback signatures (aiogram/aiogram-dialog handlers `button`/`widget`/`start_data`, Django views, pydantic `@field_validator cls`) — required by the framework's dispatch contract, not dead — ignore
 
 **JavaScript/TypeScript:**
 - `no-explicit-any` in type assertion bridges — sometimes necessary

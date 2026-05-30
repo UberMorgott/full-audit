@@ -17,17 +17,19 @@ All commands assume `cd {project_root}`.
 ## Level 1: Quick
 
 ### Syntax + lint
+> Scope build/lint to source roots; exclude data/asset/KB dirs. A bare `.` walks non-code trees (e.g. a `data/` knowledge base) — floods output and on Windows can exceed MAX_PATH. Use the detected source roots (`src tests` below) or config `extend-exclude`.
 ```bash
-ruff check . 2>&1   # install pinned: pip install ruff==0.15.15
+ruff check src tests 2>&1   # scope to source roots (or add extend-exclude = ["data"] in ruff config); install pinned: pip install ruff==0.15.15
 # Or if ruff unavailable (cross-platform):
-# python -m compileall . 2>&1
-# python -m py_compile $(find . -name "*.py" -not -path "./.venv/*") 2>&1   # > skip_if: windows ($()/find bash-only)
-# flake8 . 2>&1
+# python -m compileall src tests 2>&1   # scope to source roots, NOT bare `.`
+# python -m py_compile $(find . -name "*.py" -not -path "./.venv/*" -not -path "./data/*") 2>&1   # > skip_if: windows ($()/find bash-only)
+# flake8 src tests 2>&1
 ```
 
 ### Dependency vulns
+> Audit project deps, not the active venv: bare `pip-audit` scans installed packages (mixes project deps with any installed audit tools). Use `-r requirements.txt` (or run inside a project-only venv). Unpinned `>=` requirements resolve to LATEST, not the deployed version — flag the version ambiguity.
 ```bash
-pip-audit 2>&1   # install pinned: pip install pip-audit==2.10.0
+pip-audit -r requirements.txt 2>&1   # project-scoped; install pinned: pip install pip-audit==2.10.0
 # Or (safety -> replaced by pip-audit; safety needs login/account): pip install pip-audit==2.10.0
 # Or — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
@@ -49,6 +51,7 @@ fi
 ```
 
 ### Type check (if typed)
+> Untyped projects (no mypy config) miss type-checking until L3 — see the L2 informational mypy step below to catch real type bugs earlier.
 ```bash
 if grep -q "mypy" pyproject.toml 2>/dev/null || [ -f "mypy.ini" ] || [ -f ".mypy.ini" ]; then
   mypy . 2>&1   # install pinned: pip install mypy==2.1.0
@@ -95,10 +98,17 @@ radon cc . -a -nc 2>&1     # Cyclomatic (C+ grade only); install pinned: pip ins
 radon mi . -nc 2>&1         # Maintainability (problematic only)
 ```
 
+### Type check (informational)
+> skip_if: no_tool(mypy)
+> Runs even WITHOUT mypy config — an untyped project still has real type bugs that otherwise surface only at L3. Best-effort pass; findings are informational at L2 (the configured/strict run is the L3 gate).
+```bash
+mypy src --ignore-missing-imports 2>&1   # scope to source roots; install pinned: pip install mypy==2.1.0
+```
+
 ### Import sorting + formatting
 ```bash
-ruff check --select I . 2>&1       # isort
-ruff format --check . 2>&1         # formatting
+ruff check --select I src tests 2>&1   # isort; scope to source roots
+ruff format --check src tests 2>&1     # formatting
 ```
 
 ### Coverage
@@ -109,15 +119,23 @@ coverage run -m pytest; coverage report --show-missing 2>&1
 ```
 
 ### Semgrep SAST
+> skip_if: no_tool(semgrep)
+> **Primary (offline-capable):** pin explicit registry rulesets so the scan works without a live network fetch from semgrep.dev. `p/python`, `p/security-audit`, `p/secrets` are real registry IDs; multiple `--config` flags combine. Rules are downloaded once and cached under `~/.semgrep`; an air-gapped host needs them pre-cached (or local YAML via `--config <file>`).
 ```bash
-semgrep --config=auto . 2>&1   # install pinned: pip install semgrep==1.164.0
+semgrep --config=p/python --config=p/security-audit --config=p/secrets src 2>&1   # install pinned: pip install semgrep==1.164.0
 ```
+> **Online option only:** `--config=auto` auto-selects rulesets but REQUIRES network (it fetches from semgrep.dev); on timeout/air-gap it yields nothing. Use only when network is available.
+> ```bash
+> semgrep --config=auto . 2>&1   # needs network
+> ```
+> **No-network fallback:** if rulesets are not cached and the host is offline, SAST cannot run via semgrep — record `SKIP: semgrep rulesets uncached + offline` and rely on `bandit` (the offline SAST twin above) for SAST coverage. (tools.md installs semgrep; the network requirement for first-run ruleset download is noted there.)
 
 ### Secrets scan
 > Skip if Trivy used.
 ```bash
 # --redact (no raw secrets in output); findings to gitignored report; no -v in captured output
 gitleaks detect --source . --no-git --redact --report-path .gitleaks-report.json 2>&1   # install pinned: go install github.com/gitleaks/gitleaks/v8@v8.30.1
+# Windows: choco install gitleaks --version=8.30.1 (no Go toolchain needed; see tools.md)
 # Add .gitleaks-report.json to .gitignore
 ```
 
