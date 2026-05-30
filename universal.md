@@ -14,20 +14,45 @@ Code review tasks for DEEP agents.
 ## Level 2: Git Hygiene (CLI, FAST)
 
 > Requires Unix shell with `sed`/`awk`. Works in Git Bash on Windows for most commands.
-> `skip_if: windows` for "Large files" — `awk` piping from `git cat-file` may fail in Git Bash. Use `git lfs ls-files` or `git ls-files | xargs ls -la | sort -k5 -rn | head -20` instead.
+> `skip_if: windows` for "Large files" — `awk` piping from `git cat-file` may fail in Git Bash. On Windows use the PowerShell twin below; it measures **tracked git-object** sizes (not the working tree), so gitignored local artifacts (a 10MB `.exe`, `dist/`) never false-positive.
 
 ```bash
-# Large files >1MB (skip_if: windows — see note above)
+# Large files >1MB (skip_if: windows — use PowerShell twin)
 git rev-list --objects --all | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | sed -n '/^blob/{s/blob //;p}' | awk '{if ($2 > 1048576) print $2, $3}' | sort -rn 2>&1
 
 # Suspicious files (adjust exclusions per project)
 git ls-files | grep -iE '\.(env|key|pem|p12|pfx|jks|sqlite|db)$' 2>&1
 git ls-files '*.dll' '*.pdb' '*.exe' | grep -v 'tools/' 2>&1
 
-# .gitignore completeness (add OS/stack-specific entries as needed)
+# .gitignore completeness — confirm artifacts are *ignored*, not merely *not-yet-added*
 for f in node_modules .env dist build .DS_Store Thumbs.db desktop.ini __pycache__ .venv venv target bin obj; do
   git ls-files --error-unmatch "$f" 2>/dev/null && echo "WARNING: $f tracked"
+  git check-ignore -q "$f" || echo "NOTE: $f not ignored (add to .gitignore if it can appear locally)"
 done
+git status --porcelain --ignored 2>&1 | grep '^!!' || echo "no ignored artifacts present"
+```
+
+```powershell
+# PowerShell twins (Windows / PowerShell-only agent — no Git Bash needed)
+# Large files >1MB — TRACKED git-OBJECT sizes only (git ls-files -s + git cat-file -s); ignores working-tree/gitignored artifacts
+$big = git ls-files -s | ForEach-Object {
+  $f = $_ -split "`t", 2                  # "<mode> <oid> <stage>`t<path>"
+  $oid = ($f[0] -split '\s+')[1]
+  [PSCustomObject]@{ Size = [int](git cat-file -s $oid); Path = $f[1] }
+} | Where-Object { $_.Size -gt 1048576 } | Sort-Object Size -Descending | Select-Object -First 20
+if ($big) { $big | Format-Table -AutoSize } else { "no tracked blob >1MB" }
+
+# Suspicious files (adjust exclusions per project)
+git ls-files | Where-Object { $_ -match '\.(env|key|pem|p12|pfx|jks|sqlite|db)$' }
+git ls-files '*.dll' '*.pdb' '*.exe' | Where-Object { $_ -notmatch '^tools/' }
+
+# .gitignore completeness — confirm artifacts are *ignored*, not merely *not-yet-added*
+foreach ($f in 'node_modules','.env','dist','build','.DS_Store','Thumbs.db','desktop.ini','__pycache__','.venv','venv','target','bin','obj') {
+  git ls-files --error-unmatch $f 2>$null; if ($LASTEXITCODE -eq 0) { "WARNING: $f tracked" }
+  git check-ignore -q $f; if ($LASTEXITCODE -ne 0) { "NOTE: $f not ignored (add to .gitignore if it can appear locally)" }
+}
+$ign = git status --porcelain --ignored | Where-Object { $_ -like '!!*' }
+if ($ign) { $ign } else { "no ignored artifacts present" }
 ```
 
 ---
@@ -162,7 +187,7 @@ Verify responses include:
 
 **Go:**
 - `shadow: declaration of "err"` in nested scopes — often intentional
-- `G104: Errors unhandled` on `defer file.Close()` — acceptable read-only
+- `G104: Errors unhandled` on `defer file.Close()` — acceptable ONLY on read-only handles; on mutating/committing handles (writes, exec/`sudo` sessions, DB Commit/Flush) a Close error MUST be checked or logged (see go.md "Errors from defer Close/Flush/Commit logged")
 - `SA1019: deprecated` on stdlib still supported 2+ versions
 
 **Python:**
@@ -614,7 +639,7 @@ If project processes XML:
 - Query/path params not raw to SQL/filesystem/shell
 - JSON into explicit structs (not raw dict/map)
 - Array inputs: size limits
-- Path traversal: canonical path + prefix validation
+- Path traversal: canonical path + prefix validation — `SafeJoinPath`/`ValidateURLScheme` are illustrative helper names — implement, or use stdlib `filepath.Clean` + a prefix/base-dir check; not provided. Note: operator-supplied local paths to the operator's own files are not a traversal vuln (trust boundary = the operator).
 - Symlink: `filepath.EvalSymlinks` (Go), `os.path.realpath` (Python) before prefix check
 - Regex with user input: escape/validate (see ReDoS)
 

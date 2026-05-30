@@ -2,6 +2,17 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.9.1] — 2026-05-30
+
+### Fixed
+- **First live run remediation** — fixed 15 instruction defects (SK1–SK15) caught running the audit against a real Go CLI repo. All doc-only.
+- **semgrep** (go.md) — offline rulesets (`p/security-audit`, `p/secrets`, `p/golang`) are now the primary invocation; `--config=auto` demoted to an online-only option with a network note; added `skip_if: no_tool(semgrep)` + no-network fallback. Was silently producing zero SAST offline.
+- **Serena preflight** (README.md) — health check now calls `activate_project` + a `get_symbols_overview` liveness probe instead of only `initial_instructions` (which reported a false-green while symbol nav was dead). MCP example calls use a `{prefix}` placeholder instead of a hardcoded bare prefix.
+- **gitleaks** (go.md) — post-filter `--no-git` hits through `git check-ignore`/`git ls-files` (gitignored/untracked ⇒ INFO, not a committed-secret false positive); report path moved out-of-tree (no `.gitignore`-exists assumption).
+- **universal.md git hygiene** — Windows large-file check now measures tracked git-OBJECT sizes (not working-tree `ls`, which false-positived on gitignored artifacts); added PowerShell twins + a `git check-ignore`/`status --ignored` assertion to the suspicious-files and `.gitignore`-completeness checks.
+- **G104 `defer Close` whitelist** (universal.md + go.md) — narrowed to read-only handles; mutating/exec/commit handles must check or log; the two files are now consistent.
+- **Misc** — `skip_if` guards for `go-licenses`/`betteralign`; fuzz block auto-derives target name + package (removed unrunnable `FuzzXxx`/`./path/to/package/` placeholders in both bash and PowerShell twins); deadcode-vs-staticcheck-U1000 divergence note; `-race` skip must be stated in the concurrency verdict; `SafeJoinPath`/`ValidateURLScheme` marked illustrative + CLI operator-path carve-out; solo-DEEP reviewer-role note.
+
 ## [1.9.0] — 2026-05-30
 
 ### Added

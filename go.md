@@ -143,18 +143,25 @@ $env:CGO_ENABLED=1; go test -race -timeout 60s -count=1 ./... 2>&1
 FUZZ_FILES=$(grep -r "func Fuzz" --include="*_test.go" -l . 2>/dev/null)
 if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
   echo "$FUZZ_FILES"
-  # List fuzz targets: grep -r "func Fuzz" --include="*_test.go" -l
-  # Replace FuzzXxx and path with actual values from grep output:
-  go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
+  # Derive the first fuzz target name + its package dir from discovery (no hardcoded placeholder):
+  FUZZ_FILE=$(echo "$FUZZ_FILES" | head -1)
+  FUZZ_NAME=$(grep -oE "func (Fuzz[A-Za-z0-9_]+)" "$FUZZ_FILE" | head -1 | sed 's/func //')
+  FUZZ_PKG=$(dirname "$FUZZ_FILE")
+  echo "Running fuzz target $FUZZ_NAME in ./$FUZZ_PKG"
+  go test -fuzz="^${FUZZ_NAME}$" -fuzztime=30s "./$FUZZ_PKG/" 2>&1
 fi
 ```
 ```powershell
 # Windows equivalent
-$fuzz = Select-String -Path (Get-ChildItem -Recurse -Filter *_test.go) -Pattern 'func Fuzz' -List | Select-Object -ExpandProperty Path
-if (-not $fuzz) { Write-Output "SKIP: no fuzz tests found" } else {
-  $fuzz
-  # Replace FuzzXxx and path with actual values from the list above:
-  go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
+$hits = Select-String -Path (Get-ChildItem -Recurse -Filter *_test.go) -Pattern 'func (Fuzz[A-Za-z0-9_]+)' -List
+if (-not $hits) { Write-Output "SKIP: no fuzz tests found" } else {
+  $hits | Select-Object -ExpandProperty Path
+  # Derive the first fuzz target name + its package dir from discovery (no hardcoded placeholder):
+  $first = $hits | Select-Object -First 1
+  $fuzzName = $first.Matches[0].Groups[1].Value
+  $fuzzPkg = (Resolve-Path -Relative (Split-Path $first.Path)) -replace '\\','/'
+  Write-Output "Running fuzz target $fuzzName in $fuzzPkg"
+  go test -fuzz="^$fuzzName$" -fuzztime=30s "$fuzzPkg/" 2>&1
 }
 ```
 ```bash
@@ -171,6 +178,7 @@ go test -count=1 ./... 2>&1
 ```
 
 ### Dead code + modules
+> **deadcode vs staticcheck U1000 (SK10):** they diverge on methods satisfying an interface (e.g. a `String()` satisfying `fmt.Stringer`). U1000 treats an interface-satisfying method as used (reachable), so it can MISS a method that is dead whole-program; `deadcode` does whole-program reachability analysis and is authoritative here. Reconcile both — don't treat a clean U1000 as complete dead-code coverage.
 ```bash
 deadcode ./... 2>&1  # requires: go install golang.org/x/tools/cmd/deadcode@v0.45.0
 go mod verify 2>&1
@@ -180,23 +188,40 @@ go mod tidy -diff 2>&1
 ```
 
 ### Secrets scan
-> Skip if Trivy used above.
-> Install: `go install github.com/gitleaks/gitleaks/v8@v8.30.1`. Write findings to a gitignored report path (add `gitleaks-report.json` to `.gitignore`); `--redact` masks secret values; drop `-v` from agent-captured output to avoid leaking matches.
+> skip_if: no_tool(gitleaks). Skip if Trivy used above.
+> Install: `go install github.com/gitleaks/gitleaks/v8@v8.30.1`. `--redact` masks secret values; drop `-v` from agent-captured output to avoid leaking matches.
+> **Report path (SK4):** write the report OUT OF TREE — never into the repo (a secret-bearing report must not become a commit candidate; don't assume a `.gitignore` exists). Use an OS temp path:
+> - PowerShell: `--report-path "$env:TEMP\gitleaks-report.json"`
+> - bash: `--report-path "${TMPDIR:-/tmp}/gitleaks-report.json"`
 ```bash
-gitleaks detect --source . --no-git --redact --report-path gitleaks-report.json 2>&1   # Quick: files only
-gitleaks detect --source . --redact --report-path gitleaks-report.json 2>&1             # Full: + git history
+# Quick (working-tree, files only): use ${TMPDIR:-/tmp} (PowerShell: $env:TEMP) for the report path.
+gitleaks detect --source . --no-git --redact --report-path "${TMPDIR:-/tmp}/gitleaks-report.json" 2>&1
+# Full (+ git history) — AUTHORITATIVE for the committed-secrets verdict:
+gitleaks detect --source . --redact --report-path "${TMPDIR:-/tmp}/gitleaks-report.json" 2>&1
 ```
+> **Post-filter `--no-git` hits (SK3):** the working-tree scan flags files regardless of git status — a gitignored/untracked runtime artifact (e.g. a generated `id_ed25519_*` key) is NOT a committed secret. For each hit, check status and downgrade ignored/untracked paths to INFO:
+> - `git check-ignore <path>` (exit 0 ⇒ ignored ⇒ INFO), or `git ls-files --error-unmatch <path>` (non-zero ⇒ untracked ⇒ INFO).
+> - PowerShell: `git check-ignore -q $path; if ($LASTEXITCODE -eq 0) { 'INFO: ignored, not committed' }`
+> Only paths that are tracked (or confirmed by the git-history form above) count as committed-secret findings.
 
 ### Semgrep SAST
+> skip_if: no_tool(semgrep)
+> **Primary (offline-capable):** pin explicit registry rulesets so the scan works without a live network fetch from semgrep.dev. `p/security-audit`, `p/secrets`, `p/golang` are real registry IDs; multiple `--config` flags combine. Rules are downloaded once and cached under `~/.semgrep`; an air-gapped host needs them pre-cached (or local YAML via `--config <file>`).
 ```bash
-semgrep --config=auto . 2>&1
+semgrep --config=p/security-audit --config=p/secrets --config=p/golang . 2>&1
 ```
+> **Online option only:** `--config=auto` auto-selects rulesets but REQUIRES network (it fetches from semgrep.dev); on timeout/air-gap it yields nothing. Use only when network is available.
+> ```bash
+> semgrep --config=auto . 2>&1   # needs network
+> ```
+> **No-network fallback:** if rulesets are not cached and the host is offline, SAST cannot run via semgrep — record `SKIP: semgrep rulesets uncached + offline` and rely on `gosec`/`golangci-lint` for SAST coverage. (tools.md installs semgrep; the network requirement for first-run ruleset download is noted there.)
 
 ---
 
 ## Level 2: Code Review (DEEP agents)
 
 > **Reviewer mapping:** Security → diff-scanner + impact-reviewer. Concurrency → diff-scanner + history-reviewer. Resource leaks → diff-scanner. Conventions → convention-checker. Stale comments/TODOs → comment-checker.
+> **Solo DEEP review:** a single reviewer assumes all mapped roles; the mapping then only orders the checklist, not agents.
 
 Manual review tasks for DEEP agents using Serena/Grep.
 
@@ -210,8 +235,8 @@ What scanners miss — check manually:
 **Injection & Input:**
 - SQL injection (string concat near SQL, not parameterized)
 - Command injection (`exec.Command` with user input)
-- Path traversal (`filepath.Join` with user input — use `SafeJoinPath` + `filepath.EvalSymlinks`)
-- SSRF (HTTP request with user-supplied URL without scheme check)
+- Path traversal (`filepath.Join` with user input — `SafeJoinPath`/`ValidateURLScheme` are illustrative helper names — implement, or use stdlib `filepath.Clean` + a prefix/base-dir check; not provided. Also `filepath.EvalSymlinks`). CLI carve-out: operator-supplied local paths to the operator's own files are not a traversal vuln (trust boundary = the operator).
+- SSRF (HTTP request with user-supplied URL without scheme check — see the illustrative-helper note above)
 - CSV injection (user data in CSV with `=`, `+`, `-`, `@` prefixes — prepend `'` or validate)
 - XXE in `encoding/xml` — safe by default (no external entity resolution). Risk: third-party libs with libxml2. `d.Strict = true` controls syntax only, not XXE
 
@@ -238,6 +263,7 @@ What scanners miss — check manually:
 ### Concurrency safety
 
 > Race detector catches runtime races. Here — pattern audit:
+> **If `-race` was SKIPPED (SK13):** when the race-detector block above self-skipped (no gcc / Windows without MinGW), the report MUST state it explicitly — this manual pattern audit is then the SOLE concurrency coverage. Do not report "Concurrency: PASS" in a way that implies a runtime race verification that never ran.
 
 **Goroutine lifecycle:**
 - `go func` without WaitGroup or channel (leak)
@@ -285,8 +311,8 @@ What scanners miss — check manually:
 |------|-------------|-----|
 | SQL Injection | `fmt.Sprintf.*SELECT`, `"SELECT.*" +` | Parameterized queries `db.Query("... WHERE id = ?", id)` |
 | Command Injection | `exec.Command.*` + user input | Whitelist commands, no shell interpolation |
-| Path Traversal | `filepath.Join.*` + HTTP param | `SafeJoinPath()` + `filepath.EvalSymlinks()` |
-| SSRF | `http.Get(userURL)`, `client.Do` + user URL | `ValidateURLScheme()` + block private IPs |
+| Path Traversal | `filepath.Join.*` + HTTP param | `filepath.Clean` + prefix/base-dir check (`SafeJoinPath` illustrative, not provided) + `filepath.EvalSymlinks()`; operator-own local paths not a vuln |
+| SSRF | `http.Get(userURL)`, `client.Do` + user URL | scheme check + block private IPs (`ValidateURLScheme` illustrative, not provided) |
 | Timing Attack | `==` on secrets/tokens/HMAC | `subtle.ConstantTimeCompare()` |
 | Weak RNG | `math/rand` for tokens/secrets | `crypto/rand.Read()` |
 | Crypto | `md5.New()`, `sha1.New()` for auth | `sha256`, `bcrypt`, `argon2` |
@@ -321,7 +347,7 @@ What scanners miss — check manually:
 - `recover()` in all long-lived goroutines (workers, WS handlers, background jobs)
 - `json.NewEncoder().Encode()` errors handled
 - No `log.Fatal`/`os.Exit` outside `main()`
-- Errors from `defer` (Close, Flush, Commit) logged
+- Errors from `defer` (Close, Flush, Commit) logged (supersedes universal.md's read-only `defer Close` allowance for mutating/exec/commit handles — those must be checked/logged, not auto-discarded)
 - HTTP handlers return generic errors to client, details to logs
 - Errors wrapped with context: `fmt.Errorf("operation X: %w", err)` — not bare return
 - `errors.Is()`/`errors.As()` for comparison (not `==` — breaks with wrapped errors)
@@ -384,7 +410,8 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 - Logging in hot loops (I/O per iteration)
 - `reflect.DeepEqual` in production (use typed comparison)
 - `json.Marshal`/`json.Unmarshal` in hot path — consider `jsoniter`, `sonic`, or code-gen
-- Struct field alignment waste (tool: `betteralign` — `go install github.com/dkorunic/betteralign/cmd/betteralign@v0.11.0`)
+- Struct field alignment waste (optional tool: `betteralign` — `go install github.com/dkorunic/betteralign/cmd/betteralign@v0.11.0`). Optional, missing ⇒ skip (not BLOCKER).
+> skip_if: no_tool(betteralign)
 
 ### Overengineering
 
@@ -407,9 +434,10 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 
 ### License compliance
 
+> skip_if: no_tool(go-licenses) — if `go-licenses` is missing, do NOT treat as BLOCKER; fall back to the `trivy fs --scanners license` line below.
 ```bash
 go-licenses report ./... 2>&1  # requires: go install github.com/google/go-licenses/v2@v2.0.1
-# Or: trivy fs --scanners license . 2>&1
+# Fallback (if go-licenses unavailable): trivy fs --scanners license . 2>&1
 ```
 
 ### Dependency freshness
