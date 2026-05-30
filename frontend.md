@@ -39,13 +39,26 @@ npm audit 2>&1
 > Vulns found → `npm audit fix`. Breaking: `npm audit fix --force` (review). Report unfixable as findings.
 
 ### Tests (if configured)
+> skip_if: windows (bash `if`/`grep`). PowerShell: `Select-String '"vitest"' package.json` etc., or run the matching command directly.
 ```bash
 if grep -q '"vitest"' package.json; then
   npx vitest run 2>&1
 elif grep -q '"jest"' package.json; then
   npx jest --passWithNoTests 2>&1
+elif grep -q '"@angular/core"' package.json; then
+  # Angular: Karma/Jasmine via Angular CLI (CI-safe: headless, no watch)
+  npx ng test --watch=false --browsers=ChromeHeadless 2>&1
 elif grep -q '"test"' package.json; then
   npm test 2>&1
+fi
+```
+
+**E2E (if configured):** Playwright or Cypress.
+```bash
+if grep -q '"@playwright/test"' package.json; then
+  npx playwright test 2>&1
+elif grep -q '"cypress"' package.json; then
+  npx cypress run 2>&1
 fi
 ```
 
@@ -65,7 +78,7 @@ node --version 2>&1
 
 **Vue:**
 ```bash
-npx vue-tsc --noEmit 2>&1
+npx --yes vue-tsc@3.3.2 --noEmit 2>&1  # pin alongside typescript@~5.8
 ```
 
 **React / generic TS:**
@@ -75,16 +88,16 @@ npx tsc --noEmit 2>&1
 
 ### Dead exports & unused deps
 ```bash
-npx knip 2>&1
+npx --yes knip@6.14.2 2>&1
 ```
 
 ### Bundle analysis
 ```bash
 # Vite
-npx vite-bundle-visualizer 2>&1
+npx --yes vite-bundle-visualizer@1.2.1 2>&1
 
 # Webpack
-npx webpack-bundle-analyzer stats.json 2>&1
+npx --yes webpack-bundle-analyzer@5.3.0 stats.json 2>&1
 
 # Next.js
 ANALYZE=true npm run build 2>&1
@@ -101,7 +114,8 @@ Check:
 ### Secrets scan
 > Skip if Trivy used.
 ```bash
-gitleaks detect --source . --no-git -v 2>&1
+# --redact hides secret values; write findings to gitignored report (add gitleaks-report.json to .gitignore)
+gitleaks detect --source . --no-git --redact --report-format json --report-path gitleaks-report.json 2>&1
 ```
 
 ### Code coverage
@@ -126,21 +140,26 @@ semgrep --config=auto . 2>&1
 
 ```bash
 # 1. Dead code (unused deps, imports, exports, files, types)
-npx knip@latest --reporter compact 2>&1
+npx --yes knip@6.14.2 --reporter compact 2>&1
 
 # 2. Dead CSS in global stylesheets
-purgecss --css <global-css-files> --content 'src/**/*.{svelte,vue,jsx,tsx,html}' --rejected --output /dev/null 2>&1
+# Pinned: npm install --save-dev --save-exact purgecss@8.0.0 (or npx --yes purgecss@8.0.0)
+# --output needs a writable dir; use a temp dir, not a null device. Windows: $env:TEMP\purgecss (NOT /dev/null; PS has no /dev/null — equivalents are $null / NUL)
+npx --yes purgecss@8.0.0 --css <global-css-files> --content 'src/**/*.{svelte,vue,jsx,tsx,html}' --rejected --output "$TMPDIR/purgecss" 2>&1
 
 # 3. Dead i18n keys (if locale files exist)
-npx i18n-unused display-unused-keys 2>&1
+npx --yes i18n-unused@0.19.0 display-unused 2>&1
 
 # 4. Dead env vars (if .env exists)
-npx dotenv-check@latest 2>&1
+# dotenv-check is abandoned -> prefer dotenv-linter (Rust, lints .env + scans source for unused/undefined env vars).
+# Pinned install: cargo install dotenv-linter --version 3.3.0  (or pinned GitHub release binary + SHA256 verify)
+dotenv-linter 2>&1
+# Fallback only if dotenv-linter unavailable (pinned, but unmaintained): npx --yes dotenv-check@1.0.4 2>&1
 
 # 5. TS strictness verification
 # tsconfig.json should have "noUnusedLocals": true, "noUnusedParameters": true
 # Missing → MEDIUM finding. Then:
-npx svelte-check 2>&1  # or vue-tsc --noEmit, or tsc --noEmit
+npx --yes svelte-check@4.4.8 2>&1  # or vue-tsc@3.3.2 --noEmit, or tsc --noEmit
 ```
 
 Tool findings: adopt directly, severity = tool's or HIGH default.
@@ -149,7 +168,7 @@ Tool findings: adopt directly, severity = tool's or HIGH default.
 
 Require Opus-level reasoning, not automatable:
 
-1. **CSS Framework Utilization** — If knip/depcheck misses CSS framework (`@import`-ed in CSS, not JS), grep templates for framework class patterns. Zero hits = CRITICAL.
+1. **CSS Framework Utilization** — If knip misses CSS framework (`@import`-ed in CSS, not JS), grep templates for framework class patterns. Zero hits = CRITICAL.
 
 2. **Dead UI Features** — Find state vars controlling visibility (collapsed, isOpen, showX). Verify trigger exists AND visible. State + no trigger = HIGH.
 
@@ -181,7 +200,12 @@ Require Opus-level reasoning, not automatable:
 ### State management
 
 - **Vue:** reactive state not mutated outside Pinia/composable, no direct store.$state mutation
-- **React:** no direct state mutation, proper dep arrays in useEffect/useMemo
+- **React:**
+  - No direct state mutation (treat state/props as immutable; copy then set)
+  - **Rules of Hooks:** call hooks only at top level — never in conditionals, loops, or nested functions; same order every render (enforce via `eslint-plugin-react-hooks`)
+  - **Exhaustive deps:** complete dep arrays in `useEffect`/`useMemo`/`useCallback` (enable `react-hooks/exhaustive-deps` lint; do not silence without cause)
+  - `useCallback`/`useMemo` to stabilize callbacks/values passed to memoized children
+  - **React 19 / React Compiler:** the compiler auto-memoizes — manual `useMemo`/`useCallback`/`React.memo` become largely redundant and should be removed where the compiler is enabled (flag leftover manual memo as cleanup, not a bug)
 - **General:** no global mutable state outside store, computed values cached
 
 ### Performance patterns
@@ -232,7 +256,8 @@ Require Opus-level reasoning, not automatable:
 > Requires running dev server. If unavailable, skip with note.
 
 ```bash
-npx @axe-core/cli http://localhost:3000 2>&1
+# Use the detected dev URL (port per framework: 5173 Vite/SvelteKit | 4200 Angular | 3000 Nuxt/Next)
+npx --yes @axe-core/cli@4.11.3 "$URL" 2>&1
 # Or: eslint-plugin-vuejs-accessibility / eslint-plugin-jsx-a11y
 ```
 
@@ -260,21 +285,41 @@ Check:
 > **DOM mode only — NO screenshots.** Use `browser_snapshot` (accessibility tree) not `browser_take_screenshot` (expensive). Snapshots = structured DOM, fast, zero vision tokens. Screenshots only if user requests visual regression.
 
 **Step 1: Start dev server**
+
+> Detect the dev port per framework (do NOT hardcode 3000): Vite/SvelteKit → `5173`, Angular (`ng serve`) → `4200`, Nuxt/Next → `3000`. Set `PORT`/`URL` accordingly before the readiness loop.
+
+> skip_if: windows (`seq`/`for..do`/`curl` loop is bash). PowerShell equivalent below.
+
 ```bash
+# bash (Linux/macOS). Set PORT per framework first, e.g. PORT=5173 (Vite/SvelteKit) | 4200 (Angular) | 3000 (Nuxt/Next)
+PORT=${PORT:-3000}; URL="http://localhost:$PORT"
 if grep -q '"dev"' package.json; then
   npm run dev &
   DEV_PID=$!
-  for i in $(seq 1 30); do curl -sf http://localhost:3000 >/dev/null && break; sleep 1; done
+  for i in $(seq 1 30); do curl -sf "$URL" >/dev/null && break; sleep 1; done
 elif grep -q '"start"' package.json; then
   npm start &
   DEV_PID=$!
-  for i in $(seq 1 30); do curl -sf http://localhost:3000 >/dev/null && break; sleep 1; done
+  for i in $(seq 1 30); do curl -sf "$URL" >/dev/null && break; sleep 1; done
 fi
+```
+
+```powershell
+# PowerShell (Windows). $Port per framework: 5173 Vite/SvelteKit | 4200 Angular | 3000 Nuxt/Next
+$Port = 5173; $Url = "http://localhost:$Port"
+$script = if (Select-String '"dev"' package.json -Quiet) { 'dev' } elseif (Select-String '"start"' package.json -Quiet) { 'start' } else { $null }
+if ($script) {
+  $dev = Start-Process npm -ArgumentList "run $script" -PassThru -NoNewWindow
+  foreach ($i in 1..30) {
+    try { Invoke-WebRequest $Url -UseBasicParsing -TimeoutSec 1 | Out-Null; break } catch { Start-Sleep -Seconds 1 }
+  }
+}
 ```
 
 **Step 2: Broken links & dead navigation**
 ```bash
-npx broken-link-checker http://localhost:3000 --ordered --recursive 2>&1
+# broken-link-checker is abandoned + wrong binary name -> use linkinator (pinned). Use the detected $URL (port per framework).
+npx --yes linkinator@7.6.1 "$URL" --recurse 2>&1
 ```
 
 Playwright DOM audit (`browser_snapshot` after each action):
@@ -326,11 +371,13 @@ Fail criteria:
 | Page/Route | Element | Expected | Actual | Console errors |
 |------------|---------|----------|--------|----------------|
 
-> **Cleanup:** `kill $DEV_PID 2>/dev/null` — may need `kill $(lsof -ti:3000)` if child persists.
+> **Cleanup (bash):** `kill $DEV_PID 2>/dev/null` — may need `kill $(lsof -ti:$PORT)` if child persists.
+> **Cleanup (PowerShell):** `Stop-Process -Id $dev.Id -Force` — if child persists: `Get-NetTCPConnection -LocalPort $Port | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`
 
 ### License compliance
 ```bash
-npx license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0" 2>&1
+# license-checker is abandoned -> license-checker-evergreen (drop-in fork, same --failOn). Copyleft set harmonized with python.md.
+npx --yes license-checker-evergreen@6.3.1 --failOn "GPL-2.0;GPL-3.0;LGPL-2.1;LGPL-3.0;AGPL-3.0" 2>&1
 # Or: trivy fs --scanners license . 2>&1
 ```
 

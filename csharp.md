@@ -25,7 +25,7 @@ dotnet test --no-build 2>&1
 ### Lint (Roslyn analyzers)
 ```bash
 dotnet build /p:TreatWarningsAsErrors=true 2>&1
-# Or dotnet-format:
+# Or SDK built-in `dotnet format` (no install; standalone dotnet-format tool is deprecated):
 dotnet format --verify-no-changes 2>&1
 ```
 
@@ -69,11 +69,12 @@ dotnet-outdated 2>&1
 dotnet list package --deprecated 2>&1
 ```
 
-### Unused packages
+### Removable transitive package references
+> Flags PackageReferences that are pulled in transitively and can be dropped from the project (not truly "unused" packages).
 ```bash
-# Requires snitch
-dotnet tool install -g snitch
-snitch 2>&1
+# NuGone (replaces deprecated snitch)
+dotnet tool install --global NuGone --version 2.1.1
+nugone 2>&1
 ```
 
 ### Code coverage
@@ -84,8 +85,9 @@ dotnet test --collect:"XPlat Code Coverage" 2>&1
 ```
 
 ### Secrets scan
+> Skip if Trivy used.
 ```bash
-gitleaks detect --source . --no-git -v 2>&1
+gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2>&1
 ```
 
 ---
@@ -213,7 +215,7 @@ gitleaks detect --source . --no-git -v 2>&1
 - `string` concat in loop (use `StringBuilder`/`string.Join`)
 - `.Count() > 0` instead of `.Any()`
 - Boxing in hot paths (value type → `object`)
-- `Regex` without `RegexOptions.Compiled` for reused patterns (or source generators)
+- Reused `Regex` not using `[GeneratedRegex]` source generator (.NET 7+); `RegexOptions.Compiled` is the legacy fallback
 - Large objects on LOH without pooling (`ArrayPool<T>`)
 - Allocations in hot paths (use `Span<T>`, `Memory<T>`, stackalloc)
 - Missing `ConfigureAwait(false)` in library code

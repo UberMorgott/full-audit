@@ -23,8 +23,9 @@ cargo clippy -- -D warnings 2>&1
 
 ### Dependency vulnerabilities
 ```bash
+# Pin: cargo install cargo-audit --version 0.22.1 --locked
 cargo audit 2>&1
-# Or universal (verify version — v0.69.4-6 compromised, see tools.md):
+# Or universal (trivy 0.69.4-6 compromised — pin 0.69.3 / 0.70.0, see tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
 
@@ -42,7 +43,7 @@ cargo fmt --check 2>&1
 ```bash
 rustc --version 2>&1
 ```
-> If `cargo audit` reports stdlib vulns, run `rustup update stable`. Check `rust-version` in Cargo.toml.
+> `cargo audit` scans `Cargo.lock` crate advisories (RustSec DB) — NOT stdlib/compiler. For stdlib/toolchain CVEs, track Rust release notes + run `rustup update stable` (separate path). Check `rust-version` in Cargo.toml.
 
 **Pass criteria:** 0 errors, 0 clippy warnings.
 
@@ -79,6 +80,7 @@ Check:
 ### Unused dependencies
 ```bash
 # skip_if: nightly_only
+# Pin: cargo install cargo-udeps --version 0.1.61 --locked
 rustup run nightly rustc --version >/dev/null 2>&1 || { echo "SKIP: nightly not installed"; exit 0; }
 cargo +nightly udeps --all-targets 2>&1
 ```
@@ -90,11 +92,14 @@ cargo outdated -R 2>&1
 
 ### Code coverage
 ```bash
-# Linux only (tarpaulin)
+# tarpaulin: now cross-platform (Linux/macOS/Windows); ptrace engine richest on Linux
+# Pin: cargo install cargo-tarpaulin --version 0.35.4 --locked
 cargo tarpaulin --out Html --skip-clean 2>&1
 
-# Cross-platform via llvm-cov
-cargo install cargo-llvm-cov
+# Cross-platform via llvm-cov (region-level accuracy)
+# Install if not present (preferred: pre-install via tools.md, pin 0.8.7):
+# Windows: if (-not (Get-Command cargo-llvm-cov -EA SilentlyContinue)) { cargo +stable install cargo-llvm-cov --version 0.8.7 --locked }
+# POSIX:   command -v cargo-llvm-cov >/dev/null 2>&1 || cargo +stable install cargo-llvm-cov --version 0.8.7 --locked
 cargo llvm-cov --summary-only 2>&1
 ```
 
@@ -122,9 +127,10 @@ semgrep --config=auto . 2>&1
 ```
 
 ### Secrets scan
-> Skip if Trivy used.
+> Skip if Trivy used. Pin: `go install github.com/gitleaks/gitleaks/v8@v8.30.1`
 ```bash
-gitleaks detect --source . --no-git -v 2>&1
+# --redact masks secret values; write findings to gitignored report (add gitleaks-report.json to .gitignore)
+gitleaks detect --source . --no-git --redact --report-path gitleaks-report.json 2>&1
 ```
 
 ---

@@ -34,8 +34,8 @@ mvn test -q 2>&1
 
 **Maven (if configured):**
 ```bash
-mvn checkstyle:check -q 2>&1
-mvn pmd:check -q 2>&1
+mvn checkstyle:check -q 2>&1   # pin maven-checkstyle-plugin 3.6.0 + checkstyle engine 13.4.2 in pom.xml
+mvn pmd:check -q 2>&1          # pin maven-pmd-plugin 3.27.0 + pmd-java 7.25.0 in pom.xml
 ```
 
 **Gradle:**
@@ -47,9 +47,9 @@ mvn pmd:check -q 2>&1
 
 ### Dependency vulnerabilities
 ```bash
-# OWASP Dependency-Check (if plugin configured)
-mvn org.owasp:dependency-check-maven:check 2>&1
-# Gradle:
+# OWASP Dependency-Check (if plugin configured) — set NVD_API_KEY to avoid 403/slow updates
+mvn -B org.owasp:dependency-check-maven:12.2.2:check 2>&1
+# Gradle: plugin id 'org.owasp.dependencycheck' version '12.2.2'
 ./gradlew dependencyCheckAnalyze 2>&1
 # Universal (verify version — v0.69.4-6 compromised, see tools.md):
 trivy version 2>&1 | head -1
@@ -121,8 +121,9 @@ semgrep --config=auto . 2>&1
 ```
 
 ### Secrets scan
+> Skip if Trivy used.
 ```bash
-gitleaks detect --source . --no-git -v 2>&1
+gitleaks detect --source . --no-git --redact --report-path gitleaks-report.json 2>&1   # add gitleaks-report.json to .gitignore
 ```
 
 ---
@@ -199,7 +200,7 @@ gitleaks detect --source . --no-git -v 2>&1
 
 ## Level 3: Deep (includes L2)
 
-> Java 21+: Virtual Threads must NOT hold locks during blocking I/O. `synchronized` blocks pin virtual threads to platform threads.
+> JDK 21-23: Virtual Threads must NOT hold locks during blocking I/O. `synchronized` blocks pin virtual threads to platform threads (use `ReentrantLock` instead). JDK 24+ (JEP 491) no longer pins on `synchronized` — pinning fix not backported, so still applies on 21-23.
 
 > GraalVM Native Image: verify reflection config, serialization registration, resource inclusion in native-image.properties.
 

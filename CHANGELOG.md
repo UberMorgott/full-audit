@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.8.0] — 2026-05-30
+
+### Changed
+- **Fixer root-cause TRACE step** — fix at the origin, not the symptom; **defense-in-depth layering** for CRITICAL/HIGH data-flow findings; **self-review before handoff**; **architecture-escalation branch** added to the 3-strike STOP rule.
+- **Orchestrator poll-until-condition** (`waitFor`) — condition-based waiting replaces wall-clock timers; **compressed subagent output discipline** (~60% less orchestrator context).
+- **Review agent-report format** — one-line `path:line: <emoji> <sev>: problem. fix.`; **`❓ q:` question outlet**; **no-praise / no-scope-creep rule** (auto-clarity exception for security/architecture).
+- **Commits/tasks** — subject ≤50 chars; body mandatory for security/migration/breaking changes; **no-placeholder banned-list** in fix tasks.
+
+### Added
+- **'Defense-in-Depth Validation' L3 check** (universal.md).
+
+## [1.7.0] — 2026-05-30
+
+### Security
+- **Removed `curl … | sh` installers** — replaced with pinned release binaries + SHA256 verification (or the researched better alternative).
+- **Pinned all tool versions** — every install/`npx`/download pinned to an exact version; no `@latest`.
+- **`gitleaks --redact`** — added `--redact`, findings written to a gitignored report path, dropped `-v` from agent-captured (`2>&1`) output.
+- **Pinned instruction-fetch to an immutable ref** — fetch playbook instructions by immutable commit ref, not a mutable branch/tag.
+- **Explicit install consent** — tools install only with explicit user consent on level selection.
+
+### Fixed
+- **Command corrections** — golangci-lint v2 flags; `dotnet format` built-in SDK command (dropped deprecated `dotnet-format` tool); i18n-unused `display-unused` keys; `py_compile` → `compileall`; gocyclo cyclomatic-complexity threshold.
+- **Windows `skip_if` guards** — bash-only commands (`which`, `command -v`, `for…do`, `find`, `grep`, `/dev/null`, `seq`) guarded with `skip_if: windows` or given PowerShell equivalents.
+- **Stack parity** — secrets check skips when Trivy is the engine (skip-if-Trivy); added Python concurrency note.
+
+### Added
+- **'Documentation Concision' L3 check** — bullet-style, drop filler words, keep every value/name/path/command/URL exact.
+
+### Docs
+- **MCP prefix note**, **step-1.5 reference**, **license deliverable**, **unenforceable-timer reframe**, and **version-stale framework notes** (JDK 24, `GeneratedRegex`, React hooks).
+
 ## [1.6.0] — 2026-05-28
 
 ### Added
@@ -9,6 +40,14 @@
 - **`impact-reviewer` expanded responsibilities** (README.md, Wave 2) — three new cross-file checks: serialization tag audit (fields with `json:"-"`/`@JsonIgnore`/`[NonSerialized]` that have active consumers), progress/counter data flow tracing (source to display, silent reset detection), dead UI features (state variables without reachable triggers).
 - **Dead Asset Detection** (frontend.md, L2) — 6 cross-reference checks that CLI tools miss: CSS framework utilization, dead CSS classes, dead i18n/localization keys, dependency utilization audit beyond knip/depcheck, dead imports enforcement, dead UI features (state without triggers). All checks are framework-agnostic — work for React, Vue, Svelte, Angular, Solid, or vanilla JS.
 - **Cross-Stack Waste Detection** (universal.md, L2) — 4 universal waste detection checks for any tech stack: config-dependency coherence (with per-stack tooling: depcheck, go mod tidy, cargo udeps, pip-extra-reqs), declared-vs-used asset audit (CSS classes, i18n keys, env vars, API routes, DB columns, feature flags, config keys), progress/counter/metric data flow verification (source-to-sink tracing, zero-value default detection), serialization tag audit (fields excluded from serialization but expected by consumers).
+
+## [1.5.0] — 2026-05-27
+
+### Added
+- **Interactive depth selection** — user picks audit depth (Level 1/2/3) interactively at start.
+- **MCP preflight** — verify required MCP servers are available before spawning agents.
+- **Functional UI testing (Playwright)** — automated browser-driven UI checks via Playwright MCP.
+- **CLI tools install on level selection** — required CLI tools installed when the audit level is chosen.
 
 ## [1.4.0] — 2026-05-26
 

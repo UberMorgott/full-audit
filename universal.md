@@ -295,7 +295,7 @@ Every agent MUST run:
 #### 1. Config-Dependency Coherence
 
 **Automated (per-stack CLI):**
-- Node.js: `npx knip@latest` + `npx depcheck`
+- Node.js: `npx --yes knip@6.14.2` (dead deps/imports/exports/files) + `npx --yes knip@6.14.2 --dependencies` (dep second opinion; depcheck archived)
 - Go: `go mod tidy -diff`
 - Rust: `cargo udeps` (nightly)
 - Python: `pip-extra-reqs .` + `pip-missing-reqs .`
@@ -588,6 +588,20 @@ If project processes XML:
 
 ---
 
+## Level 3: Documentation Concision (Opus)
+
+> Applies to all prose docs/notes/rules: README, CLAUDE.md, ADRs, `/docs`, design notes, AND this audit's own report output.
+
+- Bullet-first: facts as bullets, not paragraphs. Prose only where flow is load-bearing.
+- Compressed without loss: drop filler (articles, hedging, "in order to", "it should be noted"). Keep every value, name, path, command, URL exact.
+- One fact per bullet — no run-on bullets bundling 3 ideas.
+- No redundancy: each rule stated once; cross-reference instead of repeating across files.
+- Tables/lists over narrative for enumerable data (configs, flags, severities).
+- Findings: paragraph that could be N bullets -> flag "verbose: compress to bullets". Detail lost on compression -> flag "over-compressed: restore {value}".
+- The audit report itself MUST obey this: bullet-style, compressed, values exact.
+
+---
+
 ## Level 3: Input Validation Completeness (Opus)
 
 - Endpoint x validation matrix
@@ -601,6 +615,17 @@ If project processes XML:
 - Path traversal: canonical path + prefix validation
 - Symlink: `filepath.EvalSymlinks` (Go), `os.path.realpath` (Python) before prefix check
 - Regex with user input: escape/validate (see ReDoS)
+
+---
+
+## Level 3: Defense-in-Depth Validation (Opus)
+
+> Consumed by code-reviewer-security; applied by fixers on CRITICAL/HIGH data-flow fixes.
+
+- Map every checkpoint a value crosses: entry (deserialize/parse), business logic, env/config guard, debug/log.
+- Validate at EACH layer, not just entry — one check fixes the bug, every layer makes it structurally impossible.
+- Fail closed: reject on missing/invalid at first layer; deeper layers assert invariants, not re-parse.
+- Trust boundary explicit: mark where untrusted data becomes trusted; no downstream layer re-trusts raw input.
 
 ---
 
@@ -737,6 +762,7 @@ If project processes XML:
 - **High-risk dep features:** FFI, deserialization, network, native — justify
 - **SBOM:** generated for releases
 - **Binary provenance:** reproducible builds or signed checksums
+- **License compliance:** scan deps for incompatible/copyleft licenses (GPL/AGPL) — Node: `npx --yes license-checker-evergreen@6.3.1 --failOn "GPL-2.0;GPL-3.0;LGPL-2.1;LGPL-3.0;AGPL-3.0"`; Go: `go install github.com/google/go-licenses/v2@v2.0.1`
 
 > `skip_if` no CI/CD: check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines.yml` first.
 
@@ -891,7 +917,7 @@ Output: `[VARIANT]` prefix on same finding.
 ## Level 3: Functional UI/UX Testing (Opus)
 
 > #1 complaint: audits miss ~70% broken UI. Applies to any web UI project.
-> See `frontend.md → Functional UI Testing (Playwright)` for details.
+> See `frontend.md → Functional UI Testing (Playwright DOM mode)` for details.
 > **Static analysis by default.** Dev server only if user explicitly requested.
 
 ### Static (no server)

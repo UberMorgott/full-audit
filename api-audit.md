@@ -104,6 +104,7 @@ Trace request flows end-to-end for amplification patterns:
 If project uses GraphQL:
 - **Query depth limiting:** unbounded nested queries cause exponential DB load
 - **Query complexity analysis:** assign cost to fields, reject over-budget queries
+- **Alias batching / `@defer` amplification:** repeated field aliases or array-batched/`@defer`/`@stream` ops multiply resolver work in one request — N+1/DoS vector; cap alias count, batch size, and `@defer`/`@stream` per request alongside depth/complexity limits (standard mitigation)
 - **Introspection disabled in prod:** `__schema`/`__type` queries leak API structure
 - **N+1 in resolvers:** use DataLoader or equivalent batching
 - **Persisted queries:** consider allowing only pre-approved query hashes in prod

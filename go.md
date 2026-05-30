@@ -23,12 +23,12 @@ go build ./... 2>&1
 go vet ./... 2>&1
 ```
 ```bash
-staticcheck ./... 2>&1  # requires: go install honnef.co/go/tools/cmd/staticcheck@latest
+staticcheck ./... 2>&1  # requires: go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
 ```
 
 ### Dependency vulnerabilities
 ```bash
-govulncheck ./... 2>&1
+govulncheck ./... 2>&1  # requires: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
 ```
 
 ### Go toolchain currency
@@ -50,15 +50,26 @@ go test -timeout 60s -count=1 ./... 2>&1
 
 ### Static analysis — golangci-lint v2
 
-> v2: `-E` removed — use `--enable` or config. `enable-all`/`disable-all` replaced by `linters.default`).
+> v2 (golangci-lint v2.12.2): `-E` removed. `--enable` takes ONE linter per flag (repeat the flag); comma lists no longer parse. `enable-all`/`disable-all` replaced by `linters.default`. Prefer the config file below over a long CLI.
+> Install: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2`
 
 ```bash
-golangci-lint run ./... --enable bodyclose,sqlclosecheck,nilerr,nilnil,errcheck,errchkjson,ineffassign,gocognit,gocyclo,funlen,nestif,goconst,dupl,unconvert,unparam,prealloc,rowserrcheck,forcetypeassert,wrapcheck,contextcheck,noctx --timeout 5m 2>&1
+golangci-lint run ./... \
+  --enable bodyclose --enable sqlclosecheck --enable nilerr --enable nilnil \
+  --enable errcheck --enable errchkjson --enable ineffassign --enable gocognit \
+  --enable gocyclo --enable funlen --enable nestif --enable goconst --enable dupl \
+  --enable unconvert --enable unparam --enable prealloc --enable rowserrcheck \
+  --enable forcetypeassert --enable wrapcheck --enable contextcheck --enable noctx \
+  --timeout 5m 2>&1
 ```
 
 <details><summary>Recommended .golangci.yml</summary>
 
 ```yaml
+# golangci-lint v2 schema (v2.12.2)
+version: "2"
+run:
+  timeout: 5m
 linters:
   enable:
     - bodyclose
@@ -82,15 +93,13 @@ linters:
     - wrapcheck
     - contextcheck
     - noctx
-linters-settings:
-  gocognit:
-    min-complexity: 30
-  gocyclo:
-    min-complexity: 10
-  funlen:
-    lines: 60
-run:
-  timeout: 5m
+  settings:
+    gocognit:
+      min-complexity: 30
+    gocyclo:
+      min-complexity: 20
+    funlen:
+      lines: 60
 ```
 </details>
 
@@ -102,24 +111,35 @@ run:
 
 **Option A — Trivy (vuln + secrets + licenses):**
 ```bash
-# IMPORTANT: verify version — v0.69.4/v0.69.5/v0.69.6 compromised (see tools.md)
+# IMPORTANT: v0.69.4/v0.69.5/v0.69.6 are compromised (CVE-2026-33634). Pin a clean release:
+#   choco install trivy --version=0.69.3 --require-checksums -y   # last clean Chocolatey build
+#   (move to 0.70.0 once approved on community.chocolatey.org/packages/trivy)
 trivy version 2>&1 | head -1
 trivy fs --scanners vuln,secret,license --severity HIGH,CRITICAL . 2>&1
 ```
 
 **Option B — Go-specific:**
 ```bash
+# requires: go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
 gosec ./... 2>&1
+# requires: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
 govulncheck ./... 2>&1
 ```
 
 ### Race detector + fuzz + coverage
 ```bash
+# skip_if: windows  (uses `which`; on Windows use the PowerShell block below)
 # Race detector (requires gcc for CGO)
 which gcc > /dev/null 2>&1 || { echo "SKIP: gcc not found (required for -race). Install MinGW-w64."; exit 0; }
 CGO_ENABLED=1 go test -race -timeout 60s -count=1 ./... 2>&1
 ```
+```powershell
+# Windows equivalent. gcc via: choco install mingw --version=15.2.0 -y
+if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) { Write-Output "SKIP: gcc not found (required for -race). choco install mingw --version=15.2.0 -y"; return }
+$env:CGO_ENABLED=1; go test -race -timeout 60s -count=1 ./... 2>&1
+```
 ```bash
+# skip_if: windows  (uses grep/[ -z ]; on Windows use the PowerShell block below)
 # Fuzz: find tests, run each 30s
 FUZZ_FILES=$(grep -r "func Fuzz" --include="*_test.go" -l . 2>/dev/null)
 if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
@@ -128,6 +148,15 @@ if [ -z "$FUZZ_FILES" ]; then echo "SKIP: no fuzz tests found"; else
   # Replace FuzzXxx and path with actual values from grep output:
   go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
 fi
+```
+```powershell
+# Windows equivalent
+$fuzz = Select-String -Path (Get-ChildItem -Recurse -Filter *_test.go) -Pattern 'func Fuzz' -List | Select-Object -ExpandProperty Path
+if (-not $fuzz) { Write-Output "SKIP: no fuzz tests found" } else {
+  $fuzz
+  # Replace FuzzXxx and path with actual values from the list above:
+  go test -fuzz=FuzzXxx -fuzztime=30s ./path/to/package/ 2>&1
+}
 ```
 ```bash
 # Coverage
@@ -144,7 +173,7 @@ go test -count=1 ./... 2>&1
 
 ### Dead code + modules
 ```bash
-deadcode ./... 2>&1
+deadcode ./... 2>&1  # requires: go install golang.org/x/tools/cmd/deadcode@v0.45.0
 go mod verify 2>&1
 ```
 ```bash
@@ -153,9 +182,10 @@ go mod tidy -diff 2>&1
 
 ### Secrets scan
 > Skip if Trivy used above.
+> Install: `go install github.com/gitleaks/gitleaks/v8@v8.30.1`. Write findings to a gitignored report path (add `gitleaks-report.json` to `.gitignore`); `--redact` masks secret values; drop `-v` from agent-captured output to avoid leaking matches.
 ```bash
-gitleaks detect --source . --no-git -v 2>&1      # Quick: files only
-gitleaks detect --source . -v 2>&1                 # Full: + git history
+gitleaks detect --source . --no-git --redact --report-path gitleaks-report.json 2>&1   # Quick: files only
+gitleaks detect --source . --redact --report-path gitleaks-report.json 2>&1             # Full: + git history
 ```
 
 ### Semgrep SAST
@@ -243,7 +273,7 @@ What scanners miss — check manually:
 - File open without `defer f.Close()`
 - `context.Background()` in HTTP handler (use `r.Context()`)
 - `context.WithTimeout`/`context.WithCancel` without `defer cancel()` (context leak)
-- Context not propagated through layers: HTTP handler → service → DB → external call — 
+- Context not propagated through layers: HTTP handler → service → DB → external call
 - HTTP server without `ReadTimeout`/`WriteTimeout` (Slowloris) — consider `http.TimeoutHandler` per-handler
 - Background goroutine without `recover()`
 - `io.ReadAll` without body size limit (DoS)
@@ -321,14 +351,14 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 **MySQL:** SSL enabled, `utf8mb4`, slow query log, pool configured.
 </details>
 
-**Any DB:** no SQL via string concat, no `SELECT *` in prod, migrations have rollback, indexes on FK/WHERE, pool limits set, no hardcoded DB password, graceful close on shutdown. N+1 queries: loop with query inside — use JOIN or batch query).
+**Any DB:** no SQL via string concat, no `SELECT *` in prod, migrations have rollback, indexes on FK/WHERE, pool limits set, no hardcoded DB password, graceful close on shutdown. N+1 queries: loop with query inside — use JOIN or batch query.
 
 ### Complexity & architecture
 
 - Functions with cognitive complexity >50
 - Files >500 lines
 - Circular package dependencies
-- Test coverage >60% for business logic)
+- Test coverage >60% for business logic
 
 ### Performance patterns
 
@@ -355,7 +385,7 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 - Logging in hot loops (I/O per iteration)
 - `reflect.DeepEqual` in production (use typed comparison)
 - `json.Marshal`/`json.Unmarshal` in hot path — consider `jsoniter`, `sonic`, or code-gen
-- Struct field alignment waste (tool: `betteralign`)
+- Struct field alignment waste (tool: `betteralign` — `go install github.com/dkorunic/betteralign/cmd/betteralign@v0.11.0`)
 
 ### Overengineering
 
@@ -379,12 +409,17 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 ### License compliance
 
 ```bash
-go-licenses report ./... 2>&1
+go-licenses report ./... 2>&1  # requires: go install github.com/google/go-licenses/v2@v2.0.1
 # Or: trivy fs --scanners license . 2>&1
 ```
 
 ### Dependency freshness
 
 ```bash
+# skip_if: windows  (uses grep; on Windows use the PowerShell line below)
 go list -m -u all 2>&1 | grep '\['
+```
+```powershell
+# Windows equivalent (Select-String for the [available-upgrade] marker)
+go list -m -u all 2>&1 | Select-String -Pattern '\['
 ```

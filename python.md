@@ -18,16 +18,17 @@ All commands assume `cd {project_root}`.
 
 ### Syntax + lint
 ```bash
-ruff check . 2>&1
-# Or if ruff unavailable:
-# python -m py_compile $(find . -name "*.py" -not -path "./.venv/*") 2>&1
+ruff check . 2>&1   # install pinned: pip install ruff==0.15.15
+# Or if ruff unavailable (cross-platform):
+# python -m compileall . 2>&1
+# python -m py_compile $(find . -name "*.py" -not -path "./.venv/*") 2>&1   # > skip_if: windows ($()/find bash-only)
 # flake8 . 2>&1
 ```
 
 ### Dependency vulns
 ```bash
-pip-audit 2>&1
-# Or: safety check 2>&1
+pip-audit 2>&1   # install pinned: pip install pip-audit==2.10.0
+# Or (safety -> replaced by pip-audit; safety needs login/account): pip install pip-audit==2.10.0
 # Or (verify version — v0.69.4-6 compromised, see tools.md):
 # trivy fs --scanners vuln --severity HIGH,CRITICAL . 2>&1
 ```
@@ -50,7 +51,7 @@ fi
 ### Type check (if typed)
 ```bash
 if grep -q "mypy" pyproject.toml 2>/dev/null || [ -f "mypy.ini" ] || [ -f ".mypy.ini" ]; then
-  mypy . 2>&1
+  mypy . 2>&1   # install pinned: pip install mypy==2.1.0
 fi
 ```
 
@@ -68,7 +69,7 @@ python --version 2>&1
 
 ### Security — Bandit
 ```bash
-bandit -r . -x ./.venv,./tests -f json 2>&1
+bandit -r . -x ./.venv,./tests -f json 2>&1   # install pinned: pip install "bandit[toml]==1.9.4"
 ```
 
 Key rules:
@@ -85,12 +86,12 @@ Key rules:
 
 ### Dead code
 ```bash
-vulture . --min-confidence 80 2>&1
+vulture . --min-confidence 80 2>&1   # install pinned: pip install vulture==2.16
 ```
 
 ### Complexity
 ```bash
-radon cc . -a -nc 2>&1     # Cyclomatic (C+ grade only)
+radon cc . -a -nc 2>&1     # Cyclomatic (C+ grade only); install pinned: pip install radon==6.0.1
 radon mi . -nc 2>&1         # Maintainability (problematic only)
 ```
 
@@ -109,13 +110,15 @@ coverage run -m pytest; coverage report --show-missing 2>&1
 
 ### Semgrep SAST
 ```bash
-semgrep --config=auto . 2>&1
+semgrep --config=auto . 2>&1   # install pinned: pip install semgrep==1.164.0
 ```
 
 ### Secrets scan
 > Skip if Trivy used.
 ```bash
-gitleaks detect --source . --no-git -v 2>&1
+# --redact (no raw secrets in output); findings to gitignored report; no -v in captured output
+gitleaks detect --source . --no-git --redact --report-path .gitleaks-report.json 2>&1   # install pinned: go install github.com/gitleaks/gitleaks/v8@v8.30.1
+# Add .gitleaks-report.json to .gitignore
 ```
 
 ---
@@ -139,6 +142,8 @@ gitleaks detect --source . --no-git -v 2>&1
 ### Concurrency (if async/threading)
 
 > 3.11+: Check TaskGroup. 3.12+: Check ExceptionGroup handling.
+>
+> **Dynamic-concurrency parity:** The GIL does NOT make multi-step ops race-free — check-then-act, read-modify-write, and `+=` on shared state still race (GIL only protects single bytecode ops, releases between them; gone entirely under free-threaded 3.13+ `--disable-gil`). Unlike Go (`-race`), Rust (Send/Sync), Java/C# (dynamic race detectors), Python has NO dynamic race-detection tier. Compensate with: pytest-asyncio for async test coverage + a threading/lock static lint pass (the static patterns below). Treat shared-state correctness as manually audited, not tool-guaranteed.
 
 - `threading.Thread` without daemon/join (zombie threads)
 - Shared mutable state without `threading.Lock`
@@ -168,7 +173,7 @@ gitleaks detect --source . --no-git -v 2>&1
 | Deserialization | `pickle.loads`, `yaml.load\(` | `json`, `yaml.safe_load()` |
 | SSRF | `requests.get\(.*url`, `urllib.request.urlopen` | Validate scheme, block private IPs |
 | Eval/exec | `eval\(`, `exec\(`, `compile\(` | Never with user input; AST or safe alt |
-| Weak RNG | `import random` for tokens | `secrets.token_hex()`, `token_urlsafe()` |
+| Weak RNG | `random\.(random\|randint\|choice\|randrange\|getrandbits)\(` in security/token context (not bare `import random` — overbroad, see universal.md false-positive table) | `secrets.token_hex()`, `token_urlsafe()`, `secrets.choice()` |
 | Debug prod | `DEBUG\s*=\s*True`, `app.run(debug=True)` | `DEBUG = os.getenv("DEBUG") == "true"` |
 | Hardcoded secrets | `password\s*=\s*["']`, `api_key\s*=\s*["']` | Env vars, secret manager |
 | Template injection | `render_template_string\(.*request` | Never pass user input to templates |
@@ -205,7 +210,7 @@ mypy --strict . 2>&1
 pip list --outdated 2>&1
 
 # Unused deps (if pipreqs available)
-pipreqs . --print 2>&1
+pipreqs . --print 2>&1   # install pinned: pip install pipreqs==0.5.0
 # Compare with requirements.txt / pyproject.toml
 ```
 
@@ -217,7 +222,7 @@ pipreqs . --print 2>&1
 
 ### License compliance
 ```bash
-pip-licenses --fail-on="GPL-2.0;GPL-3.0;AGPL-3.0" 2>&1
+pip-licenses --fail-on="GPL-2.0;GPL-3.0;LGPL-2.1;LGPL-3.0;AGPL-3.0" 2>&1   # install pinned: pip install pip-licenses==5.5.5
 # Or: trivy fs --scanners license . 2>&1
 ```
 
