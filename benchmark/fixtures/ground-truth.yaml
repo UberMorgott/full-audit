@@ -1,0 +1,57 @@
+# Fixture ground truth — paired with fixtures/audit-bugs.json. Hand-built with
+# KNOWN expected counts (asserted by benchmark/test_score.py).
+#
+# Expected outcome at default window N=5:
+#   SCA : TP=1 (GT-SCA-TP), FN=1 (GT-SCA-FN), FP=1 (FA-0006 cve, no GT)
+#   SAST: TP=1 (GT-SAST-TP), FN=1 (GT-SAST-FN), FP=1 (FA-0003 cwe, no GT)
+#   logical GT items: 1 (GT-LOG-1) -> manual review only
+#   adjudication (no-taxonomy findings, NOT FP): 2 (FA-0004 logical, FA-0005 no-tax)
+meta:
+  repo: fixture/none
+  commit: 0000000000000000000000000000000000000000
+  notes: synthetic — no real repo, no audit run
+
+items:
+  # SCA TP — finding FA-0001 carries this CVE.
+  - id: GT-SCA-TP
+    type: sca
+    cve: CVE-2021-1111
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 10
+
+  # SCA FN — no finding carries this CVE.
+  - id: GT-SCA-FN
+    type: sca
+    cve: CVE-2021-2222
+    severity: CRITICAL
+    cvss: 9.8
+    file: package-lock.json
+    line_start: 200
+
+  # SAST TP — finding FA-0002 is same file, CWE-89, lines overlap [45..52] +/- 5.
+  - id: GT-SAST-TP
+    type: sast
+    cwe: CWE-89
+    severity: CRITICAL
+    cvss: 9.1
+    file: src/db/query.go
+    line_start: 45
+    line_end: 52
+
+  # SAST FN — no finding for this path traversal.
+  - id: GT-SAST-FN
+    type: sast
+    cwe: CWE-22
+    severity: HIGH
+    file: src/io/path.go
+    line_start: 70
+
+  # logical — excluded from auto-matching; manual review only.
+  - id: GT-LOG-1
+    type: logical
+    severity: MEDIUM
+    file: src/auth/session.go
+    line_start: 120
+    line_end: 140

@@ -1,0 +1,50 @@
+# Illustrative ground-truth set (not a real target). Shows the schema in
+# benchmark/ground-truth.schema.md across all three item types.
+# This file (and any real GT) must be git-tagged BEFORE a benchmark run.
+meta:
+  repo: example/illustrative
+  commit: 0000000000000000000000000000000000000000
+  notes: example only — for documentation, not scored against a real audit
+
+items:
+  # --- SCA (dependency CVEs; matched by CVE id only) ---
+  - id: GT-SCA-1
+    type: sca
+    cve: CVE-2023-1234
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 12
+
+  - id: GT-SCA-2
+    type: sca
+    cve: [CVE-2022-9999, CVE-2022-9998]   # either CVE id counts as a match
+    severity: CRITICAL
+    cvss: 9.8
+    file: package-lock.json
+    line_start: 340
+
+  # --- SAST (code vulns; matched by file + CWE + line window) ---
+  - id: GT-SAST-1
+    type: sast
+    cwe: CWE-89                # SQL injection
+    severity: CRITICAL
+    cvss: 9.1
+    file: src/db/query.go
+    line_start: 45
+    line_end: 52
+
+  - id: GT-SAST-2
+    type: sast
+    cwe: [CWE-79, CWE-80]      # XSS family
+    severity: MEDIUM
+    file: web/render.py
+    line_start: 88
+
+  # --- logical (excluded from auto-matching; manual adjudication only) ---
+  - id: GT-LOG-1
+    type: logical
+    severity: HIGH
+    file: src/auth/session.go
+    line_start: 120
+    line_end: 140

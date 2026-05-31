@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.1",
+  "audit": { "level": "2", "verified": true, "date": "2026-05-31",
+             "commit": "0000000000000000000000000000000000000000", "scope": "branch" },
+  "summary": { "critical": 2, "high": 2, "medium": 2, "low": 0,
+               "health": "NEEDS_WORK" },
+  "findings": [
+    {
+      "id": "FA-0001",
+      "severity": "HIGH",
+      "file": "go.mod",
+      "line": 10,
+      "cve": "CVE-2021-1111",
+      "title": "vulnerable dependency (SCA TP)",
+      "detail": "matches GT-SCA-TP by CVE id",
+      "detection": "osv-scanner",
+      "confidence": 90,
+      "reproduced": "yes",
+      "recommendation": "bump dependency"
+    },
+    {
+      "id": "FA-0002",
+      "severity": "CRITICAL",
+      "file": "src/db/query.go",
+      "line": 47,
+      "end_line": 50,
+      "cwe": "CWE-89",
+      "title": "SQL injection (SAST TP)",
+      "detail": "matches GT-SAST-TP: same file, CWE-89, line span inside window",
+      "detection": "semgrep",
+      "confidence": 85,
+      "reproduced": "yes",
+      "recommendation": "use parameterized queries"
+    },
+    {
+      "id": "FA-0003",
+      "severity": "HIGH",
+      "file": "src/exec/run.go",
+      "line": 12,
+      "cwe": "CWE-78",
+      "title": "OS command injection (SAST FP)",
+      "detail": "auto-scorable (has cwe) but matches no GT item -> strict FP",
+      "detection": "gosec",
+      "confidence": 70,
+      "reproduced": "no",
+      "recommendation": "avoid shelling out with user input"
+    },
+    {
+      "id": "FA-0004",
+      "severity": "MEDIUM",
+      "file": "src/auth/session.go",
+      "line": 130,
+      "title": "weak session rotation (logical finding)",
+      "detail": "LLM/manual logical finding, no cwe/cve -> manual review + adjudication, never auto-FP",
+      "detection": "manual",
+      "confidence": 60,
+      "reproduced": "n/a",
+      "recommendation": "rotate session id on privilege change"
+    },
+    {
+      "id": "FA-0005",
+      "severity": "MEDIUM",
+      "file": "src/util/log.go",
+      "line": 5,
+      "title": "verbose logging (unmatched, no taxonomy)",
+      "detail": "no cwe/cve, matches nothing -> needs adjudication, NOT a strict FP",
+      "detection": "manual",
+      "confidence": 40,
+      "reproduced": "n/a",
+      "recommendation": "reduce log verbosity"
+    },
+    {
+      "id": "FA-0006",
+      "severity": "CRITICAL",
+      "file": "package-lock.json",
+      "line": 999,
+      "cve": "CVE-2099-0000",
+      "title": "phantom CVE (SCA FP)",
+      "detail": "auto-scorable SCA finding (has cve) but no GT carries this CVE -> strict FP",
+      "detection": "osv-scanner",
+      "confidence": 80,
+      "reproduced": "no",
+      "recommendation": "verify advisory applicability"
+    }
+  ],
+  "limitations": []
+}
