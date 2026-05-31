@@ -377,7 +377,7 @@ User selects approach -> determines agents and checks.
 | `*.csproj` / `*.sln` | `dotnet build` | `dotnet format --verify-no-changes` | `dotnet list package --vulnerable` | `dotnet test` |
 | `Dockerfile` | — | `hadolint Dockerfile` | `trivy config .` | — |
 | `.github/workflows/*` | — | `actionlint` | `zizmor` (L3) | — |
-| `*.tf` | — | — | `tfsec .` / `checkov` | — |
+| `*.tf` | — | — | `trivy config` / `checkov` | — |
 | K8s manifests | — | — | `kube-linter lint` | — |
 
 > **Python build/lint scope:** scope build/lint to source roots; exclude data/asset/KB dirs. A bare `.` walks non-code trees (e.g. a `data/` knowledge base) — floods output and on Windows can exceed MAX_PATH. Use `src tests` (detected roots) or `extend-exclude` in ruff config. See `python.md`.
