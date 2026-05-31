@@ -1,0 +1,1904 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 10,
+      "fn_items": [
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-943",
+            "CWE-89"
+          ],
+          "file": "routes/updateProductReviews.ts",
+          "id": "GT-003",
+          "line_start": 18,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "file": "lib/insecurity.ts",
+          "id": "GT-004",
+          "line_start": 138,
+          "root_cause": "",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-94",
+            "CWE-1336"
+          ],
+          "file": "routes/b2bOrder.ts",
+          "id": "GT-006",
+          "line_start": 23,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-22",
+            "CWE-158"
+          ],
+          "file": "routes/fileServer.ts",
+          "id": "GT-008",
+          "line_start": 33,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "file": "routes/dataErasure.ts",
+          "id": "GT-009",
+          "line_start": 104,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-918",
+          "file": "routes/profileImageUrlUpload.ts",
+          "id": "GT-010",
+          "line_start": 24,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "file": "frontend/src/app/search-result/search-result.component.ts",
+          "id": "GT-011",
+          "line_start": 110,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "file": "frontend/src/app/search-result/search-result.component.ts",
+          "id": "GT-012",
+          "line_start": 143,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-327",
+            "CWE-916"
+          ],
+          "file": "lib/insecurity.ts",
+          "id": "GT-013",
+          "line_start": 43,
+          "root_cause": "",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-798",
+            "CWE-321"
+          ],
+          "file": "lib/insecurity.ts",
+          "id": "GT-014",
+          "line_start": 23,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        }
+      ],
+      "fp": 55,
+      "fp_findings": [
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/about/about.component.ts",
+          "id": "BL-0001",
+          "line": 116,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/administration/administration.component.ts",
+          "id": "BL-0002",
+          "line": 73,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/last-login-ip/last-login-ip.component.ts",
+          "id": "BL-0003",
+          "line": 39,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/track-result/track-result.component.ts",
+          "id": "BL-0004",
+          "line": 48,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-94",
+          "detection": "semgrep",
+          "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+          "id": "BL-0007",
+          "line": 242,
+          "severity": "MEDIUM",
+          "title": "unsafe-dynamic-method"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0008",
+          "line": 9879,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0009",
+          "line": 11375,
+          "severity": "HIGH",
+          "title": "insecure-document-method"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0010",
+          "line": 11375,
+          "severity": "HIGH",
+          "title": "insecure-innerhtml"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0011",
+          "line": 22519,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0012",
+          "line": 22520,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0013",
+          "line": 22522,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0014",
+          "line": 22523,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0015",
+          "line": 22524,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0016",
+          "line": 22526,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0017",
+          "line": 22527,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0018",
+          "line": 22528,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0019",
+          "line": 22553,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0020",
+          "line": 22554,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0021",
+          "line": 22556,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0022",
+          "line": 22557,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0023",
+          "line": 22558,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0024",
+          "line": 22560,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0025",
+          "line": 22561,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/assets/private/three.js",
+          "id": "BL-0026",
+          "line": 22562,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-assignment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/hacking-instructor/helpers/helpers.ts",
+          "id": "BL-0052",
+          "line": 49,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-loop"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "frontend/src/hacking-instructor/index.ts",
+          "id": "BL-0054",
+          "line": 126,
+          "severity": "HIGH",
+          "title": "insecure-document-method"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "frontend/src/hacking-instructor/index.ts",
+          "id": "BL-0055",
+          "line": 126,
+          "severity": "HIGH",
+          "title": "insecure-innerhtml"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-1333",
+          "detection": "semgrep",
+          "file": "lib/codingChallenges.ts",
+          "id": "BL-0058",
+          "line": 76,
+          "severity": "MEDIUM",
+          "title": "detect-non-literal-regexp"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-1333",
+          "detection": "semgrep",
+          "file": "lib/codingChallenges.ts",
+          "id": "BL-0059",
+          "line": 78,
+          "severity": "MEDIUM",
+          "title": "detect-non-literal-regexp"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "BL-0060",
+          "line": 44,
+          "severity": "MEDIUM",
+          "title": "hardcoded-hmac-key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "BL-0061",
+          "line": 56,
+          "severity": "MEDIUM",
+          "title": "hardcoded-jwt-secret"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "BL-0062",
+          "line": 152,
+          "severity": "MEDIUM",
+          "title": "hardcoded-hmac-key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "lib/startup/customizeApplication.ts",
+          "id": "BL-0063",
+          "line": 84,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-1104",
+          "detection": "semgrep",
+          "file": "routes/b2bOrder.ts",
+          "id": "BL-0074",
+          "line": 23,
+          "severity": "MEDIUM",
+          "title": "express-detect-notevil-usage"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-95",
+          "detection": "semgrep",
+          "file": "routes/captcha.ts",
+          "id": "BL-0075",
+          "line": 22,
+          "severity": "MEDIUM",
+          "title": "eval-detected"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-522",
+          "detection": "semgrep",
+          "file": "routes/currentUser.ts",
+          "id": "BL-0095",
+          "line": 31,
+          "severity": "HIGH",
+          "title": "remote-property-injection"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/fileServer.ts",
+          "id": "BL-0096",
+          "line": 33,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/keyServer.ts",
+          "id": "BL-0098",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/logfileServer.ts",
+          "id": "BL-0099",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "semgrep",
+          "file": "routes/login.ts",
+          "id": "BL-0101",
+          "line": 34,
+          "severity": "HIGH",
+          "title": "express-sequelize-injection"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "semgrep",
+          "file": "routes/login.ts",
+          "id": "BL-0102",
+          "line": 34,
+          "severity": "HIGH",
+          "title": "tainted-sql-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/quarantineServer.ts",
+          "id": "BL-0103",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "detection": "semgrep",
+          "file": "routes/redirect.ts",
+          "id": "BL-0104",
+          "line": 19,
+          "severity": "MEDIUM",
+          "title": "unknown-value-in-redirect"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "detection": "semgrep",
+          "file": "routes/redirect.ts",
+          "id": "BL-0105",
+          "line": 19,
+          "severity": "MEDIUM",
+          "title": "express-open-redirect"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "semgrep",
+          "file": "routes/search.ts",
+          "id": "BL-0107",
+          "line": 23,
+          "severity": "HIGH",
+          "title": "express-sequelize-injection"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "semgrep",
+          "file": "routes/search.ts",
+          "id": "BL-0108",
+          "line": 23,
+          "severity": "HIGH",
+          "title": "tainted-sql-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-95",
+          "detection": "semgrep",
+          "file": "routes/userProfile.ts",
+          "id": "BL-0110",
+          "line": 61,
+          "severity": "HIGH",
+          "title": "code-string-concat"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "routes/verify.ts",
+          "id": "BL-0111",
+          "line": 213,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "routes/videoHandler.ts",
+          "id": "BL-0112",
+          "line": 57,
+          "severity": "MEDIUM",
+          "title": "unknown-value-with-script-tag"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "routes/videoHandler.ts",
+          "id": "BL-0113",
+          "line": 71,
+          "severity": "MEDIUM",
+          "title": "unknown-value-with-script-tag"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-134",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "BL-0114",
+          "line": 157,
+          "severity": "LOW",
+          "title": "unsafe-formatstring"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "BL-0115",
+          "line": 269,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "BL-0116",
+          "line": 273,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "BL-0117",
+          "line": 277,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "BL-0118",
+          "line": 281,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        }
+      ],
+      "recall": 0.2857142857142857,
+      "severity_weighted_recall": 0.3232876712328767,
+      "strict_precision": 0.06779661016949153,
+      "tp": 4,
+      "tp_pairs": [
+        {
+          "finding": "BL-0100",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "BL-0106",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "BL-0097",
+          "gt": "GT-005"
+        },
+        {
+          "finding": "BL-0109",
+          "gt": "GT-007"
+        }
+      ]
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+        "id": "BL-0005",
+        "line": 76,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+        "id": "BL-0006",
+        "line": 76,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0027",
+        "line": 28593,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0028",
+        "line": 35765,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0029",
+        "line": 35766,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0030",
+        "line": 35770,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0031",
+        "line": 35771,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0032",
+        "line": 36961,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0033",
+        "line": 36961,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0034",
+        "line": 36962,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0035",
+        "line": 36962,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0036",
+        "line": 36964,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0037",
+        "line": 36964,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0038",
+        "line": 36965,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0039",
+        "line": 36965,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0040",
+        "line": 36967,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0041",
+        "line": 36967,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0042",
+        "line": 36968,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0043",
+        "line": 36968,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0044",
+        "line": 36970,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0045",
+        "line": 36970,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0046",
+        "line": 36971,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0047",
+        "line": 36974,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0048",
+        "line": 36974,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0049",
+        "line": 36974,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0050",
+        "line": 36975,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/assets/private/three.js",
+        "id": "BL-0051",
+        "line": 36975,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "frontend/src/hacking-instructor/helpers/helpers.ts",
+        "id": "BL-0053",
+        "line": 153,
+        "severity": "LOW",
+        "title": "useless-assignment"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/codingChallenges.ts",
+        "id": "BL-0056",
+        "line": 59,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/codingChallenges.ts",
+        "id": "BL-0057",
+        "line": 59,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0064",
+        "line": 114,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0065",
+        "line": 114,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0066",
+        "line": 114,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0067",
+        "line": 114,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0068",
+        "line": 114,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0069",
+        "line": 162,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0070",
+        "line": 162,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0071",
+        "line": 162,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0072",
+        "line": 162,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "lib/startup/validateConfig.ts",
+        "id": "BL-0073",
+        "line": 162,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0076",
+        "line": 216,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0077",
+        "line": 216,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0078",
+        "line": 216,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0079",
+        "line": 216,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0080",
+        "line": 216,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0081",
+        "line": 226,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0082",
+        "line": 226,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0083",
+        "line": 226,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0084",
+        "line": 227,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0085",
+        "line": 227,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0086",
+        "line": 228,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0087",
+        "line": 229,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0088",
+        "line": 229,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0089",
+        "line": 239,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0090",
+        "line": 239,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0091",
+        "line": 239,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0092",
+        "line": 239,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0093",
+        "line": 262,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      },
+      {
+        "cve": null,
+        "cwe": null,
+        "detection": "semgrep",
+        "file": "routes/chat.ts",
+        "id": "BL-0094",
+        "line": 262,
+        "severity": "LOW",
+        "title": "missing-template-string-indicator"
+      }
+    ],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+      "id": "BL-0005",
+      "line": 76,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+      "id": "BL-0006",
+      "line": 76,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0027",
+      "line": 28593,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0028",
+      "line": 35765,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0029",
+      "line": 35766,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0030",
+      "line": 35770,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0031",
+      "line": 35771,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0032",
+      "line": 36961,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0033",
+      "line": 36961,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0034",
+      "line": 36962,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0035",
+      "line": 36962,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0036",
+      "line": 36964,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0037",
+      "line": 36964,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0038",
+      "line": 36965,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0039",
+      "line": 36965,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0040",
+      "line": 36967,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0041",
+      "line": 36967,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0042",
+      "line": 36968,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0043",
+      "line": 36968,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0044",
+      "line": 36970,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0045",
+      "line": 36970,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0046",
+      "line": 36971,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0047",
+      "line": 36974,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0048",
+      "line": 36974,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0049",
+      "line": 36974,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0050",
+      "line": 36975,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/assets/private/three.js",
+      "id": "BL-0051",
+      "line": 36975,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "frontend/src/hacking-instructor/helpers/helpers.ts",
+      "id": "BL-0053",
+      "line": 153,
+      "severity": "LOW",
+      "title": "useless-assignment"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/codingChallenges.ts",
+      "id": "BL-0056",
+      "line": 59,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/codingChallenges.ts",
+      "id": "BL-0057",
+      "line": 59,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0064",
+      "line": 114,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0065",
+      "line": 114,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0066",
+      "line": 114,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0067",
+      "line": 114,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0068",
+      "line": 114,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0069",
+      "line": 162,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0070",
+      "line": 162,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0071",
+      "line": 162,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0072",
+      "line": 162,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "lib/startup/validateConfig.ts",
+      "id": "BL-0073",
+      "line": 162,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0076",
+      "line": 216,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0077",
+      "line": 216,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0078",
+      "line": 216,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0079",
+      "line": 216,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0080",
+      "line": 216,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0081",
+      "line": 226,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0082",
+      "line": 226,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0083",
+      "line": 226,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0084",
+      "line": 227,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0085",
+      "line": 227,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0086",
+      "line": 228,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0087",
+      "line": 229,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0088",
+      "line": 229,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0089",
+      "line": 239,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0090",
+      "line": 239,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0091",
+      "line": 239,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0092",
+      "line": 239,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0093",
+      "line": 262,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    },
+    {
+      "cve": null,
+      "cwe": null,
+      "detection": "semgrep",
+      "file": "routes/chat.ts",
+      "id": "BL-0094",
+      "line": 262,
+      "severity": "LOW",
+      "title": "missing-template-string-indicator"
+    }
+  ],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
