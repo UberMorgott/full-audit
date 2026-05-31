@@ -173,7 +173,10 @@ def as_set(val):
         return set()
     if isinstance(val, (list, tuple)):
         return {str(v).strip().upper() for v in val if str(v).strip()}
-    return {str(val).strip().upper()}
+    # Mirror the list-branch filtering: a whitespace-only / empty scalar carries
+    # NO taxonomy, so it must yield an empty set (-> adjudication bucket, not FP).
+    s = str(val).strip()
+    return {s.upper()} if s else set()
 
 
 def weight_of(severity, cvss):
@@ -232,7 +235,12 @@ def match_sast(gt_items, findings, window):
         gt_cwes = as_set(gt.get("cwe"))
         gt_file = str(gt.get("file", ""))
         ls = int(gt.get("line_start", 0))
-        le = int(gt.get("line_end", ls) or ls)
+        # Source lines are 1-indexed, so a line_end <= 0 (or missing) is not a
+        # valid line span end -> fall back to line_start. (Note: `int(x) or ls`
+        # alone only catches 0, not negatives; check <= 0 explicitly.)
+        le = int(gt.get("line_end", ls))
+        if le <= 0:
+            le = ls
         lo, hi = ls - window, le + window
         hit = None
         for i, f in enumerate(findings):

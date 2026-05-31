@@ -120,5 +120,85 @@ class TestWindowSensitivity(unittest.TestCase):
         self.assertEqual(r["tp"], 1)
 
 
+class TestBlankTaxonomyNotFp(unittest.TestCase):
+    """Regression: a finding whose only cwe/cve is blank/whitespace has NO
+    taxonomy -> it must route to the adjudication bucket, NOT be counted as a
+    strict FP (SAST/SCA). Reproduces BUG 1 (as_set scalar branch didn't filter
+    empty/whitespace)."""
+
+    def test_whitespace_cwe_is_no_taxonomy_not_sast_fp(self):
+        findings = [{"id": "FA-WS-CWE", "file": "x.go", "line": 5,
+                     "cwe": "   ", "detection": "manual", "title": "blank cwe"}]
+        gt = {"items": []}
+        r = score.score(findings, gt, window=5)
+        sast_fp = [f["id"] for f in r["categories"]["sast"]["fp_findings"]]
+        self.assertNotIn("FA-WS-CWE", sast_fp)
+        adj_ids = [f["id"] for f in r["unmatched_needs_adjudication"]]
+        self.assertIn("FA-WS-CWE", adj_ids)
+
+    def test_empty_cve_is_no_taxonomy_not_sca_fp(self):
+        findings = [{"id": "FA-EMPTY-CVE", "file": "y.json", "line": 1,
+                     "cve": "", "detection": "osv-scanner", "title": "blank cve"}]
+        gt = {"items": []}
+        r = score.score(findings, gt, window=5)
+        sca_fp = [f["id"] for f in r["categories"]["sca"]["fp_findings"]]
+        self.assertNotIn("FA-EMPTY-CVE", sca_fp)
+        adj_ids = [f["id"] for f in r["unmatched_needs_adjudication"]]
+        self.assertIn("FA-EMPTY-CVE", adj_ids)
+
+    def test_as_set_filters_blank_scalar(self):
+        self.assertEqual(score.as_set("   "), set())
+        self.assertEqual(score.as_set(""), set())
+        self.assertEqual(score.as_set("CWE-89"), {"CWE-89"})
+
+
+class TestCwePrefixNotNormalized(unittest.TestCase):
+    """Documented behavior (schema §2): CWE sets are compared verbatim (only
+    strip()+upper()); the 'CWE-' prefix is NOT normalized. So a finding
+    cwe='89' does NOT match GT cwe='CWE-89'. BUG 4 candidate -> NOT a bug:
+    the schema specifies set-intersection of verbatim ids, no prefix rule."""
+
+    def test_bare_number_does_not_match_prefixed_cwe(self):
+        findings = [{"id": "FA-BARE", "file": "src/db/query.go", "line": 47,
+                     "end_line": 50, "cwe": "89", "detection": "semgrep",
+                     "title": "bare-number cwe"}]
+        gt = {"items": [{"id": "GT-SAST", "type": "sast", "cwe": "CWE-89",
+                         "severity": "HIGH", "file": "src/db/query.go",
+                         "line_start": 45, "line_end": 52}]}
+        r = score.score(findings, gt, window=5)
+        sast = r["categories"]["sast"]
+        # No match: GT is a FN, finding is an auto-scorable FP (it has a cwe).
+        self.assertEqual(sast["tp"], 0)
+        self.assertEqual([f["id"] for f in sast["fn_items"]], ["GT-SAST"])
+        self.assertEqual([f["id"] for f in sast["fp_findings"]], ["FA-BARE"])
+
+
+class TestLineEndNonPositiveFallback(unittest.TestCase):
+    """line_end <= 0 (or missing) falls back to line_start (lines are 1-indexed,
+    so 0/negative is not a valid line). BUG 3: behavior kept, intent made
+    explicit."""
+
+    def test_line_end_zero_behaves_as_line_start(self):
+        gt_item = {"id": "GT", "type": "sast", "cwe": "CWE-89", "severity": "HIGH",
+                   "file": "a.go", "line_start": 30, "line_end": 0}
+        # With line_end=0 -> span collapses to [30,30]; widened by N=0 -> [30,30].
+        finding_in = [{"id": "F-IN", "file": "a.go", "line": 30, "cwe": "CWE-89"}]
+        finding_out = [{"id": "F-OUT", "file": "a.go", "line": 36, "cwe": "CWE-89"}]
+        r_in = score.score(finding_in, {"items": [gt_item]}, window=0)
+        r_out = score.score(finding_out, {"items": [dict(gt_item)]}, window=0)
+        self.assertEqual(r_in["categories"]["sast"]["tp"], 1)
+        # If line_end=0 were honored literally as a line, span would be [0,30] and
+        # the line-36 finding still wouldn't match; the point is it behaves as
+        # [30,30]: a finding at line 36 (window 0) misses.
+        self.assertEqual(r_out["categories"]["sast"]["tp"], 0)
+
+    def test_negative_line_end_behaves_as_line_start(self):
+        gt_item = {"id": "GT", "type": "sast", "cwe": "CWE-89", "severity": "HIGH",
+                   "file": "a.go", "line_start": 30, "line_end": -7}
+        finding = [{"id": "F", "file": "a.go", "line": 30, "cwe": "CWE-89"}]
+        r = score.score(finding, {"items": [gt_item]}, window=0)
+        self.assertEqual(r["categories"]["sast"]["tp"], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
