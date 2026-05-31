@@ -640,7 +640,7 @@ Wave N done when ALL wave-N tasks completed. Event-driven: on each returned agen
 | comment-checker | — | yes | yes |
 | convention-checker | — | yes | yes |
 | impact-reviewer-{N} | — | yes | yes |
-| reproduction-agent-{N} | —   | +V  | yes |
+| reproduction-agent-{N} | +V  | +V  | yes |
 | scoring-agent-{N} | — | yes | yes |
 | Wave 3 deep reviewers | — | — | yes |
 
