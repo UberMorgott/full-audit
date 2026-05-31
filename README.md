@@ -1,6 +1,6 @@
 # Full Audit
 
-> **Version 1.10.3** — 2026-05-31
+> **Version 1.10.3** — 2026-05-30
 
 Universal codebase audit for Claude Code. Any project, any stack, via GitHub reference.
 
