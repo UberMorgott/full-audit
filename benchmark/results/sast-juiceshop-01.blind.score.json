@@ -1,0 +1,206 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 11,
+      "fp_findings": [
+        {
+          "cve": null,
+          "cwe": "CWE-943",
+          "detection": "manual",
+          "file": "routes/trackOrder.ts",
+          "id": "FA-0005",
+          "line": 18,
+          "severity": "CRITICAL",
+          "title": "NoSQL/JS injection via MongoDB $where in order tracking"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "frontend/src/app/about/about.component.ts",
+          "id": "FA-0013",
+          "line": 119,
+          "severity": "HIGH",
+          "title": "Stored XSS via customer feedback comment (bypassSecurityTrustHtml)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "frontend/src/app/last-login-ip/last-login-ip.component.ts",
+          "id": "FA-0014",
+          "line": 39,
+          "severity": "HIGH",
+          "title": "Stored XSS via True-Client-IP header -> lastLoginIp"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "manual",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0018",
+          "line": 44,
+          "severity": "MEDIUM",
+          "title": "Hardcoded HMAC secret key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-943",
+          "detection": "manual",
+          "file": "routes/showProductReviews.ts",
+          "id": "FA-0019",
+          "line": 36,
+          "severity": "MEDIUM",
+          "title": "NoSQL $where injection / DoS in product review listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "semgrep",
+          "file": "routes/keyServer.ts",
+          "id": "FA-0020",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "Path traversal exposure of encryptionkeys directory"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "semgrep",
+          "file": "routes/logfileServer.ts",
+          "id": "FA-0021",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "Path traversal exposure of logs directory"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-639",
+          "detection": "manual",
+          "file": "routes/createProductReviews.ts",
+          "id": "FA-0022",
+          "line": 23,
+          "severity": "MEDIUM",
+          "title": "Review author spoofing via client-supplied author field"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-639",
+          "detection": "manual",
+          "file": "routes/order.ts",
+          "id": "FA-0023",
+          "line": 142,
+          "severity": "MEDIUM",
+          "title": "Wallet IDOR via client-supplied UserId in order placement"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "manual",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0024",
+          "line": 61,
+          "severity": "LOW",
+          "title": "Ineffective legacy HTML sanitizer (regex-based)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-290",
+          "detection": "manual",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0025",
+          "line": 95,
+          "severity": "LOW",
+          "title": "User identity taken from spoofable X-User-Email header"
+        }
+      ],
+      "recall": 1.0,
+      "severity_weighted_recall": 1.0,
+      "strict_precision": 0.56,
+      "tp": 14,
+      "tp_pairs": [
+        {
+          "finding": "FA-0001",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "FA-0002",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "FA-0015",
+          "gt": "GT-003"
+        },
+        {
+          "finding": "FA-0016",
+          "gt": "GT-004"
+        },
+        {
+          "finding": "FA-0007",
+          "gt": "GT-005"
+        },
+        {
+          "finding": "FA-0004",
+          "gt": "GT-006"
+        },
+        {
+          "finding": "FA-0003",
+          "gt": "GT-007"
+        },
+        {
+          "finding": "FA-0009",
+          "gt": "GT-008"
+        },
+        {
+          "finding": "FA-0010",
+          "gt": "GT-009"
+        },
+        {
+          "finding": "FA-0008",
+          "gt": "GT-010"
+        },
+        {
+          "finding": "FA-0012",
+          "gt": "GT-011"
+        },
+        {
+          "finding": "FA-0011",
+          "gt": "GT-012"
+        },
+        {
+          "finding": "FA-0017",
+          "gt": "GT-013"
+        },
+        {
+          "finding": "FA-0006",
+          "gt": "GT-014"
+        }
+      ]
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}

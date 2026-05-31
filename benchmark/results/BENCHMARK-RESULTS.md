@@ -5,7 +5,8 @@
 > is recomputed or invented in this document. Sources: `BENCHMARK-PLAN.md`,
 > `benchmark/ground-truth.schema.md`, `benchmark/results/F0-sca-python-01.md`,
 > `benchmark/results/F1-sca-go-01.md`, `benchmark/results/F2-sast-juiceshop-01.md`,
-> `benchmark/results/F2-adjudication.md`, `benchmark/results/F2-baseline-delta.md`.
+> `benchmark/results/F2-adjudication.md`, `benchmark/results/F2-baseline-delta.md`,
+> `benchmark/results/F2-blind-juiceshop-01.md`.
 > Audit pinned to tag `v1.10.4`; emitter schema v1.1 (`868156a`, shipped v1.10.5).
 
 ## 1. Executive summary
@@ -17,21 +18,24 @@ each against a ground truth (GT) + matching rule **git-tagged before the run**.
 
 ### Headline table (per category, never blended)
 
-| Phase | Target | Scanner | Category | Recall | Strict precision | Adjudicated precision | Sev-weighted recall |
-|-------|--------|---------|----------|--------|------------------|-----------------------|---------------------|
-| Ф0 | `sca-python-01` (6 PyPI pkgs, 38 CVEs) | pip-audit 2.10.0 | SCA | **1.000** (38/38) | **1.000** (38/38) | n/a | **1.000** |
-| Ф1 | `sca-go-01` (3 Go modules, 5 CVEs) | govulncheck v1.3.0 | SCA | **0.600** (3/5) | **1.000** (3/3) | n/a | **0.583** |
-| Ф2 | OWASP Juice Shop `v20.0.0` (~23.1 KLOC) | semgrep 1.164.0 + LLM triage | SAST | **0.286** (4/14) | **0.138** (4/29) | **0.857** (24/28) | **0.323** |
+| Phase | Target | Scanner | Category | Recall | Strict precision | Adjudicated precision | Sev-weighted recall | Notes |
+|-------|--------|---------|----------|--------|------------------|-----------------------|---------------------|-------|
+| Ф0 | `sca-python-01` (6 PyPI pkgs, 38 CVEs) | pip-audit 2.10.0 | SCA | **1.000** (38/38) | **1.000** (38/38) | n/a | **1.000** | |
+| Ф1 | `sca-go-01` (3 Go modules, 5 CVEs) | govulncheck v1.3.0 | SCA | **0.600** (3/5) | **1.000** (3/3) | n/a | **0.583** | |
+| Ф2 proxy | OWASP Juice Shop `v20.0.0` (~23.1 KLOC) | semgrep 1.164.0 + LLM triage | SAST | 0.286 (4/14) | 0.138 (4/29) | 0.857 (24/28) | 0.323 | semgrep-only floor; single-agent proxy |
+| Ф2 non-blind | OWASP Juice Shop `v20.0.0` (~23.1 KLOC) | LLM source review (manual) | SAST | ~~1.000~~ (14/14) | ~~0.438~~ (14/32) | ~~0.935~~ (29/31) | ~~1.000~~ | **answer-key-inflated / superseded** — reviewer had GT construction context |
+| **Ф2 blind** | OWASP Juice Shop `v20.0.0` (~23.1 KLOC) | LLM source review (blind) | SAST | **1.000** (14/14) | **0.560** (14/25) | **1.000** (25/25) | **1.000** | **AUTHORITATIVE** — blind reviewer + independent Sonnet scorer |
 
 ### The one honest sentence
 
 These numbers establish that the **pipeline works end-to-end** (SCA + SAST: scan → schema
 → frozen matching rule → score), that the **scorer discriminates real misses** (Ф1's 0.600,
-Ф2's tool-missed FNs), and that the **triage layer adds precision** (Ф2 baseline-delta) —
-they do **NOT** yet establish the **real multi-agent framework's capability** (Ф2 ran a
-single-agent semgrep-only proxy: its 0.286 recall is a tool-only **floor**, not the
-framework's number), nor broad multi-stack coverage, nor statistical significance (N=1 run
-per phase), nor human-validated adjudication (the adjudicator is a model).
+Ф2 proxy's tool-missed FNs), that the **triage layer adds precision** (Ф2 baseline-delta),
+and that **blind LLM source review achieves 1.000 recall and 1.000 adjudicated precision**
+against the 14-item GT (Ф2 blind) — they do **NOT** yet establish broad multi-stack coverage,
+statistical significance (N=1 run per phase), human-validated adjudication (adjudicator is a
+model), or that the 1.000 reflects pure analysis rather than training-data familiarity with
+Juice Shop (the single biggest remaining caveat; a post-cutoff non-public target is needed).
 
 ## 2. Methodology
 
@@ -112,43 +116,71 @@ per phase), nor human-validated adjudication (the adjudicator is a model).
   seed's deps) → no phantom FP.
 - **Cost:** ~1.1 s scanner wall-clock; **≈ 0 model tokens** (deterministic CLI).
 
-### Ф2 — SAST on OWASP Juice Shop `v20.0.0` (first LLM-path numbers)
+### Ф2 — SAST on OWASP Juice Shop `v20.0.0` (three runs; blind run is authoritative)
 
 - **Target:** `juice-shop/juice-shop` `v20.0.0`, commit `f356a09207c7a9550eb6fc4c3945e081922cf998`,
   ~23.1 KLOC TS. GT = **14 statically-locatable sinks (12.5% of 112 challenges)** across 9
-  files; ~98 non-static-sink challenges documented as excluded. Scanner: semgrep 1.164.0
-  (upstream `semgrep-rules` git trees) + an LLM triage pass that cut 118 raw → 29 emitted
-  findings.
+  files; ~98 non-static-sink challenges documented as excluded.
+
+#### Ф2-proxy (semgrep-only floor)
+
+- Scanner: semgrep 1.164.0 (upstream `semgrep-rules` git trees) + LLM triage: 118 raw → 29.
 - **Confusion matrix (SAST, window N=5):**
 
   | Category | TP | FN | FP | recall | strict precision | sev-weighted recall |
   |----------|----|----|----|--------|------------------|---------------------|
   | SAST | 4 | 10 | 25 | **0.286** | **0.138** | **0.323** |
 
-- **TP (4):** GT-001 login.ts:34 SQLi (CWE-89), GT-002 search.ts:23 SQLi (CWE-89),
-  GT-005 fileUpload.ts:83 XXE (CWE-611), GT-007 userProfile.ts:61 SSTI (CWE-95).
-- **FN breakdown (10, cited from Ф2):** 6 tool-missed (NoSQL/Mongo, LFR, SSRF, two Angular
-  `bypassSecurityTrustHtml` XSS, weak-MD5), 2 CWE-mismatch (right line, wrong taxonomy:
-  CWE-1104 vs 94/1336; CWE-73 vs 22/158), 2 GT-locus-vs-tool-locus. None are scorer/rule
-  defects — honest capability or taxonomy gaps.
-- **Adjudication (independent, Sonnet 4.6 — cited from F2-adjudication):** the 25 strict FP
-  resolve to **20 real-but-unlabelled / 4 true-FP / 1 disputed**. Only **4 are actual semgrep
-  false positives** (operator-config data, ABI-derived field names, guarded bracket access,
-  guarded challenge-check). The 20 real-but-unlabelled are genuine Juice Shop vulns at
-  loci/CWEs the conservative 14-item GT deliberately excluded.
+- **FN breakdown (10):** 6 tool-missed (NoSQL/Mongo, LFR, SSRF, two Angular `bypassSecurityTrustHtml`
+  XSS, weak-MD5), 2 CWE-mismatch (right line, wrong taxonomy), 2 GT-locus-vs-tool-locus.
+- **Adjudication (Sonnet 4.6):** 25 strict FP → 20 real-but-unlabelled / 4 true-FP / 1 disputed.
+  Only 4 are actual semgrep false positives.
 
   | metric | value |
   |--------|-------|
   | Strict precision | 0.138 (4/29) |
-  | Adjudicated precision (disputed excluded) | **0.857 (24/28)** |
-  | Adjudicated precision (disputed as FP, conservative) | 0.828 (24/29) |
-  | Recall (unchanged) | 0.286 (4/14) |
-  | Sev-weighted recall (unchanged) | 0.323 |
+  | Adjudicated precision (disputed excluded) | 0.857 (24/28) |
+  | Recall | 0.286 (4/14) |
+  | Sev-weighted recall | 0.323 |
 
-  Honest driver: the **0.138 → 0.857 lift is GT-coverage gap, not scanner accuracy** — strict
-  precision understates real precision because real-but-GT-excluded vulns count as FP.
-- **Cost:** ~30 s semgrep wall-clock; **≈ 40–70 k output tokens** (self-estimate), dominated by
-  GT-build source reading + inline triage + report — *not* detection (semgrep = 0 model tokens).
+#### Ф2-non-blind (answer-key-inflated — superseded)
+
+- Scanner: LLM source review inline (same session as GT construction → not blind). **Design
+  flaw: the reviewer had de-facto access to the GT construction rationale.** Results superseded
+  by the blind run but kept for historical reference. Recall 1.000 / strict precision 0.438 /
+  adjudicated precision 0.935. See `benchmark/results/F2-multiagent-juiceshop-01.md`.
+
+#### Ф2-blind — AUTHORITATIVE (scored by independent Sonnet 4.6)
+
+- **Reviewer (Opus, blind, stage 1):** produced 25 findings without ever seeing the frozen GT.
+- **Scorer/adjudicator (Sonnet 4.6, independent, stage 2, THIS run):** scored and adjudicated
+  independently; no involvement in findings production or GT construction.
+- **Confusion matrix (SAST, window N=5):**
+
+  | Category | TP | FN | FP | recall | strict precision | sev-weighted recall |
+  |----------|----|----|----|--------|------------------|---------------------|
+  | **SAST** | **14** | **0** | **11** | **1.000** | **0.560** | **1.000** |
+
+- **FN = 0.** Blind reviewer found every GT item independently.
+- **Adjudication of 11 strict FP:** all 11 are real-but-unlabelled (genuine Juice Shop vulns
+  outside the conservative GT). **0 true FPs, 0 disputed.**
+
+  | metric | value |
+  |--------|-------|
+  | Recall | **1.000** (14/14) |
+  | Strict precision | **0.560** (14/25) |
+  | Adjudicated precision | **1.000** (25/25) |
+  | Sev-weighted recall | **1.000** |
+
+- The 0.560 → 1.000 lift from strict to adjudicated precision is **entirely GT-coverage gap**:
+  the blind reviewer produced zero true false positives.
+- **Three-way comparison:**
+
+  | Run | Saw GT? | TP | FN | Recall | Strict prec | Adj prec |
+  |-----|---------|----|----|--------|-------------|----------|
+  | Proxy (semgrep-only) | No | 4 | 10 | 0.286 | 0.138 | 0.857 |
+  | Non-blind (answer-key-inflated) | Yes | 14 | 0 | ~~1.000~~ | ~~0.438~~ | ~~0.935~~ |
+  | **Blind (authoritative)** | **No** | **14** | **0** | **1.000** | **0.560** | **1.000** |
 
 ## 4. The framework − baseline delta (Ф2)
 
@@ -190,30 +222,30 @@ Baseline = raw semgrep, no triage, all 118 results as findings (59 auto-scorable
 - **SAST GT partial coverage (Ф2, 12.5%).** Only 14 of 112 challenges are cleanly
   statically-locatable GT items. Recall is "recall against the 14 static sinks", not against
   all Juice Shop vulns. Strict precision is **deflated** — real-but-GT-excluded vulns count as
-  FP; adjudicated precision (0.857) corrects this for FP but the **recall denominator is
-  unchanged**, and true recall against all vulns would be substantially lower than 0.286.
-- **Single-agent proxy ≠ real framework (the single biggest caveat).** Ф2 ran one agent
-  doing semgrep + inline triage/score/report. The framework's real SAST path is a multi-agent
-  team (cli-scanner → diff/impact reviewers → scoring → reproduction). This understates both
-  token cost and potentially recall. **The 0.286 recall is a semgrep-only FLOOR** — the real
-  multi-agent LLM-review path is **NOT yet measured and could exceed it** (it targets exactly
-  the tool-missed Angular XSS / NoSQL / SSRF / weak-MD5 / PEM-literal FNs).
-- **Single run, no variability yet.** N=1 per phase; no confidence interval. semgrep is
-  deterministic (byte-identical re-runs), so N=3 of *this* path adds nothing — meaningful
-  variability requires the real multi-agent orchestration with its own sampling.
-- **Adjudicator is a model, not a human.** F2 adjudication was Claude Sonnet 4.6 (independent
-  from the Opus auditor, source-grounded), which raises confidence above strict-FP counting but
-  does not match human-expert review — borderline exploitability verdicts are provisional.
-- **Ruleset transport substitution (Ф2).** The semgrep registry CDN was throttled (~66 B/s);
-  rules came from the upstream `semgrep/semgrep-rules` git repo (same engine, same rules,
-  different transport). The exact curated *pack membership* of `p/javascript` /
-  `p/security-audit` may differ slightly from the full rule trees used, which could shift both
-  recall and FP count vs a registry run.
+  FP; adjudicated precision corrects this for FP but the **recall denominator is unchanged**,
+  and true recall against all vulns would be substantially lower than the reported 1.000.
+- **Juice Shop contamination — the new single biggest caveat for the blind run.** The 1.000
+  blind recall may reflect the reviewer recalling Juice Shop's well-documented, challenge-
+  annotated vulnerabilities from training data rather than discovering them by static analysis.
+  Juice Shop is a famous, heavily-trained-on target. **A fully clean capability test needs a
+  non-public / post-cutoff application** (planned Ф3). The proxy's 0.286 (semgrep-only, no LLM
+  recall) is less susceptible; the blind LLM run's 1.000 is most susceptible.
+- **Single run, no variability yet.** N=1 per phase; no confidence interval. LLM review has
+  sampling variability; a single run cannot bound the spread.
+- **Adjudicator is a model, not a human.** Blind run adjudication was Claude Sonnet 4.6
+  (independent from the Opus reviewer, source-grounded), which raises confidence above strict-FP
+  counting but does not match human-expert review. All 11 blind-run adjudicated-real items are
+  unambiguous Juice Shop challenge loci, so model error is unlikely to affect the 1.000.
+- **Inline review, no true parallel subagents.** All Ф2 runs (proxy, non-blind, blind) ran
+  review in a single session; the playbook's parallel-subagent inter-agent cross-check was not
+  exercised as a separate process.
+- **Ruleset transport substitution (Ф2 proxy).** The semgrep registry CDN was throttled; rules
+  came from the upstream `semgrep/semgrep-rules` git repo (same engine, same rules, different
+  transport). The curated pack membership of `p/javascript` / `p/security-audit` may differ
+  slightly, which could shift proxy recall and FP count vs a registry run.
 - **Known-easy benchmark targets.** All three seeds use deliberately old, CVE-rich
   dependencies / a famous vulnerable-by-design app — easiest-case, not representative projects
-  (no large transitive closure, no version-range edge cases). Juice Shop is also a
-  heavily-trained-on target (contamination risk for any LLM-review path, though N/A for the
-  deterministic SCA scanners and the semgrep-only Ф2 detection).
+  (no large transitive closure, no version-range edge cases).
 
 ## 6. What is and isn't established
 
@@ -221,40 +253,41 @@ Baseline = raw semgrep, no triage, all 118 results as findings (59 auto-scorable
 
 - The benchmark **pipeline works end-to-end** for SCA and SAST: scan → schema v1.1 findings →
   frozen pre-registered matching rule → per-category confusion matrix.
-- The **scorer discriminates real misses** — Ф1's 0.600 (reachability gap) and Ф2's
+- The **scorer discriminates real misses** — Ф1's 0.600 (reachability gap) and Ф2 proxy's
   tool-missed/CWE-mismatch FNs show the instrument is not pinned at 1.0.
 - The **triage layer adds precision** — Ф2 baseline-delta: +103% strict precision, −75% noise,
   0 recall loss.
-- **Adjudicated precision is high (0.857)** under independent-model adjudication, with the lift
-  driven by GT-coverage gap, not scanner accuracy (only 4 of 25 strict FP are true FP).
+- **Blind LLM source review achieves 1.000 recall and 1.000 adjudicated precision** against the
+  14-item GT (Ф2 blind) — the blind reviewer (Opus) found every GT item independently; the
+  independent scorer (Sonnet 4.6) confirmed zero true FPs among the 11 unmatched findings
+  (all are real Juice Shop vulns outside the conservative GT).
+- **The design flaw of the non-blind run is closed**: the Ф2 blind run has reviewer (Opus)
+  and scorer/adjudicator (Sonnet 4.6) in separate sessions with no shared context.
 
 **NOT YET ESTABLISHED**
 
-- The **real multi-agent framework's capability** — Ф2 is a single-agent semgrep-only proxy;
-  its recall is a floor, not the framework's number.
+- **Recall reflects pure analysis, not training-data familiarity.** Juice Shop is heavily
+  trained-on; the 1.000 blind recall may partially reflect memorized challenge structure.
+  A post-cutoff, non-public target (planned Ф3) is required to control for contamination.
 - **Broad multi-stack coverage** — N=1 repo per phase; only PyPI (Ф0), Go (Ф1), JS/TS (Ф2).
 - **Statistical significance** — single run per phase, no variability runs, no confidence
   intervals.
 - **Human-validated adjudication** — the adjudicator is a model; no human spot-check yet.
+- **True multi-agent process** — all Ф2 runs (proxy, non-blind, blind) ran review inline in
+  a single session; the playbook's parallel-subagent orchestration was not exercised.
 
 ## 7. Next steps
 
 - **Fuller ground truth** for the SAST target so precision stops being GT-coverage-bound (the
   dominant driver of the strict-vs-adjudicated gap).
-- **Real multi-agent framework run** (the key open item) — the actual team-based orchestration
-  vs this single-agent proxy; needs an orchestration/cost decision (the plan anticipates
-  ~150k–400k output tokens per full L2+V framework audit).
-  - **LANDED (2026-05-31):** L2+V LLM source-review run recovered **all 6 tool-missed FNs**
-    (NoSQL, SSRF, LFR, ×2 Angular `bypassSecurityTrustHtml` XSS, weak-MD5) **+ both CWE-mismatch
-    FNs** (RCE CWE-94, traversal CWE-22) **+ the RSA-PEM-literal locus** — SAST recall
-    **0.286 → 1.000 (14/14)**, sev-weighted recall 0.323 → 1.000, strict precision 0.138 → 0.438,
-    adjudicated precision 0.857 → ~0.935. See `benchmark/results/F2-multiagent-juiceshop-01.md`.
-- **More stacks** — Ф3: real CVE pre-fix commits including post-cutoff CVEs (highest signal,
-  highest prep cost; the primary contamination control).
-- **Variability runs** — Ф4: N≥3 on the real multi-agent path (not the deterministic semgrep
-  proxy) + a deduped-pinned-scanner baseline, reporting mean ± spread.
+- **Non-public / post-cutoff SAST target** (Ф3) — the primary contamination control; needed
+  to bound the gap between "LLM familiarity with Juice Shop" and "framework SAST capability".
+- **Variability runs** — Ф4: N≥3 on the LLM-review path + a deduped-pinned-scanner baseline,
+  reporting mean ± spread. (semgrep-only N≥3 adds nothing — it is deterministic.)
 - **Human adjudication spot-check** — a human security reviewer validates a sample of the
   model-adjudicated verdicts to bound the model-vs-human gap.
+- **True parallel-subagent orchestration** — exercise the playbook's actual team-spawn path
+  to measure the inter-agent cross-check and dedup mechanics.
 
 ## Source artifacts
 
@@ -263,6 +296,8 @@ Baseline = raw semgrep, no triage, all 118 results as findings (59 auto-scorable
   `benchmark/results/F2-sast-juiceshop-01.md`
 - Ф2 adjudication / baseline: `benchmark/results/F2-adjudication.md`,
   `benchmark/results/F2-baseline-delta.md`
+- Ф2 non-blind run (superseded): `benchmark/results/F2-multiagent-juiceshop-01.md`
+- **Ф2 blind run (authoritative):** `benchmark/results/F2-blind-juiceshop-01.md`
 - Pre-registration tags: `bench-prereg-sca-python-01` @ `c802ded`,
   `bench-prereg-sca-go-01` @ `4b1cbcb`, `bench-prereg-sast-juiceshop-01` @ `599b703`
 </content>
