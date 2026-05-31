@@ -2,6 +2,11 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.5] — 2026-05-31
+
+### Added
+- **`audit-bugs.json` schema v1.1 — taxonomy fields for benchmarking** (README Report Format) — finding objects gain three optional fields: `cwe` (CWE id(s), populated from the detecting tool's mapping), `cve` (CVE id(s), populated for dependency/SCA findings), and `end_line` (last line of a multi-line finding; `line` stays the start). Bumped `schema_version` 1.0→1.1. Additive and back-compatible: existing required fields and the per-finding integrity invariants are unchanged. Enables automated recall/precision scoring (match findings to ground truth by CVE for SCA and by CWE+line for SAST).
+
 ## [1.10.4] — 2026-05-31
 
 ### Fixed
