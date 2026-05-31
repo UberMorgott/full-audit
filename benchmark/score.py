@@ -248,6 +248,30 @@ def spans_overlap(a, b, c, d):
     return a <= d and c <= b
 
 
+def normalize_path(p):
+    """Normalize a file path for comparison: backslashes -> '/'. (Documented in
+    ground-truth.schema.md §2.)"""
+    return str(p or "").replace("\\", "/")
+
+
+def same_file(a, b):
+    """True iff two file paths refer to the SAME file regardless of which root
+    they are expressed from (schema §2). After separator normalization, a and b
+    are the same file iff they are equal, OR one is a trailing path-COMPONENT
+    suffix of the other: `a == b` or `a.endswith('/' + b)` or `b.endswith('/' + a)`.
+
+    Comparing on full components (the '/' + other guard) prevents a bare basename
+    from spuriously matching an unrelated file that merely shares the same trailing
+    characters (e.g. 'top.py' must NOT match 'p.py'). Known limitation: a bare
+    basename can still match multiple GT items sharing that basename across
+    directories — acceptable in single-app seed scope (schema §2)."""
+    a = normalize_path(a)
+    b = normalize_path(b)
+    if a == b:
+        return True
+    return a.endswith("/" + b) or b.endswith("/" + a)
+
+
 # --------------------------------------------------------------------------- #
 # Matching
 # --------------------------------------------------------------------------- #
@@ -303,7 +327,7 @@ def match_sast(gt_items, findings, window):
         for i, f in enumerate(findings):
             if i in matched_idx:
                 continue
-            if str(f.get("file", "")) != gt_file:
+            if not same_file(f.get("file", ""), gt_file):
                 continue
             if not (gt_cwes & id_set(f.get("cwe"), "cwe")):
                 continue

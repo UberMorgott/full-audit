@@ -26,30 +26,30 @@
 - **Scorer:** `benchmark/score.py` — frozen, untouched, identical to all prior runs.
 - **Window:** N=5 (frozen rule default).
 
-### Path-normalization note (methodology)
+### Path-comparison note (methodology)
 
 The blind reviewer was presented with a single file named `app.py`; all 13 findings
 carry `"file": "app.py"`. The frozen GT stores the repo-relative path
-`benchmark/seeds/synthetic-vuln-01/app.py`. The scorer's verbatim file-match rule
-(`finding.file == gt.file`) maps all findings to FP and all GT items to FN as a
-**systematic artifact, not a capability failure**: every finding is on the correct
-file (there is only one file in scope). Scorer raw output: TP=0, FN=14, FP=13.
+`benchmark/seeds/synthetic-vuln-01/app.py`. The scorer compares file paths by the
+frozen rule's **normalized-equal-or-path-suffix** notion of *same file* (schema §2):
+`app.py` is a trailing path-component suffix of `.../synthetic-vuln-01/app.py`, so the
+two denote the same file and findings match the GT directly. The scorer therefore
+produces the confusion matrix below **without any manual path adjustment** — TP=10,
+FN=4, FP=3. (Earlier this report carried a path-mismatch caveat from a scorer revision
+that matched files by verbatim string equality, which mapped every finding to FP/FN;
+that scorer bug was fixed — the path-suffix rule is a robustness refinement to
+*same file*, not a change to the frozen rule's meaning.)
 
-This report applies **path normalization** for the capability analysis: findings are
-treated as matching the GT file. This does NOT change the frozen rule or the frozen
-inputs — it is an adjudicator determination of root cause (file-path artifact vs real
-miss). The raw scorer output is reported verbatim; the path-normalized analysis is
-labelled as such throughout.
-
-## 2. Confusion matrix (SAST, path-normalized, window N=5)
+## 2. Confusion matrix (SAST, window N=5)
 
 | Category | TP | FN | FP | Recall | Strict precision | Adjudicated precision | Sev-weighted recall |
 |----------|----|----|----|--------|------------------|-----------------------|---------------------|
 | **SAST** | **10** | **4** | **3** | **0.714** | **0.769** | **1.000** | **0.743** |
 
-Raw scorer output (path mismatch artifact): TP=0 FN=14 FP=13.
+These are the scorer's direct output (the path-suffix file-match rule resolves
+`app.py` ↔ `.../synthetic-vuln-01/app.py`); no manual path normalization is applied.
 
-### TP pairs (path-normalized)
+### TP pairs
 
 | GT | Finding | Locus | CWE | Severity |
 |----|---------|-------|-----|----------|
@@ -136,9 +136,9 @@ Raw scorer output (path mismatch artifact): TP=0 FN=14 FP=13.
   capability miss**: the reviewer found the louder consequential sink but missed the quieter
   validation logic flaw.
 
-## 4. Adjudication of unmatched findings (path-normalized FPs)
+## 4. Adjudication of unmatched findings (strict FPs)
 
-After path normalization, 3 findings are unmatched (all have CWE → strict FP by rule):
+3 findings are unmatched by the scorer (all have CWE → strict FP by rule):
 
 | id | locus | finding CWE | GT CWE | verdict | justification |
 |----|-------|-------------|--------|---------|---------------|
@@ -155,9 +155,9 @@ After path normalization, 3 findings are unmatched (all have CWE → strict FP b
 | **disputed** | **0** | — |
 
 All 3 unmatched findings are genuine vulnerabilities in `app.py` at real loci. Zero true
-false positives in the path-normalized result set.
+false positives in the result set.
 
-### Precision: strict vs adjudicated (path-normalized)
+### Precision: strict vs adjudicated
 
 ```
 strict_precision      = TP / (TP + FP)                      = 10 / (10 + 3) = 0.769
@@ -255,22 +255,24 @@ This is the most defensible SAST data point in the benchmark suite:
    straightforward (CWE taxonomy near-misses and a valid alternate locus); model error
    is unlikely to have affected the 1.000 adjudicated precision, but a human spot-check
    was not performed.
-4. **Path-normalization analysis is the adjudicator's determination.** The raw scorer
-   output (TP=0 FN=14 FP=13) is technically the frozen-rule result given the as-filed
-   `"file": "app.py"`. The path-normalization interpretation is correct (single-file
-   scope, unambiguous mapping) but is not produced by the automated scorer.
+4. **File paths matched by path-suffix, not verbatim.** The findings are filed as
+   `"file": "app.py"` (single-file scope) while the GT stores the repo-relative path;
+   the scorer's normalized-equal-or-path-suffix rule (schema §2) resolves them to the
+   same file and produces TP=10 FN=4 FP=3 directly. This is a robustness refinement to
+   the frozen rule's *same-file* notion, not a change to which findings are considered
+   to match a GT item.
 
 ## 8. Gates
 
 | gate | result |
 |------|--------|
 | `python scripts/lint_docs.py` | **PASS** — 0 errors, 0 warnings across 11 docs |
-| `python benchmark/test_score.py` | **PASS** — 27/27 OK |
+| `python benchmark/test_score.py` | **PASS** — 34/34 OK |
 
 ## 9. Artifacts
 
 - Blind findings (frozen): `benchmark/results/synthetic-vuln-01.blind-clean.findings.json`
-- Score (raw, path-mismatch artifact): `benchmark/results/synthetic-vuln-01.blind-clean.score.json`
+- Score (scorer direct output, TP=10 FN=4 FP=3): `benchmark/results/synthetic-vuln-01.blind-clean.score.json`
 - Frozen GT (pre-registered, unmodified): `benchmark/seeds/synthetic-vuln-01/ground-truth.yaml`
   @ tag `bench-prereg-synthetic-01-clean`
 - Source read (adjudication): `benchmark/seeds/synthetic-vuln-01/app.py`

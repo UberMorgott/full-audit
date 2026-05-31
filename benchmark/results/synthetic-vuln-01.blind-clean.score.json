@@ -1,18 +1,8 @@
 {
   "categories": {
     "sast": {
-      "fn": 14,
+      "fn": 4,
       "fn_items": [
-        {
-          "cve": null,
-          "cwe": "CWE-798",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-001",
-          "line_start": 30,
-          "root_cause": "",
-          "severity": "CRITICAL",
-          "type": "sast"
-        },
         {
           "cve": null,
           "cwe": "CWE-328",
@@ -21,36 +11,6 @@
           "line_start": 99,
           "root_cause": "",
           "severity": "HIGH",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-89",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-003",
-          "line_start": 166,
-          "root_cause": "",
-          "severity": "CRITICAL",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-639",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-004",
-          "line_start": 229,
-          "root_cause": "",
-          "severity": "HIGH",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-89",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-005",
-          "line_start": 249,
-          "root_cause": "",
-          "severity": "CRITICAL",
           "type": "sast"
         },
         {
@@ -65,60 +25,10 @@
         },
         {
           "cve": null,
-          "cwe": "CWE-22",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-007",
-          "line_start": 312,
-          "root_cause": "",
-          "severity": "HIGH",
-          "type": "sast"
-        },
-        {
-          "cve": null,
           "cwe": "CWE-94",
           "file": "benchmark/seeds/synthetic-vuln-01/app.py",
           "id": "GT-S01-008",
           "line_start": 361,
-          "root_cause": "",
-          "severity": "CRITICAL",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-78",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-009",
-          "line_start": 388,
-          "root_cause": "",
-          "severity": "CRITICAL",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-918",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-010",
-          "line_start": 406,
-          "root_cause": "",
-          "severity": "HIGH",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-601",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-011",
-          "line_start": 428,
-          "root_cause": "",
-          "severity": "MEDIUM",
-          "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-502",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-012",
-          "line_start": 460,
           "root_cause": "",
           "severity": "CRITICAL",
           "type": "sast"
@@ -132,70 +42,10 @@
           "root_cause": "",
           "severity": "HIGH",
           "type": "sast"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-78",
-          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
-          "id": "GT-S01-014",
-          "line_start": 521,
-          "root_cause": "",
-          "severity": "HIGH",
-          "type": "sast"
         }
       ],
-      "fp": 13,
+      "fp": 3,
       "fp_findings": [
-        {
-          "cve": null,
-          "cwe": "CWE-89",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0001",
-          "line": 166,
-          "severity": "CRITICAL",
-          "title": "SQL injection in login via string-concatenated username"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-89",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0002",
-          "line": 250,
-          "severity": "CRITICAL",
-          "title": "SQL injection in hive search via %-formatted LIKE clause"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-78",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0003",
-          "line": 388,
-          "severity": "CRITICAL",
-          "title": "OS command injection in admin export-log via format param"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-78",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0004",
-          "line": 544,
-          "severity": "CRITICAL",
-          "title": "OS command injection in queen registration (regex allows tainted hive_code into shell)"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-502",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0005",
-          "line": 460,
-          "severity": "CRITICAL",
-          "title": "Insecure deserialization of attacker-controlled request body (pickle.loads)"
-        },
         {
           "cve": null,
           "cwe": "CWE-1336",
@@ -218,56 +68,6 @@
         },
         {
           "cve": null,
-          "cwe": "CWE-22",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0008",
-          "line": 312,
-          "severity": "HIGH",
-          "title": "Path traversal in report upload (filename used unsanitized in save path)"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-918",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0009",
-          "line": 396,
-          "severity": "HIGH",
-          "title": "Server-side request forgery in weather lookup"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-601",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0010",
-          "line": 419,
-          "severity": "HIGH",
-          "title": "Open redirect via flawed is_safe_redirect allowlist"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-639",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0011",
-          "line": 223,
-          "severity": "HIGH",
-          "title": "IDOR / missing ownership check in view_hive"
-        },
-        {
-          "cve": null,
-          "cwe": "CWE-798",
-          "detection": "manual",
-          "file": "app.py",
-          "id": "FA-0012",
-          "line": 30,
-          "severity": "MEDIUM",
-          "title": "Hardcoded Flask secret key"
-        },
-        {
-          "cve": null,
           "cwe": "CWE-916",
           "detection": "manual",
           "file": "app.py",
@@ -277,11 +77,52 @@
           "title": "Weak password hashing (unsalted MD5)"
         }
       ],
-      "recall": 0.0,
-      "severity_weighted_recall": 0.0,
-      "strict_precision": 0.0,
-      "tp": 0,
-      "tp_pairs": []
+      "recall": 0.7142857142857143,
+      "severity_weighted_recall": 0.7429305912596401,
+      "strict_precision": 0.7692307692307693,
+      "tp": 10,
+      "tp_pairs": [
+        {
+          "finding": "FA-0012",
+          "gt": "GT-S01-001"
+        },
+        {
+          "finding": "FA-0001",
+          "gt": "GT-S01-003"
+        },
+        {
+          "finding": "FA-0011",
+          "gt": "GT-S01-004"
+        },
+        {
+          "finding": "FA-0002",
+          "gt": "GT-S01-005"
+        },
+        {
+          "finding": "FA-0008",
+          "gt": "GT-S01-007"
+        },
+        {
+          "finding": "FA-0003",
+          "gt": "GT-S01-009"
+        },
+        {
+          "finding": "FA-0009",
+          "gt": "GT-S01-010"
+        },
+        {
+          "finding": "FA-0010",
+          "gt": "GT-S01-011"
+        },
+        {
+          "finding": "FA-0005",
+          "gt": "GT-S01-012"
+        },
+        {
+          "finding": "FA-0004",
+          "gt": "GT-S01-014"
+        }
+      ]
     },
     "sca": {
       "fn": 0,

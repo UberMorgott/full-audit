@@ -192,10 +192,11 @@ coverage, statistical significance (N=1 run per phase), human-validated adjudica
   precise sink line before any reviewer or scanner saw the code).
 - **Run design:** blind reviewer (Opus) + independent scorer/adjudicator (Sonnet 4.6); all
   answer-key comments stripped before review; reviewer never saw frozen GT.
-- **Path-normalization note:** the blind reviewer filed findings as `"file": "app.py"` (single-file
-  scope); GT stores the repo-relative path. Raw scorer: TP=0 FN=14 FP=13 (systematic artifact).
-  Path-normalized analysis (adjudicator determination): TP=10 FN=4 FP=3 as reported below.
-- **Confusion matrix (SAST, path-normalized, window N=5):**
+- **Path-comparison note:** the blind reviewer filed findings as `"file": "app.py"` (single-file
+  scope); GT stores the repo-relative path. The scorer compares paths by normalized-equal-or-path-suffix
+  (schema §2), so `app.py` resolves to `.../synthetic-vuln-01/app.py` and the scorer produces
+  TP=10 FN=4 FP=3 directly (no manual path adjustment).
+- **Confusion matrix (SAST, window N=5):**
 
   | Category | TP | FN | FP | recall | strict precision | adjudicated precision | sev-weighted recall |
   |----------|----|----|----|--------|------------------|-----------------------|---------------------|

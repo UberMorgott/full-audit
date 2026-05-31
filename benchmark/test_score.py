@@ -237,6 +237,78 @@ class TestCweCveNormalization(unittest.TestCase):
         self.assertEqual(score.normalize_cve("   "), "")
 
 
+class TestFilePathSuffixMatch(unittest.TestCase):
+    """Schema §2 (refined): SAST file paths are compared by normalized-equal OR
+    path-suffix-on-components, so the same file matches regardless of which root it
+    is expressed from. A blind finding filed as `app.py` (single-file scope) must
+    match a GT stored as `seeds/x/app.py`. Reproduces the F3 path-mismatch artifact
+    (verbatim equality -> TP=0 FN=14 FP=13 instead of the reported 10/4/3).
+    Suffix matching is on full path COMPONENTS, so a bare basename cannot spuriously
+    match a different file whose basename merely ends with the same characters."""
+
+    def _sast(self, finding_file, gt_file):
+        findings = [{"id": "FA-X", "file": finding_file, "line": 10, "end_line": 10,
+                     "cwe": "CWE-89", "detection": "manual", "title": "path suffix"}]
+        gt = {"items": [{"id": "GT-SAST", "type": "sast", "cwe": "CWE-89",
+                         "severity": "HIGH", "file": gt_file,
+                         "line_start": 10, "line_end": 10}]}
+        return score.score(findings, gt, window=5)["categories"]["sast"]
+
+    def test_bare_basename_matches_repo_relative_gt(self):
+        # The core F3 case: finding `app.py` matches GT `seeds/x/app.py`.
+        sast = self._sast("app.py", "benchmark/seeds/synthetic-vuln-01/app.py")
+        self.assertEqual(sast["tp"], 1)
+        self.assertEqual(sast["fn_items"], [])
+        self.assertEqual(sast["fp_findings"], [])
+
+    def test_gt_basename_matches_longer_finding_path(self):
+        # Symmetric: GT shorter than finding.
+        sast = self._sast("benchmark/seeds/synthetic-vuln-01/app.py", "app.py")
+        self.assertEqual(sast["tp"], 1)
+
+    def test_backslash_separators_normalized(self):
+        # Windows-style separators normalize to '/' before comparison.
+        sast = self._sast("app.py", "benchmark\\seeds\\x\\app.py")
+        self.assertEqual(sast["tp"], 1)
+
+    def test_multi_component_suffix_matches(self):
+        # "routes/login.ts" matches "src/routes/login.ts".
+        findings = [{"id": "FA-X", "file": "routes/login.ts", "line": 10,
+                     "end_line": 10, "cwe": "CWE-89", "detection": "manual",
+                     "title": "ts"}]
+        gt = {"items": [{"id": "GT", "type": "sast", "cwe": "CWE-89",
+                         "severity": "HIGH", "file": "src/routes/login.ts",
+                         "line_start": 10, "line_end": 10}]}
+        r = score.score(findings, gt, window=5)["categories"]["sast"]
+        self.assertEqual(r["tp"], 1)
+
+    def test_component_safety_no_partial_basename_match(self):
+        # Guard against naive endswith: "top.py" must NOT match "p.py" (the longer
+        # ends with the string "p.py" but NOT with the path component "/p.py").
+        sast = self._sast("top.py", "p.py")
+        self.assertEqual(sast["tp"], 0)
+        self.assertEqual([f["id"] for f in sast["fn_items"]], ["GT-SAST"])
+        self.assertEqual([f["id"] for f in sast["fp_findings"]], ["FA-X"])
+
+    def test_different_basename_no_match(self):
+        # Entirely different files never match.
+        sast = self._sast("app.py", "benchmark/seeds/x/other.py")
+        self.assertEqual(sast["tp"], 0)
+
+    def test_same_file_helper_unit(self):
+        # Direct unit check of the file-equivalence predicate.
+        self.assertTrue(score.same_file("app.py", "seeds/x/app.py"))
+        self.assertTrue(score.same_file("seeds/x/app.py", "app.py"))
+        self.assertTrue(score.same_file("a/b/c.py", "a/b/c.py"))
+        self.assertTrue(score.same_file("routes/login.ts", "src/routes/login.ts"))
+        self.assertTrue(score.same_file("x\\y\\z.py", "y/z.py"))
+        # Component-safety: not a path-component suffix.
+        self.assertFalse(score.same_file("top.py", "p.py"))
+        self.assertFalse(score.same_file("foobar.py", "bar.py"))
+        # Same basename, divergent parent components -> not a suffix of each other.
+        self.assertFalse(score.same_file("a/b.py", "x/b.py"))
+
+
 class TestLineEndNonPositiveFallback(unittest.TestCase):
     """line_end <= 0 (or missing) falls back to line_start (lines are 1-indexed,
     so 0/negative is not a valid line). BUG 3: behavior kept, intent made

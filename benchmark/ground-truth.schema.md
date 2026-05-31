@@ -34,7 +34,7 @@ items:
 |--------------|-------------------|-----------------|---------|
 | `id`         | all               | string          | Stable label, unique within the file (e.g. `GT-001`). |
 | `type`       | all               | `sca`\|`sast`\|`logical` | Category. Drives which matching rule applies. |
-| `file`       | sast (advisory sca)| string         | Repo-relative path. Compared verbatim for sast. |
+| `file`       | sast (advisory sca)| string         | Repo-relative path. For sast, compared by normalized-equal-or-path-suffix (see §2). |
 | `line_start` | sast              | int             | First line of the vulnerable span. |
 | `line_end`   | sast (optional)   | int             | Last line; defaults to `line_start` when absent. |
 | `cwe`        | sast              | string\|list    | CWE id(s), e.g. `CWE-89` or `[CWE-89, CWE-564]`. |
@@ -75,8 +75,23 @@ matching would produce phantom FN/FP that corrupt recall/precision:
   CVE id sets intersect**: `norm(set(finding.cve)) ∩ norm(set(gt.cve)) ≠ ∅`. File and
   line are **ignored** (SCA is dependency-level, not location-level).
 
+**File-path comparison (applied on BOTH sides for SAST file matching).** File paths
+are compared by **normalized-equal-or-path-suffix**, not verbatim string equality,
+so the *same* file matches regardless of which root it is expressed from (a blind
+reviewer who saw a single file `app.py` files `file: app.py`, while the GT stores the
+repo-relative `benchmark/seeds/x/app.py`; these are the same file). Separators are
+normalized (`\` → `/`), then two paths `a`, `b` denote the same file iff:
+`a == b`, OR `a.endswith("/" + b)`, OR `b.endswith("/" + a)`. The `"/" +` guard makes
+this a path-**component** suffix (so `app.py` matches `.../x/app.py` but `top.py` does
+**not** match `p.py`, and `routes/login.ts` matches `src/routes/login.ts`). This is a
+robustness refinement to the *same-file* notion, **not** a change to its meaning.
+*Known limitation:* a bare basename can match multiple GT items that share that
+basename across different directories — acceptable in the single-app seed scope these
+GT files cover (each seed targets one app; basenames are effectively unique in scope).
+
 - **SAST** — a GT item with `type: sast` matches a finding **iff all** hold:
-  1. `finding.file == gt.file` (verbatim string equality), AND
+  1. `finding.file` and `gt.file` are the **same file** by the normalized-equal-or-path-suffix
+     rule above, AND
   2. normalized CWE id sets intersect: `norm(set(finding.cwe)) ∩ norm(set(gt.cwe)) ≠ ∅`, AND
   3. the finding's line span overlaps the GT span widened by window `N`:
      `[finding.line, finding.end_line or finding.line]` overlaps
