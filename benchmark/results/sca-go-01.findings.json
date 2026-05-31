@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.1",
+  "audit": {
+    "level": "2",
+    "verified": false,
+    "date": "2026-05-31",
+    "commit": "4b1cbcb75397062997d1b631414aa0b821cf8945",
+    "scope": "branch"
+  },
+  "summary": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "health": "HIGH"
+  },
+  "findings": [
+    {
+      "id": "FA-0001",
+      "severity": "HIGH",
+      "file": "go.mod",
+      "line": 6,
+      "cve": "CVE-2020-26160",
+      "title": "Reachable vulnerable dependency github.com/dgrijalva/jwt-go v3.2.0+incompatible (CVE-2020-26160)",
+      "detail": "govulncheck reported GO-2020-0017 (CVE-2020-26160 / GHSA-w73w-5m7g-f7qc) as REACHABLE: the seed calls jwt.MapClaims.VerifyAudience (trace: main.go:43 sca.parseToken calls jwt.MapClaims.VerifyAudience). If a JWT contains an audience claim with an array of strings rather than a single string, and MapClaims.VerifyAudience is called with req set to false, audience verification is bypassed, allowing an invalid set of audiences. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N (7.5).",
+      "detection": "govulncheck",
+      "confidence": 90,
+      "reproduced": "n/a",
+      "recommendation": "Migrate off the abandoned github.com/dgrijalva/jwt-go to github.com/golang-jwt/jwt (fixed in 4.0.0-preview1 lineage) or a maintained successor."
+    },
+    {
+      "id": "FA-0002",
+      "severity": "HIGH",
+      "file": "go.mod",
+      "line": 8,
+      "cve": "CVE-2022-32149",
+      "title": "Reachable vulnerable dependency golang.org/x/text v0.3.0 (CVE-2022-32149)",
+      "detail": "govulncheck reported GO-2022-1059 (CVE-2022-32149 / GHSA-69ch-w2m2-3vjp) as REACHABLE: the seed calls golang.org/x/text/language.ParseAcceptLanguage (trace: main.go:51 sca.matchLanguage calls language.ParseAcceptLanguage). An attacker may cause a denial of service by crafting an Accept-Language header which ParseAcceptLanguage takes significant time to parse. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H (7.5).",
+      "detection": "govulncheck",
+      "confidence": 90,
+      "reproduced": "n/a",
+      "recommendation": "Upgrade golang.org/x/text to v0.3.8 or later."
+    },
+    {
+      "id": "FA-0003",
+      "severity": "HIGH",
+      "file": "go.mod",
+      "line": 8,
+      "cve": "CVE-2021-38561",
+      "title": "Reachable vulnerable dependency golang.org/x/text v0.3.0 (CVE-2021-38561)",
+      "detail": "govulncheck reported GO-2021-0113 (CVE-2021-38561 / GHSA-ppp9-7jff-5vj2) as REACHABLE: the same call to golang.org/x/text/language.ParseAcceptLanguage reaches this vulnerability (both GO-2022-1059 and GO-2021-0113 list ParseAcceptLanguage as the vulnerable symbol). Due to improper index calculation, an incorrectly formatted language tag can cause Parse to panic via an out-of-bounds read, usable as a denial-of-service vector on untrusted input. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H (7.5).",
+      "detection": "govulncheck",
+      "confidence": 90,
+      "reproduced": "n/a",
+      "recommendation": "Upgrade golang.org/x/text to v0.3.7 or later."
+    }
+  ]
+}

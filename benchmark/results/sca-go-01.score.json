@@ -1,0 +1,72 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    },
+    "sca": {
+      "fn": 2,
+      "fn_items": [
+        {
+          "cve": "CVE-2020-14040",
+          "cwe": null,
+          "file": "go.mod",
+          "id": "GT-004",
+          "line_start": 8,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sca"
+        },
+        {
+          "cve": "CVE-2021-3121",
+          "cwe": null,
+          "file": "go.mod",
+          "id": "GT-005",
+          "line_start": 7,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sca"
+        }
+      ],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": 0.6,
+      "severity_weighted_recall": 0.582901554404145,
+      "strict_precision": 1.0,
+      "tp": 3,
+      "tp_pairs": [
+        {
+          "finding": "FA-0001",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "FA-0002",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "FA-0003",
+          "gt": "GT-003"
+        }
+      ]
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
