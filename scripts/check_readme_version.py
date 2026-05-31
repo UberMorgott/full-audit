@@ -165,15 +165,22 @@ def main(argv=None):
 
     # Optional tag assertion (release / tag-triggered runs only).
     if tag:
-        tag_ver = tag[1:] if tag[:1] in ("v", "V") else tag
-        if tag_ver != truth_ver:
-            print("check_readme_version: FAIL")
-            print("  git tag %s (= %s) does not match the resolved repo version %s (%s)"
-                  % (tag, tag_ver, truth_ver, truth_loc))
-            return 1
+        # Only assert on version tags (e.g. v1.2.3 / 1.2.3).
+        # Non-version tags (bench-prereg-*, etc.) are skipped — they are not
+        # release anchors and must not fail the version-consistency gate.
+        if not re.match(r"^v?\d+\.\d+", tag):
+            print("check_readme_version: tag '%s' is not a version tag — "
+                  "skipping tag assertion" % tag)
+        else:
+            tag_ver = tag[1:] if tag[:1] in ("v", "V") else tag
+            if tag_ver != truth_ver:
+                print("check_readme_version: FAIL")
+                print("  git tag %s (= %s) does not match the resolved repo version %s (%s)"
+                      % (tag, tag_ver, truth_ver, truth_loc))
+                return 1
 
     detail = ", ".join("%s=%s" % (lbl, ver) for (lbl, ver, _loc) in found)
-    tag_note = " ; tag %s OK" % tag if tag else ""
+    tag_note = " ; tag %s OK" % tag if tag and re.match(r"^v?\d+\.\d+", tag) else ""
     print("check_readme_version: PASS — all version mentions agree on %s%s"
           % (truth_ver, tag_note))
     print("  checked: %s" % detail)
