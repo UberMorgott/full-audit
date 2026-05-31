@@ -1093,7 +1093,7 @@ Red-Green-Refactor:
 3. **GREEN** — minimal fix
 4. **Verify GREEN** — all tests pass
 5. **REFACTOR** — clean up, re-run. For CRITICAL/HIGH data-flow fixes: add a guard at EVERY layer the value crosses (entry validation, business-logic check, env/config guard, debug log) — one check fixes the bug, every layer makes it impossible. See `universal.md` → Defense-in-Depth Validation.
-6. **Commit** — `fix(audit): [SEVERITY] <imperative subject ≤50 chars>`. Body only when the *why* isn't obvious; body MANDATORY for security fixes, data migrations, breaking changes. No AI attribution / co-author lines.
+6. **Commit** — `fix(audit): [SEVERITY] <imperative subject ≤50 chars>`. Body only when the *why* isn't obvious; body MANDATORY for security fixes, data migrations, breaking changes. No AI attribution / co-author lines **on fix commits written by the audit into the target repo**.
 
 > Untestable (config change, header) -> skip TDD, verify with CLI command.
 
