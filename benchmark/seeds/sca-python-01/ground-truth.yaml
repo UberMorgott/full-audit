@@ -1,0 +1,297 @@
+# Ground truth for seed sca-python-01 (controlled SCA, pinned-vulnerable-by-design).
+#
+# ORACLE: osv.dev /v1/query per pinned package@version (raw responses captured in
+#   the F0 report). Each item = one DISTINCT CVE id osv.dev reports as affecting that
+#   pinned version. GHSA/PYSEC advisories sharing a CVE alias are deduplicated to that
+#   CVE (SCA matches on CVE per the frozen rule). cvss = CVSS v3.x base score from the
+#   osv record when present; when the osv record carried only a CVSS v4 vector + a
+#   database_specific severity band, cvss is omitted and `severity` (the osv band) is
+#   used via the crosswalk in ground-truth.schema.md.
+#
+# type=sca for every item; file/line_start are advisory only (the SCA matcher ignores
+#   them) and point at the package's line in requirements.txt.
+#
+# CVE-LESS osv advisories for these versions (documented EXPECTED-FN, not matchable by
+#   the CVE rule, so intentionally NOT listed as items):
+#   - cryptography 2.3: GHSA-5cpq-8wj7-hf2v (no CVE alias)
+#   - cryptography 2.3: GHSA-jm77-qphf-c4w8 (no CVE alias)
+#
+# Total items: 38 distinct (package, CVE) pairs.
+meta:
+  repo: full-audit/benchmark-seed sca-python-01
+  commit: 0000000000000000000000000000000000000000
+  notes: controlled SCA seed; GT sourced from osv.dev /v1/query; pinned-vulnerable-by-design
+
+items:
+  # --- Jinja2 2.10 (requirements.txt line 1) — 6 CVEs ---
+  - id: GT-001
+    type: sca
+    cve: CVE-2019-10906   # Jinja2 2.10
+    severity: HIGH
+    cvss: 8.6
+    file: requirements.txt
+    line_start: 1
+  - id: GT-002
+    type: sca
+    cve: CVE-2020-28493   # Jinja2 2.10
+    severity: MEDIUM
+    cvss: 5.3
+    file: requirements.txt
+    line_start: 1
+  - id: GT-003
+    type: sca
+    cve: CVE-2024-22195   # Jinja2 2.10
+    severity: MEDIUM
+    cvss: 5.4
+    file: requirements.txt
+    line_start: 1
+  - id: GT-004
+    type: sca
+    cve: CVE-2024-34064   # Jinja2 2.10
+    severity: MEDIUM
+    cvss: 5.4
+    file: requirements.txt
+    line_start: 1
+  - id: GT-005
+    type: sca
+    cve: CVE-2024-56326   # Jinja2 2.10
+    severity: HIGH
+    cvss: 7.8
+    file: requirements.txt
+    line_start: 1
+  - id: GT-006
+    type: sca
+    cve: CVE-2025-27516   # Jinja2 2.10 (osv CVSS v4 only; band MODERATE -> MEDIUM)
+    severity: MEDIUM
+    file: requirements.txt
+    line_start: 1
+
+  # --- PyYAML 5.1 (requirements.txt line 2) — 3 CVEs ---
+  - id: GT-007
+    type: sca
+    cve: CVE-2019-20477   # PyYAML 5.1
+    severity: CRITICAL
+    cvss: 9.8
+    file: requirements.txt
+    line_start: 2
+  - id: GT-008
+    type: sca
+    cve: CVE-2020-1747    # PyYAML 5.1
+    severity: CRITICAL
+    cvss: 9.8
+    file: requirements.txt
+    line_start: 2
+  - id: GT-009
+    type: sca
+    cve: CVE-2020-14343   # PyYAML 5.1
+    severity: CRITICAL
+    cvss: 9.8
+    file: requirements.txt
+    line_start: 2
+
+  # --- requests 2.19.1 (requirements.txt line 3) — 5 CVEs ---
+  - id: GT-010
+    type: sca
+    cve: CVE-2018-18074   # requests 2.19.1
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 3
+  - id: GT-011
+    type: sca
+    cve: CVE-2023-32681   # requests 2.19.1
+    severity: MEDIUM
+    cvss: 6.1
+    file: requirements.txt
+    line_start: 3
+  - id: GT-012
+    type: sca
+    cve: CVE-2024-35195   # requests 2.19.1
+    severity: MEDIUM
+    cvss: 5.6
+    file: requirements.txt
+    line_start: 3
+  - id: GT-013
+    type: sca
+    cve: CVE-2024-47081   # requests 2.19.1
+    severity: MEDIUM
+    cvss: 5.3
+    file: requirements.txt
+    line_start: 3
+  - id: GT-014
+    type: sca
+    cve: CVE-2026-25645   # requests 2.19.1
+    severity: MEDIUM
+    cvss: 4.4
+    file: requirements.txt
+    line_start: 3
+
+  # --- urllib3 1.24 (requirements.txt line 4) — 13 CVEs ---
+  - id: GT-015
+    type: sca
+    cve: CVE-2018-25091   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 6.1
+    file: requirements.txt
+    line_start: 4
+  - id: GT-016
+    type: sca
+    cve: CVE-2019-11236   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 6.1
+    file: requirements.txt
+    line_start: 4
+  - id: GT-017
+    type: sca
+    cve: CVE-2019-11324   # urllib3 1.24
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 4
+  - id: GT-018
+    type: sca
+    cve: CVE-2020-26137   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 6.5
+    file: requirements.txt
+    line_start: 4
+  - id: GT-019
+    type: sca
+    cve: CVE-2021-33503   # urllib3 1.24 (canonical osv CVSS v3 = 7.5)
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 4
+  - id: GT-020
+    type: sca
+    cve: CVE-2023-43804   # urllib3 1.24
+    severity: HIGH
+    cvss: 8.1
+    file: requirements.txt
+    line_start: 4
+  - id: GT-021
+    type: sca
+    cve: CVE-2023-45803   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 4.2
+    file: requirements.txt
+    line_start: 4
+  - id: GT-022
+    type: sca
+    cve: CVE-2024-37891   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 4.4
+    file: requirements.txt
+    line_start: 4
+  - id: GT-023
+    type: sca
+    cve: CVE-2025-50181   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 5.3
+    file: requirements.txt
+    line_start: 4
+  - id: GT-024
+    type: sca
+    cve: CVE-2025-66418   # urllib3 1.24 (osv CVSS v4 only; band HIGH)
+    severity: HIGH
+    file: requirements.txt
+    line_start: 4
+  - id: GT-025
+    type: sca
+    cve: CVE-2025-66471   # urllib3 1.24 (osv CVSS v4 only; band HIGH)
+    severity: HIGH
+    file: requirements.txt
+    line_start: 4
+  - id: GT-026
+    type: sca
+    cve: CVE-2026-21441   # urllib3 1.24
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 4
+  - id: GT-027
+    type: sca
+    cve: CVE-2026-44431   # urllib3 1.24
+    severity: MEDIUM
+    cvss: 5.3
+    file: requirements.txt
+    line_start: 4
+
+  # --- Flask 0.12.2 (requirements.txt line 5) — 4 CVEs ---
+  - id: GT-028
+    type: sca
+    cve: CVE-2018-1000656  # Flask 0.12.2
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 5
+  - id: GT-029
+    type: sca
+    cve: CVE-2019-1010083  # Flask 0.12.2
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 5
+  - id: GT-030
+    type: sca
+    cve: CVE-2023-30861    # Flask 0.12.2
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 5
+  - id: GT-031
+    type: sca
+    cve: CVE-2026-27205    # Flask 0.12.2 (osv CVSS v4 only; band LOW)
+    severity: LOW
+    file: requirements.txt
+    line_start: 5
+
+  # --- cryptography 2.3 (requirements.txt line 6) — 7 CVEs ---
+  - id: GT-032
+    type: sca
+    cve: CVE-2020-25659   # cryptography 2.3
+    severity: MEDIUM
+    cvss: 5.9
+    file: requirements.txt
+    line_start: 6
+  - id: GT-033
+    type: sca
+    cve: CVE-2023-0286    # cryptography 2.3
+    severity: HIGH
+    cvss: 7.4
+    file: requirements.txt
+    line_start: 6
+  - id: GT-034
+    type: sca
+    cve: CVE-2023-23931   # cryptography 2.3
+    severity: MEDIUM
+    cvss: 6.5
+    file: requirements.txt
+    line_start: 6
+  - id: GT-035
+    type: sca
+    cve: CVE-2023-50782   # cryptography 2.3
+    severity: HIGH
+    cvss: 7.5
+    file: requirements.txt
+    line_start: 6
+  - id: GT-036
+    type: sca
+    cve: CVE-2024-0727    # cryptography 2.3
+    severity: MEDIUM
+    cvss: 5.5
+    file: requirements.txt
+    line_start: 6
+  - id: GT-037
+    type: sca
+    cve: CVE-2026-26007   # cryptography 2.3 (osv CVSS v4 only; band HIGH)
+    severity: HIGH
+    file: requirements.txt
+    line_start: 6
+  - id: GT-038
+    type: sca
+    cve: CVE-2026-34073   # cryptography 2.3
+    severity: MEDIUM
+    cvss: 5.3
+    file: requirements.txt
+    line_start: 6
