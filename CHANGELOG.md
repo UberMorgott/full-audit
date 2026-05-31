@@ -2,6 +2,11 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.6] — 2026-05-31
+
+### Fixed
+- **Phase-0 enumeration / package-manager detection exit-code hygiene** (README Phase-0 + frontend.md PM-detect) — a bare multi-candidate `ls web/pnpm-lock.yaml web/yarn.lock web/package-lock.json web/bun.lockb` returns exit 2 whenever any candidate is absent (always — only one lockfile exists), poisoning the `;`-chained Phase-0 block with a false "Exit code 2" on a fully successful enumeration (and risking a wrongful abort in harnesses that treat non-zero as fatal). Caught on a live Go+Vue monorepo audit. Guarded the detection so it cannot set the block exit code (`|| true` / per-file `[ -f ]` loop + explicit success); DEFECT-1 (chained/piped exit-code) lineage.
+
 ## [1.10.5] — 2026-05-31
 
 ### Added

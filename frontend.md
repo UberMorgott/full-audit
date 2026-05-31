@@ -18,6 +18,12 @@ Applies when `package.json` detected. Framework auto-selected:
 All commands assume `cd {frontend_root}`.
 
 > **Detect the package manager from the lockfile** and substitute it in every command below: `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun, `package-lock.json` → npm. `npx` works under all (bundled with Node); `pnpm dlx` / `pnpm exec` is the pnpm-native form. Run scripts via the detected manager (`pnpm build` / `npm run build`).
+> **Exit-code hygiene (lockfile detection):** detect with a per-file test, NOT a bare multi-candidate `ls` — `ls web/pnpm-lock.yaml web/yarn.lock web/package-lock.json web/bun.lockb` returns exit 2 whenever ANY listed path is absent (always — only one lockfile exists), and that non-zero poisons a `;`-chained enumeration block (false "Exit code 2" on a fully successful detect). The detection must not set the block exit code — guard with `|| true` (cross-ref the exit-code-hygiene rule, README stack-command-mapping → Exit codes; DEFECT-1 lineage):
+> ```bash
+> # exit-safe: prints the present lockfile, always exits 0 (even when none/one match)
+> for f in <root>/pnpm-lock.yaml <root>/yarn.lock <root>/package-lock.json <root>/bun.lockb; do [ -f "$f" ] && echo "$f"; done; true
+> # or the minimal form: ls <candidates> 2>/dev/null || true
+> ```
 
 ---
 
