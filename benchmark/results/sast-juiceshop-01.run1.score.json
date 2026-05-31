@@ -1,0 +1,422 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 10,
+      "fn_items": [
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-943",
+            "CWE-89"
+          ],
+          "file": "routes/updateProductReviews.ts",
+          "id": "GT-003",
+          "line_start": 18,
+          "root_cause": "tool-missed (no NoSQL selector-injection rule)",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "file": "lib/insecurity.ts",
+          "id": "GT-004",
+          "line_start": 138,
+          "root_cause": "GT-locus vs tool-locus (flagged at routes/redirect.ts:19, different file)",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-94",
+            "CWE-1336"
+          ],
+          "file": "routes/b2bOrder.ts",
+          "id": "GT-006",
+          "line_start": 23,
+          "root_cause": "CWE-mismatch (semgrep CWE-1104 vs GT 94/1336; same line 23)",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-22",
+            "CWE-158"
+          ],
+          "file": "routes/fileServer.ts",
+          "id": "GT-008",
+          "line_start": 33,
+          "root_cause": "CWE-mismatch (semgrep CWE-73 vs GT 22/158; same line 33)",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "file": "routes/dataErasure.ts",
+          "id": "GT-009",
+          "line_start": 104,
+          "root_cause": "tool-missed (LFR via path.resolve+render)",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-918",
+          "file": "routes/profileImageUrlUpload.ts",
+          "id": "GT-010",
+          "line_start": 24,
+          "root_cause": "tool-missed (SSRF fetch(req.body.imageUrl))",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "file": "frontend/src/app/search-result/search-result.component.ts",
+          "id": "GT-011",
+          "line_start": 110,
+          "root_cause": "tool-missed (Angular bypassSecurityTrustHtml XSS)",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "file": "frontend/src/app/search-result/search-result.component.ts",
+          "id": "GT-012",
+          "line_start": 143,
+          "root_cause": "tool-missed (Angular bypassSecurityTrustHtml XSS)",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-327",
+            "CWE-916"
+          ],
+          "file": "lib/insecurity.ts",
+          "id": "GT-013",
+          "line_start": 43,
+          "root_cause": "tool-missed (weak MD5 hash; no weak-hash rule)",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": [
+            "CWE-798",
+            "CWE-321"
+          ],
+          "file": "lib/insecurity.ts",
+          "id": "GT-014",
+          "line_start": 23,
+          "root_cause": "tool-missed (hardcoded RSA PEM literal at line 23)",
+          "severity": "HIGH",
+          "type": "sast"
+        }
+      ],
+      "fp": 25,
+      "fp_findings": [
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/about/about.component.ts",
+          "id": "FA-0001",
+          "line": 116,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/administration/administration.component.ts",
+          "id": "FA-0002",
+          "line": 73,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/last-login-ip/last-login-ip.component.ts",
+          "id": "FA-0003",
+          "line": 39,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "frontend/src/app/track-result/track-result.component.ts",
+          "id": "FA-0004",
+          "line": 48,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-94",
+          "detection": "semgrep",
+          "file": "frontend/src/app/web3-sandbox/web3-sandbox.component.ts",
+          "id": "FA-0005",
+          "line": 242,
+          "severity": "MEDIUM",
+          "title": "unsafe-dynamic-method"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-915",
+          "detection": "semgrep",
+          "file": "frontend/src/hacking-instructor/helpers/helpers.ts",
+          "id": "FA-0006",
+          "line": 49,
+          "severity": "MEDIUM",
+          "title": "prototype-pollution-loop"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "frontend/src/hacking-instructor/index.ts",
+          "id": "FA-0007",
+          "line": 126,
+          "severity": "HIGH",
+          "title": "insecure-document-method / insecure-innerhtml"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0008",
+          "line": 44,
+          "severity": "MEDIUM",
+          "title": "hardcoded-hmac-key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0009",
+          "line": 56,
+          "severity": "MEDIUM",
+          "title": "hardcoded-jwt-secret"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0010",
+          "line": 152,
+          "severity": "MEDIUM",
+          "title": "hardcoded-hmac-key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "lib/startup/customizeApplication.ts",
+          "id": "FA-0011",
+          "line": 84,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-1104",
+          "detection": "semgrep",
+          "file": "routes/b2bOrder.ts",
+          "id": "FA-0012",
+          "line": 23,
+          "severity": "CRITICAL",
+          "title": "express-detect-notevil-usage"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-522",
+          "detection": "semgrep",
+          "file": "routes/currentUser.ts",
+          "id": "FA-0013",
+          "line": 31,
+          "severity": "HIGH",
+          "title": "remote-property-injection"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/fileServer.ts",
+          "id": "FA-0014",
+          "line": 33,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/keyServer.ts",
+          "id": "FA-0016",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/logfileServer.ts",
+          "id": "FA-0017",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-73",
+          "detection": "semgrep",
+          "file": "routes/quarantineServer.ts",
+          "id": "FA-0019",
+          "line": 14,
+          "severity": "MEDIUM",
+          "title": "express-res-sendfile"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "detection": "semgrep",
+          "file": "routes/redirect.ts",
+          "id": "FA-0020",
+          "line": 19,
+          "severity": "MEDIUM",
+          "title": "express-open-redirect / unknown-value-in-redirect"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-116",
+          "detection": "semgrep",
+          "file": "routes/verify.ts",
+          "id": "FA-0023",
+          "line": 213,
+          "severity": "MEDIUM",
+          "title": "html-in-template-string"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "routes/videoHandler.ts",
+          "id": "FA-0024",
+          "line": 57,
+          "severity": "MEDIUM",
+          "title": "unknown-value-with-script-tag"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep",
+          "file": "routes/videoHandler.ts",
+          "id": "FA-0025",
+          "line": 71,
+          "severity": "MEDIUM",
+          "title": "unknown-value-with-script-tag"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "FA-0026",
+          "line": 269,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "FA-0027",
+          "line": 273,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "FA-0028",
+          "line": 277,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep",
+          "file": "server.ts",
+          "id": "FA-0029",
+          "line": 281,
+          "severity": "MEDIUM",
+          "title": "express-check-directory-listing"
+        }
+      ],
+      "recall": 0.2857142857142857,
+      "severity_weighted_recall": 0.3232876712328767,
+      "strict_precision": 0.13793103448275862,
+      "tp": 4,
+      "tp_pairs": [
+        {
+          "finding": "FA-0018",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "FA-0021",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "FA-0015",
+          "gt": "GT-005"
+        },
+        {
+          "finding": "FA-0022",
+          "gt": "GT-007"
+        }
+      ]
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
