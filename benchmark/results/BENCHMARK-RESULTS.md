@@ -244,6 +244,11 @@ Baseline = raw semgrep, no triage, all 118 results as findings (59 auto-scorable
 - **Real multi-agent framework run** (the key open item) — the actual team-based orchestration
   vs this single-agent proxy; needs an orchestration/cost decision (the plan anticipates
   ~150k–400k output tokens per full L2+V framework audit).
+  - **LANDED (2026-05-31):** L2+V LLM source-review run recovered **all 6 tool-missed FNs**
+    (NoSQL, SSRF, LFR, ×2 Angular `bypassSecurityTrustHtml` XSS, weak-MD5) **+ both CWE-mismatch
+    FNs** (RCE CWE-94, traversal CWE-22) **+ the RSA-PEM-literal locus** — SAST recall
+    **0.286 → 1.000 (14/14)**, sev-weighted recall 0.323 → 1.000, strict precision 0.138 → 0.438,
+    adjudicated precision 0.857 → ~0.935. See `benchmark/results/F2-multiagent-juiceshop-01.md`.
 - **More stacks** — Ф3: real CVE pre-fix commits including post-cutoff CVEs (highest signal,
   highest prep cost; the primary contamination control).
 - **Variability runs** — Ф4: N≥3 on the real multi-agent path (not the deterministic semgrep

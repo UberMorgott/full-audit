@@ -1,0 +1,276 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 18,
+      "fp_findings": [
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "frontend/src/app/about/about.component.ts",
+          "id": "FA-0015",
+          "line": 116,
+          "severity": "HIGH",
+          "title": "XSS via bypassSecurityTrustHtml on feedback comment"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "frontend/src/app/administration/administration.component.ts",
+          "id": "FA-0016",
+          "line": 73,
+          "severity": "HIGH",
+          "title": "Stored XSS via bypassSecurityTrustHtml on user.email (admin panel)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "frontend/src/app/administration/administration.component.ts",
+          "id": "FA-0017",
+          "line": 91,
+          "severity": "HIGH",
+          "title": "Stored XSS via bypassSecurityTrustHtml on feedback.comment (admin panel)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "frontend/src/app/last-login-ip/last-login-ip.component.ts",
+          "id": "FA-0018",
+          "line": 39,
+          "severity": "MEDIUM",
+          "title": "XSS via bypassSecurityTrustHtml on lastLoginIp"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "frontend/src/app/track-result/track-result.component.ts",
+          "id": "FA-0019",
+          "line": 48,
+          "severity": "MEDIUM",
+          "title": "XSS via bypassSecurityTrustHtml on orderId"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "frontend/src/hacking-instructor/index.ts",
+          "id": "FA-0020",
+          "line": 126,
+          "severity": "HIGH",
+          "title": "innerHTML = snarkdown(hint.text) without sanitization"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep+manual",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0021",
+          "line": 44,
+          "severity": "MEDIUM",
+          "title": "Hardcoded HMAC key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "semgrep+manual",
+          "file": "lib/insecurity.ts",
+          "id": "FA-0022",
+          "line": 152,
+          "severity": "HIGH",
+          "title": "Hardcoded RSA key reused as HMAC secret (deluxeToken)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "semgrep+manual",
+          "file": "routes/keyServer.ts",
+          "id": "FA-0023",
+          "line": 14,
+          "severity": "HIGH",
+          "title": "Path traversal in res.sendFile (encryptionkeys/)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "semgrep+manual",
+          "file": "routes/logfileServer.ts",
+          "id": "FA-0024",
+          "line": 14,
+          "severity": "HIGH",
+          "title": "Path traversal in res.sendFile (logs/)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "semgrep+manual",
+          "file": "routes/quarantineServer.ts",
+          "id": "FA-0025",
+          "line": 14,
+          "severity": "HIGH",
+          "title": "Path traversal in res.sendFile (ftp/quarantine/)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "detection": "semgrep+manual",
+          "file": "routes/redirect.ts",
+          "id": "FA-0026",
+          "line": 19,
+          "severity": "MEDIUM",
+          "title": "Open redirect at route locus"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "semgrep+manual",
+          "file": "routes/videoHandler.ts",
+          "id": "FA-0027",
+          "line": 71,
+          "severity": "MEDIUM",
+          "title": "XSS via subtitle injection into script tag"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep+manual",
+          "file": "server.ts",
+          "id": "FA-0028",
+          "line": 269,
+          "severity": "MEDIUM",
+          "title": "Directory listing enabled on /ftp"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-548",
+          "detection": "semgrep+manual",
+          "file": "server.ts",
+          "id": "FA-0029",
+          "line": 277,
+          "severity": "MEDIUM",
+          "title": "Directory listing enabled on /encryptionkeys"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "frontend/src/app/data-export/data-export.component.ts",
+          "id": "FA-0030",
+          "line": 57,
+          "severity": "MEDIUM",
+          "title": "bypassSecurityTrustHtml on captcha image data"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-95",
+          "detection": "manual",
+          "file": "routes/captcha.ts",
+          "id": "FA-0031",
+          "line": 22,
+          "severity": "MEDIUM",
+          "title": "eval of arithmetic captcha expression"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "frontend/src/app/score-board/score-board.component.ts",
+          "id": "FA-0032",
+          "line": 82,
+          "severity": "MEDIUM",
+          "title": "bypassSecurityTrustHtml on challenge.description"
+        }
+      ],
+      "recall": 1.0,
+      "severity_weighted_recall": 1.0,
+      "strict_precision": 0.4375,
+      "tp": 14,
+      "tp_pairs": [
+        {
+          "finding": "FA-0001",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "FA-0002",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "FA-0003",
+          "gt": "GT-003"
+        },
+        {
+          "finding": "FA-0004",
+          "gt": "GT-004"
+        },
+        {
+          "finding": "FA-0005",
+          "gt": "GT-005"
+        },
+        {
+          "finding": "FA-0006",
+          "gt": "GT-006"
+        },
+        {
+          "finding": "FA-0007",
+          "gt": "GT-007"
+        },
+        {
+          "finding": "FA-0008",
+          "gt": "GT-008"
+        },
+        {
+          "finding": "FA-0009",
+          "gt": "GT-009"
+        },
+        {
+          "finding": "FA-0010",
+          "gt": "GT-010"
+        },
+        {
+          "finding": "FA-0011",
+          "gt": "GT-011"
+        },
+        {
+          "finding": "FA-0012",
+          "gt": "GT-012"
+        },
+        {
+          "finding": "FA-0013",
+          "gt": "GT-013"
+        },
+        {
+          "finding": "FA-0014",
+          "gt": "GT-014"
+        }
+      ]
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
