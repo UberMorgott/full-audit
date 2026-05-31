@@ -1,0 +1,187 @@
+meta:
+  repo: juice-shop/juice-shop
+  tag: v20.0.0
+  commit: f356a09207c7a9550eb6fc4c3945e081922cf998
+  notes: >-
+    SAST ground truth for OWASP Juice Shop v20.0.0. Items are ONLY the
+    statically-locatable, code-level vulnerabilities whose vulnerable sink could
+    be pinned to a concrete file+line(s) with a defensible CWE by reading the
+    actual shipped source. Each item is tied to a real shipped Juice Shop
+    challenge (data/static/challenges.yml) and, where present, the repo's own
+    `vuln-code-snippet vuln-line <challengeKey>` source annotation. Behavioral /
+    config / access-control / auth / crypto-protocol challenges that have no
+    single static sink line are documented as EXCLUSIONS in README.md, not GT
+    items (a documented coverage limitation, NOT findings). 112 challenges
+    total; 14 mapped to file+line+CWE here.
+items:
+  - id: GT-001
+    type: sast
+    file: routes/login.ts
+    line_start: 34
+    line_end: 34
+    cwe: CWE-89
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      SQL injection (loginAdminChallenge/loginBenderChallenge/loginJimChallenge):
+      req.body.email interpolated raw into sequelize.query SELECT.
+
+  - id: GT-002
+    type: sast
+    file: routes/search.ts
+    line_start: 23
+    line_end: 23
+    cwe: CWE-89
+    severity: CRITICAL
+    cvss: 9.1
+    comment: >-
+      SQL injection (unionSqlInjectionChallenge/dbSchemaChallenge):
+      req.query.q interpolated raw into sequelize.query Products SELECT.
+
+  - id: GT-003
+    type: sast
+    file: routes/updateProductReviews.ts
+    line_start: 18
+    line_end: 18
+    cwe: [CWE-943, CWE-89]
+    severity: HIGH
+    cvss: 8.1
+    comment: >-
+      NoSQL injection (noSqlReviewsChallenge/forgedReviewChallenge):
+      req.body.id used directly as Mongo selector {_id: req.body.id} with multi.
+
+  - id: GT-004
+    type: sast
+    file: lib/insecurity.ts
+    line_start: 138
+    line_end: 138
+    cwe: CWE-601
+    severity: MEDIUM
+    cvss: 6.1
+    comment: >-
+      Open redirect (redirectChallenge): allowlist check uses
+      url.includes(allowedUrl) substring match — bypassable by appending the
+      allowed URL as a query param.
+
+  - id: GT-005
+    type: sast
+    file: routes/fileUpload.ts
+    line_start: 83
+    line_end: 83
+    cwe: CWE-611
+    severity: HIGH
+    cvss: 7.7
+    comment: >-
+      XXE (xxeFileDisclosureChallenge): libxml.parseXml called with
+      noent:true on user-uploaded XML, enabling external entity expansion /
+      file disclosure.
+
+  - id: GT-006
+    type: sast
+    file: routes/b2bOrder.ts
+    line_start: 23
+    line_end: 23
+    cwe: [CWE-94, CWE-1336]
+    severity: CRITICAL
+    cvss: 9.8
+    comment: >-
+      Server-side RCE via untrusted code eval (rceChallenge/rceOccupyChallenge):
+      body.orderLinesData passed to safeEval inside vm.runInContext.
+
+  - id: GT-007
+    type: sast
+    file: routes/userProfile.ts
+    line_start: 61
+    line_end: 61
+    cwe: [CWE-94, CWE-95]
+    severity: HIGH
+    cvss: 8.8
+    comment: >-
+      SSTI / code injection (usernameXssChallenge): eval(code) where code is
+      extracted from the user-controlled username (#{...}).
+
+  - id: GT-008
+    type: sast
+    file: routes/fileServer.ts
+    line_start: 33
+    line_end: 33
+    cwe: [CWE-22, CWE-158]
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      Path traversal / poison null byte (directoryListingChallenge/nullByteChallenge):
+      res.sendFile(path.resolve('ftp/', file)) on user-supplied file param after
+      a null-byte cutoff that does not block traversal.
+
+  - id: GT-009
+    type: sast
+    file: routes/dataErasure.ts
+    line_start: 104
+    line_end: 104
+    cwe: CWE-22
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      Local file read / path traversal (lfrChallenge): path.resolve(req.body.layout)
+      rendered as template — arbitrary file inclusion guarded only by a substring
+      denylist.
+
+  - id: GT-010
+    type: sast
+    file: routes/profileImageUrlUpload.ts
+    line_start: 24
+    line_end: 24
+    cwe: CWE-918
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      SSRF (ssrfChallenge): fetch(url) where url = req.body.imageUrl with no
+      host/scheme allowlist.
+
+  - id: GT-011
+    type: sast
+    file: frontend/src/app/search-result/search-result.component.ts
+    line_start: 110
+    line_end: 110
+    cwe: CWE-79
+    severity: HIGH
+    cvss: 7.1
+    comment: >-
+      XSS (restfulXssChallenge): sanitizer.bypassSecurityTrustHtml on
+      server-supplied product description, defeating Angular's built-in escaping.
+
+  - id: GT-012
+    type: sast
+    file: frontend/src/app/search-result/search-result.component.ts
+    line_start: 143
+    line_end: 143
+    cwe: CWE-79
+    severity: HIGH
+    cvss: 7.1
+    comment: >-
+      DOM XSS (localXssChallenge/xssBonusChallenge): sanitizer.bypassSecurityTrustHtml
+      on the user-controlled search query param.
+
+  - id: GT-013
+    type: sast
+    file: lib/insecurity.ts
+    line_start: 43
+    line_end: 43
+    cwe: [CWE-327, CWE-916]
+    severity: MEDIUM
+    cvss: 5.9
+    comment: >-
+      Weak password hashing (weakPasswordChallenge): crypto.createHash('md5')
+      used as the password hash (unsalted MD5).
+
+  - id: GT-014
+    type: sast
+    file: lib/insecurity.ts
+    line_start: 23
+    line_end: 23
+    cwe: [CWE-798, CWE-321]
+    severity: HIGH
+    cvss: 7.5
+    comment: >-
+      Hardcoded cryptographic key (use-of-hard-coded-credentials): the RSA
+      private key used to sign JWTs is embedded as a string literal in source.
