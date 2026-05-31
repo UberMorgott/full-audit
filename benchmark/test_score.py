@@ -152,25 +152,89 @@ class TestBlankTaxonomyNotFp(unittest.TestCase):
         self.assertEqual(score.as_set("CWE-89"), {"CWE-89"})
 
 
-class TestCwePrefixNotNormalized(unittest.TestCase):
-    """Documented behavior (schema §2): CWE sets are compared verbatim (only
-    strip()+upper()); the 'CWE-' prefix is NOT normalized. So a finding
-    cwe='89' does NOT match GT cwe='CWE-89'. BUG 4 candidate -> NOT a bug:
-    the schema specifies set-intersection of verbatim ids, no prefix rule."""
+class TestCweCveNormalization(unittest.TestCase):
+    """Schema §2 (refined pre-tag): CWE/CVE ids are normalized to a canonical
+    form (CWE-<int>, CVE-YYYY-NNNN; case-insensitive, 'CWE-' prefix optional /
+    bare integer accepted) BEFORE set intersection. Real scanners emit CWE-89 /
+    89 / cwe-89 interchangeably; verbatim matching produced phantom FN/FP.
+    Normalization must NOT collapse genuinely different ids."""
 
-    def test_bare_number_does_not_match_prefixed_cwe(self):
-        findings = [{"id": "FA-BARE", "file": "src/db/query.go", "line": 47,
-                     "end_line": 50, "cwe": "89", "detection": "semgrep",
-                     "title": "bare-number cwe"}]
-        gt = {"items": [{"id": "GT-SAST", "type": "sast", "cwe": "CWE-89",
+    def _sast_score(self, finding_cwe, gt_cwe):
+        findings = [{"id": "FA-X", "file": "src/db/query.go", "line": 47,
+                     "end_line": 50, "cwe": finding_cwe, "detection": "semgrep",
+                     "title": "cwe normalization"}]
+        gt = {"items": [{"id": "GT-SAST", "type": "sast", "cwe": gt_cwe,
                          "severity": "HIGH", "file": "src/db/query.go",
                          "line_start": 45, "line_end": 52}]}
-        r = score.score(findings, gt, window=5)
-        sast = r["categories"]["sast"]
-        # No match: GT is a FN, finding is an auto-scorable FP (it has a cwe).
+        return score.score(findings, gt, window=5)["categories"]["sast"]
+
+    def _sca_score(self, finding_cve, gt_cve):
+        findings = [{"id": "FA-X", "file": "go.mod", "line": 10,
+                     "cve": finding_cve, "detection": "osv-scanner",
+                     "title": "cve normalization"}]
+        gt = {"items": [{"id": "GT-SCA", "type": "sca", "cve": gt_cve,
+                         "severity": "HIGH", "file": "go.mod",
+                         "line_start": 10}]}
+        return score.score(findings, gt, window=5)["categories"]["sca"]
+
+    def test_bare_number_matches_prefixed_cwe(self):
+        # FLIPPED (was TestCwePrefixNotNormalized): cwe='89' now matches 'CWE-89'.
+        sast = self._sast_score("89", "CWE-89")
+        self.assertEqual(sast["tp"], 1)
+        self.assertEqual(sast["fn_items"], [])
+        self.assertEqual(sast["fp_findings"], [])
+
+    def test_lowercase_prefix_matches(self):
+        sast = self._sast_score("cwe-89", "CWE-89")
+        self.assertEqual(sast["tp"], 1)
+
+    def test_leading_zero_matches(self):
+        # CWE-089 canonicalizes to CWE-89 (no leading zeros) -> matches CWE-89.
+        sast = self._sast_score("CWE-089", "CWE-89")
+        self.assertEqual(sast["tp"], 1)
+
+    def test_int_cwe_matches_prefixed(self):
+        # Integer input (e.g. from a JSON number) normalizes too.
+        sast = self._sast_score(89, "CWE-89")
+        self.assertEqual(sast["tp"], 1)
+
+    def test_different_cwe_still_does_not_match(self):
+        # Guard against over-normalization: CWE-89 vs CWE-79 must NOT match.
+        sast = self._sast_score("CWE-89", "CWE-79")
         self.assertEqual(sast["tp"], 0)
         self.assertEqual([f["id"] for f in sast["fn_items"]], ["GT-SAST"])
-        self.assertEqual([f["id"] for f in sast["fp_findings"]], ["FA-BARE"])
+        self.assertEqual([f["id"] for f in sast["fp_findings"]], ["FA-X"])
+
+    def test_cve_case_insensitive_matches(self):
+        sca = self._sca_score("cve-2023-1234", "CVE-2023-1234")
+        self.assertEqual(sca["tp"], 1)
+
+    def test_different_cve_year_still_does_not_match(self):
+        sca = self._sca_score("CVE-2022-1234", "CVE-2023-1234")
+        self.assertEqual(sca["tp"], 0)
+        self.assertEqual([f["id"] for f in sca["fn_items"]], ["GT-SCA"])
+        self.assertEqual([f["id"] for f in sca["fp_findings"]], ["FA-X"])
+
+    def test_normalize_cwe_unit(self):
+        self.assertEqual(score.normalize_cwe("89"), "CWE-89")
+        self.assertEqual(score.normalize_cwe("cwe-89"), "CWE-89")
+        self.assertEqual(score.normalize_cwe("CWE-089"), "CWE-89")
+        self.assertEqual(score.normalize_cwe(89), "CWE-89")
+        self.assertEqual(score.normalize_cwe(" CWE-89 "), "CWE-89")
+        # Unknown format: defensively kept (stripped+uppercased), not dropped.
+        self.assertEqual(score.normalize_cwe("CWE-89A"), "CWE-89A")
+        self.assertEqual(score.normalize_cwe("foo"), "FOO")
+        # Empty/whitespace -> dropped (caller filters None/"").
+        self.assertEqual(score.normalize_cwe("   "), "")
+        self.assertEqual(score.normalize_cwe(""), "")
+
+    def test_normalize_cve_unit(self):
+        self.assertEqual(score.normalize_cve("cve-2023-1234"), "CVE-2023-1234")
+        self.assertEqual(score.normalize_cve("CVE-2023-1234"), "CVE-2023-1234")
+        self.assertEqual(score.normalize_cve(" cve-2023-1234 "), "CVE-2023-1234")
+        # Unknown format kept defensively.
+        self.assertEqual(score.normalize_cve("GHSA-xxxx"), "GHSA-XXXX")
+        self.assertEqual(score.normalize_cve("   "), "")
 
 
 class TestLineEndNonPositiveFallback(unittest.TestCase):

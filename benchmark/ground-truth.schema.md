@@ -43,7 +43,8 @@ items:
 | `cvss`       | all (optional)    | float           | Oracle CVSS base score (0.0–10.0). Preferred over band for weighting. |
 
 Notes:
-- `cwe`/`cve` accept a scalar **or** a list; the matcher treats both as a set.
+- `cwe`/`cve` accept a scalar **or** a list; the matcher treats both as a set and
+  normalizes each id to canonical form before intersection (see §2).
 - `logical` items carry no CWE/line precision requirement — they exist only so the
   oracle inventory is complete; they are **never** auto-matched (see §2).
 
@@ -52,13 +53,31 @@ Notes:
 Categories are scored **separately and never aggregated** (a finding/GT item in one
 category can never match across categories).
 
-- **SCA** — a GT item with `type: sca` matches a finding **iff their CVE id sets
-  intersect**: `set(finding.cve) ∩ set(gt.cve) ≠ ∅`. File and line are **ignored**
-  (SCA is dependency-level, not location-level).
+**CWE/CVE id normalization (applied on BOTH sides before intersection).** CWE and
+CVE ids are canonicalized before the set intersections below, because real scanners
+(semgrep / gosec / osv-scanner / etc.) emit the same id in varied forms and verbatim
+matching would produce phantom FN/FP that corrupt recall/precision:
+  - **CWE** → `CWE-<int>` (uppercase, leading zeros stripped). The `CWE-` prefix is
+    **optional** and a **bare integer** is accepted, all case-insensitive: `CWE-89`,
+    `cwe-89`, `89`, `CWE-089`, and the integer `89` all canonicalize to `CWE-89`.
+  - **CVE** → uppercase `CVE-YYYY-NNNN` (case-insensitive): `cve-2023-1234` →
+    `CVE-2023-1234`.
+  - An id that does **not** match the recognized shape is kept **unchanged**
+    (stripped + uppercased), never dropped — so genuinely different ids
+    (e.g. `CWE-89` vs `CWE-79`, or CVEs with different years) can never silently
+    merge. A blank / whitespace-only id carries no token (→ adjudication, not FP).
+
+  This normalization is **part of the frozen pre-registered rule** (a deliberate
+  refinement made before the pre-registration tag). It changes only the *form* of
+  comparison, never which distinct ids are considered equal.
+
+- **SCA** — a GT item with `type: sca` matches a finding **iff their (normalized)
+  CVE id sets intersect**: `norm(set(finding.cve)) ∩ norm(set(gt.cve)) ≠ ∅`. File and
+  line are **ignored** (SCA is dependency-level, not location-level).
 
 - **SAST** — a GT item with `type: sast` matches a finding **iff all** hold:
   1. `finding.file == gt.file` (verbatim string equality), AND
-  2. CWE id sets intersect: `set(finding.cwe) ∩ set(gt.cwe) ≠ ∅`, AND
+  2. normalized CWE id sets intersect: `norm(set(finding.cwe)) ∩ norm(set(gt.cwe)) ≠ ∅`, AND
   3. the finding's line span overlaps the GT span widened by window `N`:
      `[finding.line, finding.end_line or finding.line]` overlaps
      `[gt.line_start − N, (gt.line_end or gt.line_start) + N]`.

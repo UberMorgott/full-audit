@@ -167,16 +167,73 @@ def load_yaml(path):
 # --------------------------------------------------------------------------- #
 # Normalization helpers
 # --------------------------------------------------------------------------- #
-def as_set(val):
-    """Normalize a scalar-or-list taxonomy field to an uppercased set of strings."""
+def as_set(val, normalizer=None):
+    """Normalize a scalar-or-list taxonomy field to an uppercased set of strings.
+
+    If `normalizer` is given it is applied to each already-stringified token
+    (the normalizer is responsible for its own strip()/upper()); a normalizer
+    that returns an empty string drops the token (-> adjudication, not FP)."""
     if val is None or val == "":
         return set()
     if isinstance(val, (list, tuple)):
-        return {str(v).strip().upper() for v in val if str(v).strip()}
-    # Mirror the list-branch filtering: a whitespace-only / empty scalar carries
-    # NO taxonomy, so it must yield an empty set (-> adjudication bucket, not FP).
-    s = str(val).strip()
-    return {s.upper()} if s else set()
+        raw = [v for v in val if str(v).strip()]
+    else:
+        # Mirror the list-branch filtering: a whitespace-only / empty scalar
+        # carries NO taxonomy, so it must yield an empty set.
+        raw = [val] if str(val).strip() else []
+    if normalizer is None:
+        return {str(v).strip().upper() for v in raw if str(v).strip()}
+    out = set()
+    for v in raw:
+        tok = normalizer(v)
+        if tok:
+            out.add(tok)
+    return out
+
+
+_CWE_RE = re.compile(r"^(?:CWE-?)?(\d+)$")
+_CVE_RE = re.compile(r"^CVE-(\d{4})-(\d+)$")
+
+
+def normalize_cwe(v):
+    """Canonicalize a CWE id to `CWE-<int>` (no leading zeros).
+
+    Accepts `CWE-89`, `cwe-89`, bare `89`, `CWE-089`, or an int. Unknown
+    formats are returned stripped+uppercased UNCHANGED (defensive — never drop
+    an id we don't recognize, so genuinely different ids cannot silently merge).
+    Empty/whitespace -> "" (the caller drops it -> adjudication, not FP)."""
+    s = str(v).strip().upper()
+    if not s:
+        return ""
+    m = _CWE_RE.match(s)
+    if m:
+        return "CWE-%d" % int(m.group(1))
+    return s
+
+
+def normalize_cve(v):
+    """Canonicalize a CVE id to uppercase `CVE-YYYY-NNNN` (case-insensitive).
+
+    Unknown formats are returned stripped+uppercased UNCHANGED (defensive).
+    Empty/whitespace -> "" (dropped by the caller)."""
+    s = str(v).strip().upper()
+    if not s:
+        return ""
+    m = _CVE_RE.match(s)
+    if m:
+        return "CVE-%s-%s" % (m.group(1), m.group(2))
+    return s
+
+
+def id_set(raw, kind):
+    """Build a normalized id set for a cwe/cve field. `kind` is 'cwe' or 'cve'.
+
+    Used on BOTH the finding and GT sides so canonical forms intersect."""
+    if kind == "cwe":
+        return as_set(raw, normalize_cwe)
+    if kind == "cve":
+        return as_set(raw, normalize_cve)
+    return as_set(raw)
 
 
 def weight_of(severity, cvss):
@@ -196,7 +253,7 @@ def spans_overlap(a, b, c, d):
 # --------------------------------------------------------------------------- #
 def finding_is_auto_scorable(finding):
     """True iff the finding carries a cve or cwe (so a no-match is a strict FP)."""
-    return bool(as_set(finding.get("cwe")) or as_set(finding.get("cve")))
+    return bool(id_set(finding.get("cwe"), "cwe") or id_set(finding.get("cve"), "cve"))
 
 
 def finding_is_logical_class(finding):
@@ -210,12 +267,12 @@ def match_sca(gt_items, findings):
     fns = []
     matched_idx = set()
     for gt in gt_items:
-        gt_cves = as_set(gt.get("cve"))
+        gt_cves = id_set(gt.get("cve"), "cve")
         hit = None
         for i, f in enumerate(findings):
             if i in matched_idx:
                 continue
-            if gt_cves & as_set(f.get("cve")):
+            if gt_cves & id_set(f.get("cve"), "cve"):
                 hit = i
                 break
         if hit is not None:
@@ -232,7 +289,7 @@ def match_sast(gt_items, findings, window):
     fns = []
     matched_idx = set()
     for gt in gt_items:
-        gt_cwes = as_set(gt.get("cwe"))
+        gt_cwes = id_set(gt.get("cwe"), "cwe")
         gt_file = str(gt.get("file", ""))
         ls = int(gt.get("line_start", 0))
         # Source lines are 1-indexed, so a line_end <= 0 (or missing) is not a
@@ -248,7 +305,7 @@ def match_sast(gt_items, findings, window):
                 continue
             if str(f.get("file", "")) != gt_file:
                 continue
-            if not (gt_cwes & as_set(f.get("cwe"))):
+            if not (gt_cwes & id_set(f.get("cwe"), "cwe")):
                 continue
             f_line = int(f.get("line", 0))
             f_end = int(f.get("end_line", f_line) or f_line)
@@ -319,8 +376,8 @@ def score(findings, gt_root, window):
     for i, f in enumerate(findings):
         if i in all_matched:
             continue
-        cves = as_set(f.get("cve"))
-        cwes = as_set(f.get("cwe"))
+        cves = id_set(f.get("cve"), "cve")
+        cwes = id_set(f.get("cwe"), "cwe")
         if finding_is_logical_class(f):
             # No taxonomy -> manual review listing + adjudication bucket
             logical_findings.append(finding_record(f))
