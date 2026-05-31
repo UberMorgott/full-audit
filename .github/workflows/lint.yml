@@ -5,7 +5,10 @@ name: lint-docs
 # bug classes that historically slipped through by hand: broken cross-refs,
 # unbalanced code fences, README/CHANGELOG version mismatch, malformed tables,
 # and version-pin drift between versions.lock and the inline doc pins.
-# Read-only check — it never edits the docs.
+# Then runs scripts/check_readme_version.py — the step-0 gate that fails CI on a
+# forgotten version bump (README header / "currently" / "e.g." tag mentions must
+# all equal the CHANGELOG top entry, and the git tag on a tag-triggered run).
+# Read-only checks — they never edit the docs.
 
 on:
   push:
@@ -32,3 +35,10 @@ jobs:
 
       - name: Lint skill docs (stdlib-only; exits 1 on any ERROR)
         run: python scripts/lint_docs.py
+
+      # Step-0 gate: catch a forgotten version bump. Asserts the README header,
+      # the "currently"/"e.g." tag mentions, and the CHANGELOG top entry all agree.
+      # On a tag push (GITHUB_REF_TYPE=tag) it ALSO asserts they match the git tag;
+      # on a normal branch/PR push it only checks internal consistency.
+      - name: Check README/CHANGELOG version consistency (stdlib-only; exits 1 on mismatch)
+        run: python scripts/check_readme_version.py
