@@ -1,0 +1,191 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": 1.0,
+      "severity_weighted_recall": 1.0,
+      "strict_precision": 1.0,
+      "tp": 38,
+      "tp_pairs": [
+        {
+          "finding": "FA-0002",
+          "gt": "GT-001"
+        },
+        {
+          "finding": "FA-0001",
+          "gt": "GT-002"
+        },
+        {
+          "finding": "FA-0003",
+          "gt": "GT-003"
+        },
+        {
+          "finding": "FA-0004",
+          "gt": "GT-004"
+        },
+        {
+          "finding": "FA-0005",
+          "gt": "GT-005"
+        },
+        {
+          "finding": "FA-0006",
+          "gt": "GT-006"
+        },
+        {
+          "finding": "FA-0007",
+          "gt": "GT-007"
+        },
+        {
+          "finding": "FA-0008",
+          "gt": "GT-008"
+        },
+        {
+          "finding": "FA-0009",
+          "gt": "GT-009"
+        },
+        {
+          "finding": "FA-0010",
+          "gt": "GT-010"
+        },
+        {
+          "finding": "FA-0011",
+          "gt": "GT-011"
+        },
+        {
+          "finding": "FA-0012",
+          "gt": "GT-012"
+        },
+        {
+          "finding": "FA-0013",
+          "gt": "GT-013"
+        },
+        {
+          "finding": "FA-0014",
+          "gt": "GT-014"
+        },
+        {
+          "finding": "FA-0021",
+          "gt": "GT-015"
+        },
+        {
+          "finding": "FA-0017",
+          "gt": "GT-016"
+        },
+        {
+          "finding": "FA-0016",
+          "gt": "GT-017"
+        },
+        {
+          "finding": "FA-0018",
+          "gt": "GT-018"
+        },
+        {
+          "finding": "FA-0015",
+          "gt": "GT-019"
+        },
+        {
+          "finding": "FA-0019",
+          "gt": "GT-020"
+        },
+        {
+          "finding": "FA-0020",
+          "gt": "GT-021"
+        },
+        {
+          "finding": "FA-0023",
+          "gt": "GT-022"
+        },
+        {
+          "finding": "FA-0024",
+          "gt": "GT-023"
+        },
+        {
+          "finding": "FA-0025",
+          "gt": "GT-024"
+        },
+        {
+          "finding": "FA-0026",
+          "gt": "GT-025"
+        },
+        {
+          "finding": "FA-0027",
+          "gt": "GT-026"
+        },
+        {
+          "finding": "FA-0022",
+          "gt": "GT-027"
+        },
+        {
+          "finding": "FA-0029",
+          "gt": "GT-028"
+        },
+        {
+          "finding": "FA-0028",
+          "gt": "GT-029"
+        },
+        {
+          "finding": "FA-0030",
+          "gt": "GT-030"
+        },
+        {
+          "finding": "FA-0031",
+          "gt": "GT-031"
+        },
+        {
+          "finding": "FA-0032",
+          "gt": "GT-032"
+        },
+        {
+          "finding": "FA-0035",
+          "gt": "GT-033"
+        },
+        {
+          "finding": "FA-0033",
+          "gt": "GT-034"
+        },
+        {
+          "finding": "FA-0036",
+          "gt": "GT-035"
+        },
+        {
+          "finding": "FA-0037",
+          "gt": "GT-036"
+        },
+        {
+          "finding": "FA-0038",
+          "gt": "GT-037"
+        },
+        {
+          "finding": "FA-0034",
+          "gt": "GT-038"
+        }
+      ]
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
