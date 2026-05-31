@@ -35,3 +35,6 @@ test-runs/
 audit-bugs.json
 audit-filtered.md
 .worktrees/
+
+# Go benchmark seed build artifacts (the seed compiles but the binary is not tracked)
+benchmark/seeds/**/*.exe

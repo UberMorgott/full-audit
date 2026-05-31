@@ -1,0 +1,84 @@
+# Ground truth for seed sca-go-01 (controlled SCA lineage-break, pinned-vulnerable-by-design).
+#
+# ORACLE: osv.dev /v1/query per pinned module@version (Go ecosystem), raw responses
+#   captured in the F1 report. Each item = one DISTINCT CVE id osv.dev reports as
+#   affecting that pinned version. GHSA/GO advisories sharing a CVE alias are
+#   deduplicated to that CVE (the frozen SCA rule matches on CVE id). cvss = CVSS v3.1
+#   base score computed from the vector in the osv (GHSA) record.
+#
+# SCOPE: GT covers ONLY the three pinned THIRD-PARTY modules in go.mod
+#   (github.com/dgrijalva/jwt-go, golang.org/x/text, github.com/gogo/protobuf).
+#   Go standard-library / toolchain vulns that govulncheck also reports (net/http,
+#   crypto/x509, ...) are a property of the local Go toolchain version, NOT of the
+#   seed's pinned dependencies, and are intentionally OUT OF SCOPE for this seed's GT.
+#   See the F1 report "Threats to validity" for why.
+#
+# LINEAGE-BREAK DESIGN (this is the point of the seed): the scanner is govulncheck,
+#   which applies REACHABILITY analysis — it lists a vuln as actionable only if the
+#   vulnerable SYMBOL is on a call path from the seed's code. The GT below is the FULL
+#   osv-known set regardless of reachability. The seed deliberately calls SOME
+#   vulnerable symbols (reachable -> reported) and imports others without calling the
+#   vulnerable symbol (unreachable -> govulncheck stays silent -> honest FN). So
+#   recall < 1.0 is EXPECTED BY DESIGN, root-caused to the reachability filter.
+#
+# type=sca for every item; file/line_start are advisory only (the SCA matcher ignores
+#   them) and point at the module's line in go.mod.
+#
+# Total items: 5 distinct (module, CVE) pairs.
+meta:
+  repo: full-audit/benchmark-seed sca-go-01
+  commit: 0000000000000000000000000000000000000000
+  notes: controlled SCA lineage-break seed; GT from osv.dev /v1/query (Go); scanner=govulncheck (reachability-filtered); recall<1.0 expected by design
+
+items:
+  # --- github.com/dgrijalva/jwt-go v3.2.0+incompatible (go.mod line 6) — 1 CVE ---
+  # REACHABLE: MapClaims.VerifyAudience is called via parseToken() -> govulncheck reports.
+  - id: GT-001
+    type: sca
+    cve: CVE-2020-26160   # jwt-go v3.2.0; GO-2020-0017 / GHSA-w73w-5m7g-f7qc
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 6
+
+  # --- golang.org/x/text v0.3.0 (go.mod line 8) — 3 CVEs ---
+  # REACHABLE: language.ParseAcceptLanguage is called via matchLanguage() and is listed
+  # as the vulnerable symbol by BOTH GO-2022-1059 and GO-2021-0113 -> both reported.
+  - id: GT-002
+    type: sca
+    cve: CVE-2022-32149   # x/text v0.3.0 language; GO-2022-1059 / GHSA-69ch-w2m2-3vjp
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 8
+  - id: GT-003
+    type: sca
+    cve: CVE-2021-38561   # x/text v0.3.0 language; GO-2021-0113 / GHSA-ppp9-7jff-5vj2
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 8
+  # UNREACHABLE (EXPECTED FN): the vulnerable symbols live in x/text/encoding/unicode +
+  # transform (utf16Decoder.Transform / transform.String). The seed imports x/text only
+  # for the `language` package and never invokes the unicode/transform decode path
+  # -> govulncheck does not list it as actionable -> honest false negative.
+  - id: GT-004
+    type: sca
+    cve: CVE-2020-14040   # x/text v0.3.0 encoding/transform; GO-2020-0015 / GHSA-5rcv-m4m3-hfh7
+    severity: HIGH
+    cvss: 7.5
+    file: go.mod
+    line_start: 8
+
+  # --- github.com/gogo/protobuf v1.3.1 (go.mod line 7) — 1 CVE ---
+  # UNREACHABLE (EXPECTED FN): the vulnerable symbols are in plugin/unmarshal
+  # (unmarshal.Generate / unmarshal.field), a code-generator path. The seed imports the
+  # gogo `proto` runtime package and calls only proto.String -> the vulnerable symbol is
+  # never on a call path -> govulncheck stays silent -> honest false negative.
+  - id: GT-005
+    type: sca
+    cve: CVE-2021-3121    # gogo/protobuf v1.3.1; GO-2021-0053 / GHSA-c3h9-896r-86jm
+    severity: HIGH
+    cvss: 8.6
+    file: go.mod
+    line_start: 7
