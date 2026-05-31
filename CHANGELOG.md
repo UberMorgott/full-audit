@@ -2,6 +2,16 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.4] — 2026-05-31
+
+### Fixed
+- **External audit remediation (5 findings, doc-only)** — applied an external FIX-DIRECTIVES review against v1.10.3 (2 MEDIUM + 3 LOW, all in README.md, no behavior change). Independently re-verified via a 6-agent adversarial workflow (all PASS) + `lint_docs.py` PASS.
+- **FA-0001 run reproduction at L1+V** (README § Level-to-Wave Agent Mapping) — the `reproduction-agent-{N}` row marked the **L1** column `—` (never runs), contradicting § Verified Mode (L1+V *does* reproduce) and Wave 2.5 "runs under verified"; an orchestrator reading the table at "level 1 verified" silently dropped the `+V`. L1 cell `—`→`+V` (off by default, runs only under +V; L3 stays `yes`/always-on).
+- **FA-0002 scope the no-co-author rule** (README § Fixer step 6) — the unqualified "No AI attribution / co-author lines" contradicted the repo's own history; scoped to "**on fix commits written by the audit into the target repo**", so the rule governs audit-generated fix commits, not this repo's maintenance history.
+- **FA-0003 `<release-tag>` placeholder** (README § Quick Start step 1) — the example raw URL hardpinned `v1.10.3` (needed a hand-bump every release); replaced with the `<release-tag>` placeholder, matching § Files.
+- **FA-0004 prefer trivy/checkov over deprecated tfsec** (README stack-command-mapping `*.tf` row) — the summary row led with `tfsec .`, which `infra.md`/`versions.lock` mark DEPRECATED; now leads `trivy config` / `checkov` (tfsec stays as the optional second opinion in infra.md).
+- **FA-0005 header date** (README header) — aligned the header date with the release date.
+
 ## [1.10.3] — 2026-05-31
 
 ### Fixed
