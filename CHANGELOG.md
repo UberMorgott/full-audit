@@ -2,6 +2,14 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.7] — 2026-05-31
+
+### Added
+- **Recall/precision benchmark suite — complete & published** (`benchmark/`) — a pre-registered, blind, independently-scored measurement harness for the audit, with results in `benchmark/results/BENCHMARK-RESULTS.md`. SCA: pip-audit pipeline recall 1.000 (shared-lineage sanity), govulncheck lineage-break recall 0.600. SAST (Juice Shop): semgrep-only floor 0.286 → triage +103% precision → blind 1.000 (training-contaminated). **Contamination-controlled blind run** on an original post-cutoff app: recall 0.714, strict precision 0.769, adjudicated precision 1.000 (zero hallucinations on unseen code). Methodology: pre-registration tags before each run, frozen match rule (normalized CWE/CVE + path-suffix), independent-model adjudication, deterministic scorer (34 tests).
+
+### Fixed
+- **Benchmark scorer file-path matching** (`benchmark/score.py`) — findings filed as `app.py` did not match ground-truth `path/to/app.py` (exact-string compare) → false 0.000. Now matches by normalized path-suffix; the contamination-controlled F3 result reproduces directly (0.000→0.714); all prior runs unchanged.
+
 ## [1.10.6] — 2026-05-31
 
 ### Fixed
