@@ -1,0 +1,310 @@
+{
+  "categories": {
+    "sast": {
+      "fn": 14,
+      "fn_items": [
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-001",
+          "line_start": 30,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-328",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-002",
+          "line_start": 99,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-003",
+          "line_start": 166,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-639",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-004",
+          "line_start": 229,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-005",
+          "line_start": 249,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-184",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-006",
+          "line_start": 297,
+          "root_cause": "",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-007",
+          "line_start": 312,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-94",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-008",
+          "line_start": 361,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-78",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-009",
+          "line_start": 388,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-918",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-010",
+          "line_start": 406,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-011",
+          "line_start": 428,
+          "root_cause": "",
+          "severity": "MEDIUM",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-502",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-012",
+          "line_start": 460,
+          "root_cause": "",
+          "severity": "CRITICAL",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-013",
+          "line_start": 495,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-78",
+          "file": "benchmark/seeds/synthetic-vuln-01/app.py",
+          "id": "GT-S01-014",
+          "line_start": 521,
+          "root_cause": "",
+          "severity": "HIGH",
+          "type": "sast"
+        }
+      ],
+      "fp": 13,
+      "fp_findings": [
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0001",
+          "line": 166,
+          "severity": "CRITICAL",
+          "title": "SQL injection in login via string-concatenated username"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-89",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0002",
+          "line": 250,
+          "severity": "CRITICAL",
+          "title": "SQL injection in hive search via %-formatted LIKE clause"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-78",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0003",
+          "line": 388,
+          "severity": "CRITICAL",
+          "title": "OS command injection in admin export-log via format param"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-78",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0004",
+          "line": 544,
+          "severity": "CRITICAL",
+          "title": "OS command injection in queen registration (regex allows tainted hive_code into shell)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-502",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0005",
+          "line": 460,
+          "severity": "CRITICAL",
+          "title": "Insecure deserialization of attacker-controlled request body (pickle.loads)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-1336",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0006",
+          "line": 361,
+          "severity": "CRITICAL",
+          "title": "Server-side template injection in profile bio (render_template_string of concatenated input)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-79",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0007",
+          "line": 617,
+          "severity": "CRITICAL",
+          "title": "Stored XSS via hive notes rendered with the |safe filter"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-22",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0008",
+          "line": 312,
+          "severity": "HIGH",
+          "title": "Path traversal in report upload (filename used unsanitized in save path)"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-918",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0009",
+          "line": 396,
+          "severity": "HIGH",
+          "title": "Server-side request forgery in weather lookup"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-601",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0010",
+          "line": 419,
+          "severity": "HIGH",
+          "title": "Open redirect via flawed is_safe_redirect allowlist"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-639",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0011",
+          "line": 223,
+          "severity": "HIGH",
+          "title": "IDOR / missing ownership check in view_hive"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-798",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0012",
+          "line": 30,
+          "severity": "MEDIUM",
+          "title": "Hardcoded Flask secret key"
+        },
+        {
+          "cve": null,
+          "cwe": "CWE-916",
+          "detection": "manual",
+          "file": "app.py",
+          "id": "FA-0013",
+          "line": 96,
+          "severity": "MEDIUM",
+          "title": "Weak password hashing (unsalted MD5)"
+        }
+      ],
+      "recall": 0.0,
+      "severity_weighted_recall": 0.0,
+      "strict_precision": 0.0,
+      "tp": 0,
+      "tp_pairs": []
+    },
+    "sca": {
+      "fn": 0,
+      "fn_items": [],
+      "fp": 0,
+      "fp_findings": [],
+      "recall": null,
+      "severity_weighted_recall": null,
+      "strict_precision": null,
+      "tp": 0,
+      "tp_pairs": []
+    }
+  },
+  "logical": {
+    "findings_for_manual_review": [],
+    "gt_items": []
+  },
+  "unmatched_needs_adjudication": [],
+  "weight_crosswalk": {
+    "CRITICAL": 10.0,
+    "HIGH": 7.0,
+    "LOW": 1.0,
+    "MEDIUM": 4.0
+  },
+  "window": 5
+}
