@@ -2,6 +2,16 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.10.8] — 2026-06-01
+
+### Fixed
+- **Audit meta-issues from an external L3 self-audit (M1, M2, M4, M5 — doc-only, README)** — applied four framework-clarity fixes surfaced while running the audit against an outside project (`wf_19da26d3-de8`, L3 Deep). No behavior change to scanners; all in README.md.
+  - **M1 — verbatim-playbook guardrail** (Quick Start step 1) — the fetch layer can return a *paraphrase* of the README ("I've reviewed the audit framework you've provided…") instead of the raw orchestration steps; "pinned versions" / "no auto-execution" cannot be enforced against a summary. Added an explicit rule: reject a summarized fetch and re-fetch the raw file verbatim from `raw.githubusercontent.com` before proceeding.
+  - **M2 — runtime-pinning clarification** (§versions.lock contract) — clarified that `versions.lock` is maintainer-side and never fetched at run time; runtime pins travel inline in the stack `*.md` (e.g. `staticcheck@v0.7.0`). No per-audited-project `versions.lock` is generated or required, and a scanner self-reporting `dev` (e.g. `Gosec: dev`) is host-install drift for Audit Limitations, not a missing-artifact guardrail failure.
+  - **M4 — MCP-health gate scoping** (Phase 0 Step 2b) — the 4-server health check is now explicitly scoped to the MCPs a run actually uses; a pure CLI-scanner stack (Go via native tools + Read/Grep/Bash subagents, no Serena) records unused servers under Audit Limitations instead of running them through the probe or failing the gate.
+  - **M5 — confidence × verified pipeline order** (§Confidence Scoring → Reproduction signal) — stated explicitly that the per-level threshold is applied LAST, to the reproduction-adjusted score, with the 4-step sequence and how a scoring agent's FALSE_POSITIVE verdict interacts with the band.
+- M3 (`audit-bugs.json` schema) and M6 (`go test -race` needs CGO/MinGW) were already covered — by v1.10.5 (schema v1.1, README § Machine-readable output) and go.md (gcc `skip_if` + `CGO_ENABLED=1` + MinGW install + SK13 report rule) respectively. Confirmed present, no change.
+
 ## [1.10.7] — 2026-05-31
 
 ### Added
