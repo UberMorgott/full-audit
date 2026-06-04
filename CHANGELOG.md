@@ -2,6 +2,20 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.11.0] — 2026-06-04
+
+### Added
+- **Cross-audit memory (`.audit/ledger.json`)** — the audit gains memory across runs. A small, **gitignored, optional** local ledger stores three things: a compact `index` of every known finding by stable `fingerprint`, remembered `suppressions` (adjudicated false-positive / accepted-risk decisions), and a `runs` history. Absent ledger = unchanged stateless behavior; a non-writable `.audit/` degrades silently to the no-memory path. (README Conventions -> Cross-audit memory; orchestrator steps 0.6 load + 6.7 update.)
+- **Stable finding `fingerprint`** (`audit-bugs.json` schema v1.1 -> v1.2) — every finding carries a deterministic cross-run id `fp_` + 12 hex of `sha256(relpath_lower | class | title_slug)`, deliberately excluding `line`/`detail`/`confidence` (which drift). Plain SHA-256, stdlib-only, no tool pin. It is the join key between `audit-bugs.json`, the ledger `index`, and `suppressions`. Additive & back-compatible: the one-finding-one-JSON-entry invariant is unchanged; older 1.1 consumers ignore the field.
+- **Remembered triage (False-Positive Whitelist)** — a finding whose `fingerprint` is listed under ledger `suppressions` (kind `false_positive` or `accepted_risk`) is auto-scored 0 on every re-audit. Adjudicate once instead of re-triaging the same noise each run. Suppressions are never auto-removed by a run. Wired into go.md's gosec FP post-filter as well.
+- **Since-last-audit delta (Report Format + Diff Mode)** — when a ledger exists, the report adds a **Since last audit** table (new / fixed / recurring / suppressed) computed by `fingerprint` against the previous run's `index`, independent of the git-tag file diff. A fingerprint absent since last run -> `fixed`; a `fixed` one that reappears -> `recurring`.
+- **Secret redaction (default ON)** — before a secret VALUE is written to any persisted/shared artifact (`audit-bugs.json`, `.audit/ledger.json`, the report) it is masked to first-4-chars + `***REDACTED***`, keeping `file:line` actionable. Opt out with "no-redact"/"+raw". `<private>…</private>` content in CLAUDE.md/comments is never copied into findings. Redaction never alters a finding's `fingerprint`, identity, or `summary` counts.
+
+> Inspiration: concepts adapted (NOT the runtime) from the `claude-mem` plugin — persistent cross-session memory, citations/observation ids, 3-layer progressive disclosure (compact index -> fetch detail by id), and `<private>` privacy tags. Implemented the audit's own way: pure local markdown/JSON conventions, zero new dependencies, no daemon/DB/hooks, preserving the zero-install + untrusted-fetch model.
+
+### Removed
+- **Maintainer CI workflows** (`.github/workflows/lint.yml`, `version-check.yml`) — both ran on GitHub and emailed the repo owner (weekly advisory-PR cron + on-failure lint). They were maintainer self-tests, not part of the audit runtime; removed to stop the recurring notification emails. The local scripts (`scripts/lint_docs.py`, `scripts/check_readme_version.py`) remain and are run by hand.
+
 ## [1.10.8] — 2026-06-01
 
 ### Fixed

@@ -127,7 +127,7 @@ gosec ./... 2>&1
 # requires: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
 govulncheck ./... 2>&1
 ```
-> **Post-filter `//nolint:gosec` (FP suppression):** gosec does NOT honor inline `//nolint:gosec` directives by default — a mechanical run reports phantom HIGHs for findings the author already suppressed. Before scoring, drop any gosec finding whose `file:line` carries a `//nolint:gosec` directive (same line or the line above). (Matches the README False-Positive Whitelist `// nolint: reason` rule.)
+> **Post-filter `//nolint:gosec` (FP suppression):** gosec does NOT honor inline `//nolint:gosec` directives by default — a mechanical run reports phantom HIGHs for findings the author already suppressed. Before scoring, drop any gosec finding whose `file:line` carries a `//nolint:gosec` directive (same line or the line above). (Matches the README False-Positive Whitelist `// nolint: reason` rule.) A gosec finding adjudicated as a false positive can also be remembered across runs by its `fingerprint` in `.audit/ledger.json` suppressions (README Conventions -> Cross-audit memory), so it stays scored 0 without re-triage.
 
 ### Race detector + fuzz + coverage
 ```bash

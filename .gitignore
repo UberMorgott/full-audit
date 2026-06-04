@@ -35,6 +35,8 @@ test-runs/
 audit-bugs.json
 audit-filtered.md
 .worktrees/
+# Cross-audit memory ledger — local, never committed (may quote finding detail)
+.audit/
 
 # Go benchmark seed build artifacts (the seed compiles but the binary is not tracked)
 benchmark/seeds/**/*.exe
