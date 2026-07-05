@@ -605,6 +605,33 @@ If project processes XML:
 
 ---
 
+## Level 3: Purpose-Fit & Scope-Coherence (DEEP)
+
+> Requires the project's stated PURPOSE (from `args.scope.product_purpose`, else README / CLAUDE.md / package description). If purpose is unknown, SKIP check (1) and record an Audit Limitation; still run (2)-(3). HIGH false-positive class: cap severity at MEDIUM, default LOW, **NEVER CRITICAL**; route any "might be intentional" call to `suspected_unconfirmed` (needs human). Opinion is not a defect.
+
+**1. Feature relevance** (anti-pattern: feature/scope creep, boat anchor). In scope here = working, REACHABLE code — NOT dead code (that is the waste-scanner's job).
+- Every non-trivial feature / module / endpoint / screen traces to a stated product goal?
+- A capability present that the product's purpose does not call for? (unrelated function bolted on)
+- A capability kept after its reason disappeared (boat anchor)?
+- Evidence: name the feature + why it does not map to purpose. LOW unless it carries security/maintenance cost.
+
+**2. Tech/pattern adoption consistency** (anti-pattern: parallel implementations, no single source of truth).
+- Each declared framework / library / styling system / state pattern used consistently across the codebase, or not at all?
+- Two ways to do the same thing? (Tailwind on half the UI + hand-written CSS on the rest; two HTTP clients; two date libs; two state stores)
+- Partially-adopted tooling: installed + configured but applied to a fraction of the surface it should cover.
+- Evidence: cite the inconsistent sites (file:line for each side). LOW-MEDIUM.
+
+**3. Redundant defenses & log noise** (anti-pattern: defensive overkill, lava flow).
+- Error handling / guards for states the type system or earlier validation already makes impossible.
+- Logging on unreachable error paths, or debug logging left after stabilization (noise, not signal).
+- Dead defensive branches kept "just in case" with no reachable trigger.
+- Exclude legitimate defense-in-depth (untrusted input, concurrency, external I/O) — those are NOT findings.
+- Evidence: show the guarded condition is unreachable. LOW.
+
+Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Default LOW; never inflate. When unsure whether intentional, emit to `suspected_unconfirmed`.
+
+---
+
 ## Level 3: Documentation Freshness (DEEP)
 
 - README matches actual build/deploy instructions
