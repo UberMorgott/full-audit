@@ -55,6 +55,7 @@ go test -timeout 60s -count=1 ./... 2>&1
 > v2 (golangci-lint v2.12.2): `-E` removed. `--enable` takes ONE linter per flag (repeat the flag); comma lists no longer parse. `enable-all`/`disable-all` replaced by `linters.default`. Prefer the config file below over a long CLI.
 > Install: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2`
 > **Config precedence:** if the repo already has `.golangci.yml`/`.golangci.yaml`, run `golangci-lint run ./...` with NO `--enable` flags (it honors the project config) and report which linters are active. The explicit `--enable` list below is ONLY for repos with no config file — running it against a configured repo fights the project's own linter selection.
+> **CRLF/LF false positive (Windows):** a `gofmt`/`gofumpt`/format failure that is purely CRLF-vs-LF line endings (git `core.autocrlf` on a Windows checkout) is a FALSE POSITIVE, not a real style defect — verify with a line-ending diff before reporting it.
 
 ```bash
 golangci-lint run ./... \
