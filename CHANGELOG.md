@@ -2,6 +2,21 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.12.0] — 2026-07-06
+
+### Added
+- **RFC integration — 9 targeted, additive audit-engine improvements** (workflow `.claude/workflows/full-audit.js` + `universal.md`) — adopted the actionable subset of the AI audit-standard RFC after a two-pass adversarial gap analysis (traceability in `RFC-INTEGRATION-PLAN.md`). Every item is an OPTIONAL/additive finding field or a pure, deterministic Assemble-stage computation; all core invariants are preserved — recall-first two-array output (`findings`/`suspected_unconfirmed`), read-only waves, deterministic I/O-free script, one structured findings object, and the existing severity/confidence/threshold/Iron-Law logic untouched. Agents may omit every new field (no retry storms, full backward compatibility).
+  - **P0-1 — restored `recommendation` (minimal-fix) finding field** — optional per-finding minimal, behavior-preserving fix; restores engine schema-1.1 parity the JS port had dropped. Never a demotion trigger (a FAST cli-scanner finding may legitimately have none).
+  - **P0-2 — optional `root_cause` field (L3-only)** — underlying root cause + blast radius (who/what breaks) + an optional "Prevention:" clause, all in one prose field. Populated only by Wave-3 DEEP / adversarial reviewers; empty never changes severity/confidence.
+  - **P1-1 — optional `category` enum** — `architecture|security|performance|code-quality|testing|concurrency|dependencies|tech-debt`, derived deterministically in Assemble from `cwe`/`cve`/reviewer-origin (zero agent tokens); a reviewer-supplied value overrides the derived one.
+  - **P1-2 — per-axis health `scores{}` (tri-state)** — one status per category axis over its confirmed findings: `CRITICAL` / `NEEDS_WORK` / `PASS` / `NOT_ASSESSED` (an un-inspected axis is never a passing score), each with `member_finding_ids[]` + a count-based rationale. `summary.health` is untouched.
+  - **P1-3 — systemic-pattern cross-reference** — canonicalizes the free-string `cwe` to `CWE-<n>`, then a pure `crossReferencePass` clusters confirmed findings sharing category + canonical CWE (module-scoped by default, size-capped, SCA/advisory excluded), stamps additive `related_ids[]`, and emits a thin `systemic_patterns[]` — LINK only, never merge (dedup still owns same-defect merges).
+  - **P1-4 — `methodology` provenance block** — `waves_run`, `tools_ran_ok`, `tools_incomplete` (the timed-out/errored set, so coverage cannot be overstated), `threshold`, `mcp_used`.
+  - **P1-5 — deterministic advisory `reference_url`** — built only from an already-verified `cve`/`advisory_id` (NVD / pkg.go.dev / GitHub advisories); emitted only when such an id is present — never a guessed URL.
+  - **P1-6 — cross-run `audit_changelog`** — optional `prev_audit` OBJECT injected via `args` (Phase 0 reads the prior run; the script stays I/O-free); emits `new` / `resolved` / `persisting` (+ `regressed` only when the prior artifact carried its own `resolved`), matched on the most stable identity available and coverage-gated so a finding whose file was not inspected this run is `not_reassessed`, not `resolved`. Absent arg → block omitted, zero behavior change.
+  - **P2-1 — title-only hedging lint** — flags claim-hedging tokens (`appears to`, `seems to`, `might be`, `possibly`, `may allow`, `likely`) in confirmed finding TITLES into `coverage.uncertainty_notes` (flag-not-delete; title-only, to avoid firing on legitimate remediation prose).
+- **Audit-engine workflow vendored in-repo** (`.claude/workflows/full-audit.js`) — the deterministic Dynamic-Workflow runtime that executes the audit now ships alongside the markdown playbooks.
+
 ## [1.11.0] — 2026-06-04
 
 ### Added
