@@ -1111,9 +1111,22 @@ function reconcileVulnRollup(findings) {
     stdlib.sort((x, y) => (x.line || 0) - (y.line || 0) || (x.id < y.id ? -1 : 1))
     const head = stdlib[0]
     for (const f of stdlib) if (f !== head) traceMerge(head, f, 'Go-toolchain stdlib roll-up')
+    // ROOT-CAUSE FIX (cross-module leak): collectIds() harvests EVERY GO/CVE id in a
+    // stdlib member's blob — including ids that appear only in quoted govulncheck EVIDENCE
+    // but actually belong to OTHER (non-stdlib) modules that already have their own
+    // standalone findings (e.g. golang-jwt GO-2025-3553 / GO-2024-3250). Absorbing those
+    // corrupted the headline pick (advisory_id/severity), reference_url and audit_changelog.
+    // Exclude any canonical id OWNED by a non-stdlib finding so the roll-up carries only
+    // genuine stdlib member advisories (GO-2026-5039, GO-2026-5037).
+    const ownedByNonStdlib = new Set()
+    for (const f of findings) {
+      if (isStdlibToolchainFinding(f)) continue
+      const oid = canonWithAlias(f, alias)
+      if (oid) ownedByNonStdlib.add(oid)
+    }
     // advisories[] = every id across all members (alias-resolved), with per-member meta.
     const allIds = new Set()
-    for (const f of stdlib) for (const id of collectIds(f, alias)) allIds.add(id)
+    for (const f of stdlib) for (const id of collectIds(f, alias)) if (!ownedByNonStdlib.has(id)) allIds.add(id)
     const advisories = [...allIds].map(id => ({
       id,
       severity: maxSevById.get(id) || head.severity,
