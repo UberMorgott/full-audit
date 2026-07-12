@@ -12,6 +12,8 @@
 Applies when `*.csproj`, `*.sln`, or `global.json` detected.
 All commands assume `cd {solution_root}`.
 
+> **Stack sub-profile (gate the web tables).** The L2/L3 web sections below — SQLi, XSS/Blazor/Razor, ASP.NET-specific, Entity Framework Core, Blazor-specific — are conditional on detecting the matching package: `Microsoft.AspNetCore.*` / `Microsoft.EntityFrameworkCore.*` / Blazor. A **Unity/Harmony/game-mod or library profile** (`net47x`/`netstandard`, no ASP.NET/EF/Blazor, hand-rolled `BinaryReader`/`BinaryWriter` codecs, no `System.Text.Json`) SUPPRESSES those tables wholesale — clean documented SKIP, one-line limitation each, NOT findings/BLOCKERs. Cross-ref universal.md → Stack Profile & Applicability Gating (`has_http_surface`/`has_db`).
+
 ---
 
 ## Level 1: Quick
@@ -22,6 +24,8 @@ dotnet build --no-incremental 2>&1
 dotnet test --no-build 2>&1
 ```
 
+> **Split-test-suite coverage — report pure vs runtime-gated separately.** A test project that needs an external runtime (game/engine DLLs, GPU, live host) CANNOT run here; only the BCL-pure/mockable suites do. Report the two buckets explicitly (`pure: N passed`, `runtime-gated: SKIPPED — needs <runtime>`) so "tests PASS" is NOT read as "the reflection/runtime glue is verified." That runtime-gated layer often has NO automated coverage by construction — say so; it is frequently the project's dominant risk.
+
 ### Lint (Roslyn analyzers)
 ```bash
 dotnet build /p:TreatWarningsAsErrors=true 2>&1
@@ -30,6 +34,7 @@ dotnet format --verify-no-changes 2>&1
 ```
 
 ### Dependency vulnerabilities
+> **requires:** `PackageReference` or `packages.config`. A **local-DLL-reference project** (`<Reference>` + `<HintPath>` with `<Private>false</Private>`; deps are game-/vendor-shipped binaries with no version metadata) has no manifest for `dotnet list package` to read — every `--vulnerable`/`--outdated`/`--deprecated` is a no-op. Downshift to a **manual DLL/assembly-version note** (record the shipped versions you can determine) + one-line limitation; do NOT report the no-op as a BLOCKER. See universal.md → Supply Chain (local-DLL downshift).
 ```bash
 dotnet list package --vulnerable --include-transitive 2>&1
 # Universal — ⚠️ Trivy: pin `0.69.3` (v0.69.4–0.69.6 compromised, supply-chain; do NOT bump until 0.70.0; detail: tools.md):
@@ -59,6 +64,7 @@ semgrep --config=auto . 2>&1
 ```
 
 ### Outdated packages
+> **requires:** `PackageReference`/`packages.config` (a resolvable NuGet manifest). A local-DLL-only project makes Outdated / Deprecated / Removable-transitive — and `dotnet-outdated-tool` / `NuGone` / the license tooling below — all no-ops; skip each with a one-line limitation (see L1 Dependency vulnerabilities → local-DLL downshift), NOT a BLOCKER.
 ```bash
 dotnet list package --outdated 2>&1
 dotnet-outdated 2>&1
@@ -98,6 +104,8 @@ gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2
 
 ### Security review
 
+> **Applicability:** the web-specific items (SQLi, XSS/Blazor/Razor, SSRF, CORS, ASP.NET-specific) require ASP.NET/EF/Blazor detection — skip cleanly on a non-web profile (see Stack sub-profile at top). Deserialization (`BinaryFormatter`), `Process.Start`+user-input, and hardcoded connection strings/secrets apply to ANY C# and are always checked. For hand-rolled binary codecs also run universal.md → Deserialization Safety (untrusted length-prefix → allocation).
+
 - **SQL injection:** string interpolation in SQL (`$"SELECT ... WHERE id = {id}"`)
   - Use parameterized queries: `command.Parameters.AddWithValue()` or EF Core LINQ
 - **Deserialization:** `BinaryFormatter` (banned — RCE), `JsonSerializer` without type restrictions
@@ -115,6 +123,8 @@ gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2
   - Custom auth middleware instead of Identity/OIDC
 
 ### Concurrency
+
+> **Concurrency model first.** The items below assume TPL/ASP.NET (threads, `ConcurrentDictionary`, `SemaphoreSlim`, `Task.Run`). A **Unity/game-loop + Steam/network-callback + coroutine** project has a different model — the real risk is off-thread callbacks not marshalled to the main thread, coroutine lifetime/guards, and barrier stuck-states, NOT missing locks. See universal.md → Concurrency Safety (single-threaded UI/game-loop profile) + Liveness & Recovery.
 
 - `async void` (exceptions crash process — must be `async Task`)
 - `.Result` / `.Wait()` on Task (deadlock — use `await`)
@@ -197,6 +207,8 @@ gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2
 
 ### Entity Framework Core
 
+> **Applicability:** requires `Microsoft.EntityFrameworkCore.*` (`has_db`). No EF/ORM → skip cleanly (one-line limitation). Same gate applies to the ASP.NET Core and Blazor sub-sections here.
+
 <details><summary>EF Core checks</summary>
 
 - No `ToList()` before `Where()` (loads all, filters in memory)
@@ -234,6 +246,7 @@ gitleaks detect --source . --no-git --redact --report-path gitleaks-report.log 2
 </details>
 
 ### License compliance
+> **requires:** a package manager (`PackageReference`/`packages.config`). Local-DLL-only → no NuGet graph to scan; skip cleanly with a one-line limitation.
 ```bash
 dotnet-project-licenses -i . 2>&1
 # Or: trivy fs --scanners license . 2>&1

@@ -1,6 +1,6 @@
 export const meta = {
   name: 'full-audit',
-  description: 'Recall-first multi-wave read-only code audit (full-audit v1.10.8 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
+  description: 'Recall-first multi-wave read-only code audit (full-audit v1.13.0 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
   phases: [
     { title: 'Validate', detail: 'strict args schema check; abort on failure' },
     { title: 'Wave 1', detail: 'cli-scanner per stack + universal + waste-scanner + web-researcher (FAST/RESEARCH)' },
@@ -18,7 +18,7 @@ export const meta = {
 // full-audit dynamic workflow — orchestration only. Audit DOMAIN LOGIC
 // (severity, confidence, thresholds, report format, integrity rules, FP
 // whitelist, Iron-Law verification gate, prohibited phrases) is preserved
-// verbatim from full-audit README v1.10.8. Recall-first additions
+// verbatim from full-audit README v1.13.0. Recall-first additions
 // (suspected_unconfirmed, coverage block, adversarial hunt, depth funnel)
 // are layered on top per the build spec — they EXTEND, never replace.
 // ===========================================================================
@@ -57,7 +57,7 @@ const PROHIBITED_PHRASES = [
 //     from args.tool_status.mcp. Sequential-Thinking prefix is fixed. ---
 const SEQ_THINKING = 'mcp__sequential-thinking__sequentialthinking'
 
-// --- per-stack pinned CLI catalog (tools.md v1.10.8). The cli-scanner agent
+// --- per-stack pinned CLI catalog (tools.md v1.13.0). The cli-scanner agent
 //     gets these EXACT commands; it still reads {spec_root}/{stack}.md for the
 //     level-scoped checklist. Pins must match versions.lock. ---
 const STACK_TOOLS = {
@@ -213,12 +213,15 @@ const FINDING_PROPS = {
   cwe: { type: 'string', description: 'CWE id if applicable, else empty' },
   cve: { type: 'string', description: 'REAL CVE id only (CVE-YYYY-NNNN that genuinely exists), else empty. NEVER fabricate a CVE number from a GO advisory number — put GO ids in advisory_id, not here.' },
   advisory_id: { type: 'string', description: 'advisory identifier AS-IS for SCA findings: a Go vuln id (GO-YYYY-NNNN) or other ecosystem advisory id. Put the GO id here; only set cve if a real mapped CVE exists. Optional.' },
-  repro_command: { type: 'string', description: 'exact command/test that proves it, or empty if none' },
+  repro_command: { type: 'string', description: 'the exact command that PROVES the claim: a failing test / CLI repro for runnable code, OR — for a static-only / non-runnable stack — the grep/read that verifies the structural claim. Emitted as verification_command in output. Empty if none.' },
   origin: { type: 'string', description: 'wave/agent that produced it, e.g. wave2:impact-reviewer-go' },
   recommendation: { type: 'string', description: 'minimal, behavior-preserving fix (the "fix" half of problem->fix). Optional — a FAST cli-scanner finding may legitimately have none; leave empty when you have no concrete fix.' },
   root_cause: { type: 'string', description: 'L3-only: underlying root cause + who/what breaks (blast radius) and an optional "Prevention:" clause, all inside this one prose field. Populate ONLY from Wave-3 DEEP / adversarial reviewers; leave empty otherwise. Optional — empty never changes severity/confidence.' },
   category: { type: 'string', enum: ['architecture', 'security', 'performance', 'code-quality', 'testing', 'concurrency', 'dependencies', 'tech-debt'], description: 'OPTIONAL finding category. Normally derived deterministically in Assemble from cwe/cve/origin; a reviewer MAY supply one to OVERRIDE the derived value. Leave empty to let the workflow derive it (never required, never a demotion trigger).' },
   related_ids: { type: 'array', items: { type: 'string' }, description: 'OPTIONAL: ids of sibling findings sharing this finding\'s systemic pattern (same category + canonical CWE). Stamped by the workflow cross-reference pass; agents normally leave empty.' },
+  related_invariant: { type: 'string', description: 'OPTIONAL: the design invariant / canon rule / spec section this finding relates to (e.g. "one-writer-per-field", "sync-canon §7"). For architecture/canon findings. Empty never changes severity/confidence.' },
+  design_ref: { type: 'string', description: 'OPTIONAL: pointer to the design doc / roadmap item / ADR the finding references (e.g. "design.md §7 incremental-convergence"). Lets debt-aware severity cite its source.' },
+  evidence_commits: { type: 'array', items: { type: 'string' }, description: 'OPTIONAL: git commit SHAs that are evidence for this finding (history/regression reviewers).' },
 }
 const FINDING_REQUIRED = ['severity', 'file', 'line', 'title', 'detail', 'snippet', 'detection_method', 'origin']
 
@@ -278,8 +281,8 @@ const REPRO_SCHEMA = {
       type: 'array',
       items: { type: 'object', required: ['id', 'result', 'method', 'evidence'], properties: {
         id: { type: 'string' },
-        result: { type: 'string', enum: ['REPRODUCED', 'NOT_REPRODUCED', 'SKIPPED_RUNTIME'] },
-        method: { type: 'string', description: 'failing test / CLI command / scanner re-run' },
+        result: { type: 'string', enum: ['REPRODUCED', 'STATIC_CONFIRMED', 'NOT_REPRODUCED', 'SKIPPED_RUNTIME'] },
+        method: { type: 'string', description: 'failing test / CLI command / scanner re-run; for STATIC_CONFIRMED the grep/read that verifies the structural claim' },
         evidence: { type: 'string', description: 'exit code + output excerpt' },
       } },
     },
@@ -334,6 +337,10 @@ function validateArgs(a) {
   // Only shape-check when present; never a hard requirement (no-silent-default respected).
   if (a.prev_audit != null && (typeof a.prev_audit !== 'object' || Array.isArray(a.prev_audit)))
     err.push("args.prev_audit, when provided, must be the prior run's parsed output OBJECT (Phase 0 reads + injects it; omit on the first run)")
+  // stack_profile — OPTIONAL Phase-0 capability vector (gates web/deploy sections + NuGet tooling).
+  // Shape-checked only when present (like prev_audit); absent -> every capability UNKNOWN (no silent default).
+  if (a.stack_profile != null && (typeof a.stack_profile !== 'object' || Array.isArray(a.stack_profile)))
+    err.push('args.stack_profile, when provided, must be an object (booleans: has_http_surface/has_auth/has_db/has_container/has_package_manager/has_runtime_config/is_runnable)')
   return err
 }
 
@@ -376,6 +383,21 @@ function mcpBlock(a, servers) {
   return lines.join('\n')
 }
 
+// STACK PROFILE block: the Phase-0 capability vector that gates web-service / container / NuGet
+// sections. Absent capability -> clean documented SKIP (limitation), never a finding/BLOCKER/
+// re-review. Absent whole object -> every capability UNKNOWN (apply a section only when the read
+// code exhibits its trigger). Pure string builder — no schema/validation impact.
+const PROFILE_CAPS = ['has_http_surface', 'has_auth', 'has_db', 'has_container', 'has_package_manager', 'has_runtime_config', 'is_runnable']
+function stackProfileBlock(a) {
+  const p = a.stack_profile || {}
+  const known = PROFILE_CAPS.some(c => typeof p[c] === 'boolean')
+  if (!known) return '- (not provided by Phase 0 — treat every capability as UNKNOWN: apply a web/container/deploy section only when the code you actually READ exhibits its trigger; never fabricate a finding for an absent capability, and never SKIP a section whose trigger you did observe.)'
+  const lines = PROFILE_CAPS.map(c => `- ${c}: ${p[c] === true ? 'YES' : p[c] === false ? 'NO' : 'unknown'}`)
+  lines.push('APPLICABILITY: a universal.md / stack.md section whose required capability is NO/absent is a CLEAN DOCUMENTED SKIP — record ONE limitation { capability:<section>, status:"n/a for stack", impact:<coverage lost> }; it is NOT a finding, NOT a BLOCKER, NOT a re-review trigger. A tool needing an absent capability (NuGet tools with no package manager, container scanners with no Dockerfile) is likewise a clean skip, not a BLOCKER.')
+  if (p.is_runnable === false) lines.push('is_runnable=NO: do NOT fake a runtime reproduction — verify structural claims by code read and classify STATIC_CONFIRMED / SKIPPED_RUNTIME / NOT_REPRODUCED (see reproduction/verify agents).')
+  return lines.join('\n')
+}
+
 const IRON_LAW = `VERIFICATION (Iron Law — "No claim without fresh evidence"):
 1. IDENTIFY the command that proves the claim. 2. RUN it freshly (never cached). 3. READ full output + exit code. 4. VERIFY output confirms the claim. 5. ONLY THEN report it.
 - CLI exit codes: capture $LASTEXITCODE / $? BEFORE piping into head/grep/tail (piping discards the tool's real exit code).
@@ -386,7 +408,7 @@ ${FP_WHITELIST.map((w, i) => `${i + 1}. ${w}`).join('\n')}
 Exception: never silently drop a *plausible real bug* on low confidence — emit it (confidence will demote it to suspected_unconfirmed, not delete it).`
 
 function header(a, role, mcpServers) {
-  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.10.8 engine). You share NO context with the orchestrator — everything you need is below.
+  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.13.0 engine). You share NO context with the orchestrator — everything you need is below.
 
 PROJECT ROOT: ${a.project_root}
 SPEC ROOT (full-audit checklist files): ${a.spec_root}
@@ -398,6 +420,13 @@ EXCLUSIONS: ${JSON.stringify(a.scope.exclusions || [])}
 COMPLIANCE: ${JSON.stringify(a.scope.compliance || [])}
 PROJECT RULES (CLAUDE.md — these OVERRIDE generic checks; a pattern allowed here is NOT a finding):
 ${a.project_rules ? a.project_rules.slice(0, 4000) : '(none provided)'}
+
+STACK PROFILE (capability vector — gate section/tool applicability; see universal.md "Stack Profile & Applicability Gating"):
+${stackProfileBlock(a)}
+
+SEVERITY CALIBRATION (grounded calibration is NOT softening):
+- Trust-boundary scope: a downgrade justified by a REACHABLE boundary (LAN-only, operator-local, offline, no network-facing attacker path) is legitimate calibration — state the boundary. Only a concrete named boundary that removes the attacker path qualifies (not "hard to exploit" hand-waving).
+- Debt-aware: a project-canon "violation = HIGH minimum" rule applies to NEWLY-INTRODUCED violations. Debt the project's OWN design doc / roadmap acknowledges as spec-permitted incremental convergence is NOT auto-HIGH — score by real impact and record the interpretation (link via related_invariant / design_ref).
 
 MCP SERVERS (use them for your work; degrade + record limitation if down):
 ${mcpBlock(a, mcpServers)}
@@ -1249,7 +1278,8 @@ Do NOT run \`go mod init\`, \`npm init\`, or any installer — write the sentine
 function reproPrompt(a, batch) {
   return `${header(a, 'reproduction-agent', [])}
 
-TASK (DEEP, Wave 2.5): prove each CRITICAL/HIGH finding BEFORE it is trusted. STATIC-BY-DEFAULT — no servers/DBs/network. For each: read it -> pick method (failing test / CLI command / re-run scanner for SCA) -> run ONCE -> capture exit code + output. Classify REPRODUCED / NOT_REPRODUCED / SKIPPED_RUNTIME (runtime-only).
+TASK (DEEP, Wave 2.5): prove each CRITICAL/HIGH finding BEFORE it is trusted. STATIC-BY-DEFAULT — no servers/DBs/network. For each: read it -> pick method (failing test / CLI command / re-run scanner for SCA) -> run ONCE -> capture exit code + output. Classify REPRODUCED / STATIC_CONFIRMED / NOT_REPRODUCED / SKIPPED_RUNTIME.
+NON-RUNNABLE STACK (STACK PROFILE is_runnable=NO — no runnable entrypoint / needs an external host such as a game engine, GPU, Steam, paid API): do NOT stage a runtime pretence. VERIFY the structural claim by CODE READ (the grep/read that proves it, put in \`method\`) and classify: STATIC_CONFIRMED = structurally certain (harmful outcome is version/precondition-gated, not statically triggerable), SKIPPED_RUNTIME = confirming truly needs the runtime, NOT_REPRODUCED = the code read DISPROVES it. Do NOT lower severity for a STATIC_CONFIRMED latent-but-severe finding — severity is decoupled from reproduction.
 SCRATCH ISOLATION (CRITICAL — do NOT poison the audited project): \`${a.artifact_dir}/scratch\` is ALREADY a pre-created, isolated module (the orchestrator created the dir + its isolation sentinel, e.g. a nested \`go.mod\` module \`audit_scratch\` / a private \`package.json\`). Just write your scratch/repro files THERE (NOT \`$TMP\`, NOT anywhere in the repo tree). Do NOT run \`go mod init\` (or \`npm init\`) yourself — the sentinel already exists. Because scratch is a nested module, \`go list ./...\` / LSP from the project root never sees it (no \`main redeclared\` / DuplicateDecl). PREFER writing a failing TEST inside the scratch module over a \`package main\`. NEVER create any \`.go\` (or other compiled source) inside the project module tree — i.e. inside \`${a.project_root}\` outside \`${a.artifact_dir}\`. Do NOT modify the repo.
 FINDINGS TO REPRODUCE:
 ${batch.map(f => `- id=${f.id} [${f.severity}] ${f.file}:${f.line} — ${f.title}\n  repro hint: ${f.repro_command || '(none — derive one)'}`).join('\n')}
@@ -1313,7 +1343,7 @@ TASK (Iron-Law gate): re-run the detection FRESHLY for this ${f.severity} findin
 FINDING id=${f.id}: ${f.file}:${f.line} — ${f.title}
 detail: ${f.detail}
 repro_command: ${f.repro_command || '(derive the command that would prove or refute this)'}
-Run it from ${a.project_root}, capture exit_code + output. admitted=true ONLY if the fresh output confirms the claim. If it cannot be run (runtime-only), admitted=true but note SKIPPED_RUNTIME in evidence.
+Run it from ${a.project_root}, capture exit_code + output. admitted=true ONLY if the fresh output confirms the claim. If it cannot be run (runtime-only, OR the project has no runnable entrypoint / needs an external host): admitted=true when a CODE READ structurally verifies the claim (note STATIC_CONFIRMED + the verifying grep/read in evidence); if confirming genuinely needs the runtime, admitted=true but note SKIPPED_RUNTIME in evidence.
 RATIONALE GATE (do not rubber-stamp a surface match): a literal-pattern match alone is NOT confirmation. If your fresh evidence DISPROVES the finding's load-bearing claim/impact — i.e. the rationale is technically false (classic case: \`%w\` mid-format-string still wraps correctly, so \`errors.Is/As\` work and there is NO real defect) — then set admitted=false AND disproves_rationale=true, even if the cited literal still appears in the source. Apply this UNIFORMLY: identical idiom/title on different lines must get the SAME verdict — if the rationale is false for one, it is false for all of them (no admitting 5 and demoting 2 of the same non-defect). Demotion to suspected_unconfirmed is recall-safe.
 LINE CORRECTION: if your fresh evidence shows the finding's cited \`line\` is WRONG (e.g. for an SCA/manifest finding the dependency or \`go <version>\` directive is actually declared on a different 1-based go.mod line than cited), set \`corrected_line\` to the verified 1-based line so the orchestrator can fix the metadata; leave it unset if the cited line is correct.
 EVIDENCE DISCIPLINE: when you write \`evidence\` / \`verify_evidence\`, reference ONLY this finding's own advisory id. If the fresh output also lists a SIBLING advisory of the same package, label it "separate advisory <id>, also fixed by the same bump" — do NOT cite a different advisory's id as the cause/identity of THIS finding (a GO-2025-3553 finding must not cite CVE-2024-51744 as its own).
@@ -1630,13 +1660,17 @@ if (rawFindings.length === 0) {
     let reproTag = null
     if (f._repro) {
       if (f._repro.result === 'REPRODUCED') { conf = Math.max(conf, 90); reproTag = 'reproduced' }
+      // STATIC_CONFIRMED: structural claim verified by code read; runtime-latent. Raises confidence
+      // WITHOUT a runtime repro; severity UNCHANGED (decoupled from reproduction — a structurally-
+      // certain runtime-latent HIGH is not demoted just because a static host can't trigger it).
+      else if (f._repro.result === 'STATIC_CONFIRMED') { conf = Math.max(conf, 85); reproTag = 'static-verified' }
       else if (f._repro.result === 'NOT_REPRODUCED') { conf = Math.min(conf, 25); f.severity = demoteSeverity(f.severity); reproTag = 'unverified' }
       else if (f._repro.result === 'SKIPPED_RUNTIME') { reproTag = 'unverified: requires runtime' }
     }
     // purpose-fit is a high-FP quality class: hard-cap severity, never CRITICAL/HIGH (enforcement as code)
     if (f.origin && f.origin.includes('purpose-fit') && (f.severity === 'CRITICAL' || f.severity === 'HIGH')) f.severity = 'MEDIUM'
     f.confidence = conf
-    f.reproduced = f._repro ? f._repro.result.toLowerCase() : 'n/a'
+    f.reproduced = f._repro ? (f._repro.result === 'STATIC_CONFIRMED' ? 'static-verified' : f._repro.result.toLowerCase()) : 'n/a'
     f.repro_tag = reproTag
     if (s && s.evidence) f.evidence = s.evidence
     delete f._repro
@@ -1858,13 +1892,15 @@ const cleanFinding = (f) => {
   merged_from: (Array.isArray(f.merged_from) && f.merged_from.length) ? f.merged_from : undefined, // recall trace: ids folded into this finding
   title: f.title, detail: f.detail,
   snippet: f.snippet, detection_method: f.detection_method, confidence: f.confidence,
-  reproduced: f.reproduced || 'n/a', repro_command: f.repro_command || null,
+  reproduced: f.reproduced || 'n/a', verification_command: f.repro_command || null, // repurposed repro_command: runtime repro OR the grep/read that proves a static-only claim
   repro_tag: f.repro_tag || undefined, evidence: f.evidence || undefined,
   verify_command: f.verify_command || undefined, verify_exit: f.verify_exit,
   verify_evidence: f.verify_evidence || undefined, origin: f.origin,
   recommendation: f.recommendation || undefined, root_cause: f.root_cause || undefined,
   category: f.category || undefined,   // P1-1: derived (or reviewer-supplied) finding category
   related_ids: (Array.isArray(f.related_ids) && f.related_ids.length) ? f.related_ids : undefined, // P1-3 systemic link trace
+  related_invariant: f.related_invariant || undefined, design_ref: f.design_ref || undefined, // C4-5: canon/invariant + design-doc linkage
+  evidence_commits: (Array.isArray(f.evidence_commits) && f.evidence_commits.length) ? f.evidence_commits : undefined, // C4-5: history-reviewer evidence
   // BUG-1/BUG-4 trace: every merged/grouped location is preserved (recall-safe, never dropped silently).
   additional_locations: (Array.isArray(f.additional_locations) && f.additional_locations.length > 1) ? f.additional_locations : undefined,
   occurrences: (Array.isArray(f.occurrences) && f.occurrences.length > 1) ? f.occurrences : undefined,

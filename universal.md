@@ -11,10 +11,39 @@ Code review tasks for DEEP agents.
 
 ---
 
+## Stack Profile & Applicability Gating (All agents)
+
+> Phase 0 detects a **capability vector** and passes it to every agent:
+> `has_http_surface`, `has_auth`, `has_db`, `has_container`, `has_package_manager`, `has_runtime_config`, `is_runnable`.
+> Sections and tools below carry an **Applicability** line naming the capability they need.
+
+**When a required capability is ABSENT:**
+- Skip the section/tool as a **clean documented SKIP** — record ONE Audit Limitation `{capability, status:"n/a for stack", impact}`. It is NOT a finding, NOT a BLOCKER, NOT a re-review trigger.
+- 0 findings or >30% SKIP from gated-off sections is EXPECTED, not suspicious (see Anti-Rationalization → stack-aware enforcement).
+- Do NOT reframe a non-web construct to fit a web checklist (e.g. LAN discovery as "SSRF") just to produce a finding.
+
+**Detection heuristics (Phase 0):**
+
+| Capability | YES when the project has… |
+|-----------|---------------------------|
+| `has_http_surface` | an HTTP server / endpoints / controllers (ASP.NET, Express, Flask, Gin, Spring MVC) |
+| `has_auth` | login / session / token / cookie / credential code |
+| `has_db` | an ORM / SQL / connection strings / migrations |
+| `has_container` | `Dockerfile` / `docker-compose` / K8s manifests |
+| `has_package_manager` | a resolvable dependency manifest (PackageReference, `package.json`, `go.mod`, `Cargo.toml`) — NOT local-DLL / vendored-only |
+| `has_runtime_config` | env-var / config-store / hot-reload / feature-flag runtime config |
+| `is_runnable` | a runnable entrypoint reachable WITHOUT an external host (full game engine, GPU, Steam, paid API) |
+
+> A profile with `has_http_surface=NO has_db=NO has_container=NO is_runnable=NO` (e.g. an offline single-DLL plugin / game mod) legitimately skips the entire web-service + container + deploy surface — that is correct scoping, not missing coverage.
+
+---
+
 ## Level 2: Git Hygiene (CLI, FAST)
 
 > Requires Unix shell with `sed`/`awk`. Works in Git Bash on Windows for most commands.
 > `skip_if: windows` for "Large files" — `awk` piping from `git cat-file` may fail in Git Bash. On Windows use the PowerShell twin below; it measures **tracked git-object** sizes (not the working tree), so gitignored local artifacts (a 10MB `.exe`, `dist/`) never false-positive.
+> **Stack-prune the `.gitignore` artifact list.** The loop below lists cross-ecosystem artifacts (`node_modules`/`.venv`/`target`/…) as a default. **Prune it to the DETECTED stack's real artifacts** before running — a C# project has `bin`/`obj` (not `node_modules`/`.venv`), a Go project `vendor`/binaries, etc. A missing `.gitignore` entry for an artifact the stack can NEVER produce is not a finding (YAGNI) — reporting it contradicts the Anti-Rationalization "missing coverage" rule, so drop it at the source by scoping the list.
+> **git-wrapping proxies corrupt census counts.** A token-optimizing git wrapper/hook (e.g. `rtk`) can mangle `git rev-list`/`ls-files` output (wrong file/line counts). For any census command whose COUNT is load-bearing, use raw `git` (bypass the proxy) and verify the number.
 
 ```bash
 # Large files >1MB (skip_if: windows — use PowerShell twin)
@@ -59,6 +88,8 @@ if ($ign) { $ign } else { "no ignored artifacts present" }
 
 ## Level 2: HTTP Security Headers (DEEP)
 
+> **Applicability:** `has_http_surface` — skip cleanly if absent (see Stack Profile & Applicability Gating). No HTTP responses exist → one-line limitation, not a finding.
+
 Verify responses include:
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY` or `SAMEORIGIN`
@@ -73,6 +104,8 @@ Verify responses include:
 
 ## Level 2: CSRF Protection (DEEP)
 
+> **Applicability:** `has_http_surface` + cookie/session auth — skip cleanly if absent (see Stack Profile & Applicability Gating).
+
 - State-changing endpoints (POST/PUT/DELETE) protected against CSRF
 - If cookies for auth: CSRF token or SameSite=Strict/Lax cookie flag
 - Double-submit cookie or synchronizer token pattern implemented
@@ -85,6 +118,8 @@ Verify responses include:
 ---
 
 ## Level 2: Rate Limiting (DEEP)
+
+> **Applicability:** `has_http_surface` — skip cleanly if absent (see Stack Profile & Applicability Gating).
 
 - Rate limiting on all public-facing API endpoints (not just login)
 - Per-user, per-IP, or per-API-key throttling
@@ -144,6 +179,8 @@ Verify responses include:
 ---
 
 ## Level 2: Mass Assignment / Over-Posting (DEEP)
+
+> **Applicability:** `has_http_surface` (HTTP request-body binding) — skip cleanly if absent (see Stack Profile & Applicability Gating).
 
 - JSON/form deserialization: ensure user cannot set unauthorized fields
   - Go: only exported JSON fields user can modify; sensitive fields (`IsAdmin`, `Role`, `CreatedAt`) excluded from binding
@@ -245,7 +282,7 @@ Every CLI tool finding must pass 5 steps:
 **"Hardcoded password in `config_test.go:12`"**
 1. ❌ Test fixture → **FALSE POSITIVE** — discard
 
-> **Important:** CLI tool not installed → report as BLOCKER per Anti-Rationalization Rules.
+> **Important:** CLI tool not installed AND applicable to the detected stack → report as BLOCKER. A tool that is N/A for the stack (NuGet tools with no package manager, container scanners with no Dockerfile, web SAST with no web surface) → clean SKIP + one-line limitation, NOT a BLOCKER (see Stack Profile & Applicability Gating).
 
 ---
 
@@ -287,7 +324,7 @@ If unnecessary, **do not include** or downgrade to LOW: "Consider if applicable 
 | Agent thought | Reality | Correct action |
 |--------------|---------|---------------|
 | "File too simple to audit" | Simple files often contain secrets, default configs | Audit — simple ≠ safe |
-| "Tool not installed, skip" | Missing tool = missing coverage | Report as **BLOCKER** |
+| "Tool not installed, skip" | Missing tool = missing coverage — *only if the tool applies to this stack* | Applicable tool missing → **BLOCKER**. Tool N/A for the detected stack (no package manager, no container, no web surface) → **clean SKIP** + one-line limitation, NOT a BLOCKER |
 | "Legacy code, no point" | Legacy = highest vuln density | Prioritize — legacy ≠ exempt |
 | "Framework handles this" | Frameworks have defaults, escape hatches | Verify framework IS handling it |
 | "Just style issue" | Can mask bugs (shadowed vars, confusing names) | Evaluate impact |
@@ -299,11 +336,14 @@ If unnecessary, **do not include** or downgrade to LOW: "Consider if applicable 
 | "Deadline tight, skip deep" | Skipping = shipping vulns | Report constraint, don't skip |
 | "Internal tool, security meh" | Internal tools get compromised too | Apply same standards |
 
+> **Trust-boundary calibration (not softening).** A downgrade justified by a REACHABLE trust boundary — LAN-only, operator-local, offline, no network-facing attacker path — is legitimate severity CALIBRATION, not rationalization. State the boundary explicitly (mirrors the operator-supplied-local-path carve-out under Input Validation). This does NOT license "hard to exploit" hand-waving: only a concrete, named boundary that removes the attacker path qualifies.
+> **Debt-aware severity (not softening).** A project-canon "violation = HIGH minimum" rule applies to NEWLY-INTRODUCED violations. Debt the project's OWN design doc/roadmap acknowledges as spec-permitted incremental convergence is NOT auto-HIGH — score by real impact and record the interpretation (link via `related_invariant`/`design_ref`).
+
 ### Enforcement
 
 - Orchestrator reviews for rationalization signs (unusual SKIP counts, LOW-only, empty sections)
-- 0 findings for complex codebase → re-review by different agent
-- SKIP >30% → investigate why
+- 0 findings for complex codebase → re-review by different agent — EXCEPT a section gated off by the Stack Profile (absent capability): a clean documented SKIP there is EXPECTED, not suspicious, and does NOT trip re-review.
+- SKIP >30% → investigate why — but SKIPs from stack-gated-off sections (web/container/deploy on an offline mod) are counted separately and do NOT count toward this alarm.
 
 ### Proactive Self-Check (Before Completion)
 
@@ -314,8 +354,8 @@ Every agent MUST run:
 - [ ] No hedging: "should", "probably", "seems to", "appears to", "likely"
 - [ ] No performative: "Great!", "Perfect!", "All clear!", "Looks good!"
 - [ ] Confidence score on every finding
-- [ ] SKIP <30% of total checks
-- [ ] 0 findings for >10-check section → re-review or flag
+- [ ] SKIP <30% of *applicable* checks (stack-gated-off sections are excluded from the denominator, not counted as suspicious SKIPs)
+- [ ] 0 findings for >10-check section → re-review or flag — UNLESS the section is stack-gated-off (absent capability), which is a clean SKIP
 
 ---
 
@@ -369,6 +409,8 @@ For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
 
 ## Level 3: XSS Prevention (DEEP)
 
+> **Applicability:** `has_http_surface` (HTML/web UI rendering) — skip cleanly if absent (see Stack Profile & Applicability Gating).
+
 - All user input escaped before HTML rendering
 - No raw HTML with user data (`v-html`, `dangerouslySetInnerHTML`, `innerHTML`, `Html.Raw()`, `|safe`, `@Html.Raw()`)
 - CSP blocks inline scripts (`script-src` without `unsafe-inline`)
@@ -380,6 +422,9 @@ For structs/classes crossing boundaries (API, IPC, WebSocket, file I/O):
 ---
 
 ## Level 3: SSRF Prevention (DEEP)
+
+> **Applicability:** `has_http_surface` AND a sink that fetches a **user-supplied URL over HTTP**. SSRF = a server fetching an attacker-controlled URL; the private-IP / cloud-metadata rubric below is meaningless without that sink.
+> **LAN/discovery trust-boundary carve-out:** LAN service-discovery (SSDP/UPnP), operator-configured local endpoints, or offline peer discovery are NOT web-SSRF — do NOT force them into this rubric. If a scanner (semgrep) flags them, downgrade with a "LAN-scoped, not web-facing user input" note under the **LAN-trust-boundary** framing; that is legitimate severity calibration, not softening (see Anti-Rationalization → trust-boundary calibration).
 
 - User-supplied URLs: only `http://`/`https://` schemes
 - Private IP ranges blocked:
@@ -409,6 +454,11 @@ Unsafe deserialization = RCE in many languages:
 - Input size limits (prevent memory exhaustion)
 - Schema validation before/during deserialization
 - No polymorphic deserialization without type whitelist
+
+**Untrusted length-prefix → allocation (CWE-770) — applies to ANY binary protocol, web or not:**
+- The type-confusion table above is about RCE (`BinaryFormatter`/`pickle`/`yaml`). This row is the *other* class: hand-rolled length-prefixed framing (`BinaryReader`/`BinaryWriter`, custom wire codecs, chunk/manifest/save reassemblers).
+- For EVERY wire count/length read from an untrusted stream before an allocation — `new byte[wireLen]`, `ReadBytes(wireLen)`, `make([]T, n)`, list/array pre-sizing — assert the value against the **remaining stream length** (or a hard cap) BEFORE allocating. An unbounded prefix = a single small packet forces a huge allocation (alloc-bomb DoS).
+- Check the whole decode path: frame header, per-field length, nested/repeated counts, and multi-part reassembly buffers.
 
 ---
 
@@ -497,6 +547,8 @@ If project processes XML:
 
 ## Level 3: IDOR / Access Control (DEEP)
 
+> **Generalize beyond HTTP endpoints.** "Endpoint" below = **any authenticated channel** — HTTP route, RPC, WebSocket, P2P/co-op message, IPC. The invariant is identical: a resource/action is authorized against the caller's *authenticated* identity, never against a self-asserted identifier in the payload. For non-HTTP channels see the **Authenticated-Channel Trust Boundary** section below.
+
 **BOLA:**
 - Every endpoint validates user access to requested resource
 - Object IDs checked against ownership/permissions (not just existence)
@@ -512,7 +564,22 @@ If project processes XML:
 
 ---
 
+## Level 3: Authenticated-Channel Trust Boundary (peer-as-attacker) (DEEP)
+
+> **Applicability:** any project with an authenticated channel where a **peer/sender can be malicious** — P2P/co-op, multiplayer, RPC, IPC, message bus, plugin↔host. Generalizes IDOR/BOLA off HTTP. `has_auth` is the strongest signal, but a co-op/LAN session has this boundary even without web auth. Skip cleanly only if there is no authenticated channel at all.
+> **Threat model:** the transport authenticates *who sent* a message (connection/session identity). The message *payload* is attacker-chosen. The bug class is trusting a payload field for authz instead of the authenticated sender.
+
+- **Self-asserted vs authenticated identity:** for EVERY inbound message field used for authorization (`steamId`, `playerGuid`, `userId`, `ownerId`, actor/soldier id), assert it is BOUND to the authenticated transport sender — not taken from the payload. A peer that can put any id in the payload can act as any peer (evict/kick/join-as/impersonate).
+- **Action authority:** does the message's *action* require a role the sender actually holds? (host-only actions gated to the host; a "leave/kick/transfer-ownership" message validated against who may issue it — not just that it is well-formed).
+- **Per-object ownership is real, not vacuous:** ownership/permission checks must not be short-circuited by a blanket grant (e.g. per-soldier ownership under a blanket "full-commander" flag). Verify the fine-grained check is reachable and load-bearing.
+- **Outcome suppression / one-sided apply:** if one peer suppresses or unilaterally applies host-only outcomes, non-channelled events desync or authority is bypassed. Confirm both sides converge on the authoritative result.
+- Evidence: name the message type, the payload field, and the missing bind-to-sender check. Severity by reachable impact; a LAN-only/offline boundary is legitimate calibration (see Anti-Rationalization).
+
+---
+
 ## Level 3: Session Management (DEEP)
+
+> **Applicability:** `has_http_surface` + `has_auth` (web session/cookie auth). For offline/P2P, the analog is peer-identity binding — see **Authenticated-Channel Trust Boundary** above; skip this HTTP-session section cleanly.
 
 - Session ID regenerated after login (prevent fixation)
 - Timeout: idle (30 min) + absolute (24h)
@@ -525,6 +592,8 @@ If project processes XML:
 ---
 
 ## Level 3: JWT / Auth Audit (DEEP)
+
+> **Applicability:** `has_auth` with token/JWT-based auth — skip cleanly if absent (see Stack Profile & Applicability Gating). No tokens/endpoints → one-line limitation, not a finding.
 
 - No `alg: none`, no RS256/HS256 confusion
 - Access token <=15min (sensitive) to <=1h, refresh <=30d
@@ -542,6 +611,8 @@ If project processes XML:
 ---
 
 ## Level 3: API Contract Consistency (DEEP)
+
+> **Applicability:** `has_http_surface` (a backend API + a client consuming it) — skip cleanly if absent (see Stack Profile & Applicability Gating).
 
 - Backend JSON field names match frontend types
 - Nullable fields match frontend optional (`field?: type`)
@@ -610,7 +681,7 @@ If project processes XML:
 > Requires the project's stated PURPOSE (from `args.scope.product_purpose`, else README / CLAUDE.md / package description). If purpose is unknown, SKIP check (1) and record an Audit Limitation; still run (2)-(3). HIGH false-positive class: cap severity at MEDIUM, default LOW, **NEVER CRITICAL**; route any "might be intentional" call to `suspected_unconfirmed` (needs human). Opinion is not a defect.
 
 **1. Feature relevance** (anti-pattern: feature/scope creep, boat anchor). In scope here = working, REACHABLE code — NOT dead code (that is the waste-scanner's job).
-- Every non-trivial feature / module / endpoint / screen traces to a stated product goal?
+- Every non-trivial feature / module / **surface** (endpoint / screen / message handler / command / mod hook) traces to a stated product goal?
 - A capability present that the product's purpose does not call for? (unrelated function bolted on)
 - A capability kept after its reason disappeared (boat anchor)?
 - Evidence: name the feature + why it does not map to purpose. LOW unless it carries security/maintenance cost.
@@ -687,6 +758,8 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 
 ## Level 3: Resilience Patterns (DEEP)
 
+> **Applicability & framing:** these patterns target a service making flaky **outbound** calls. Reframe to the project's ACTUAL I/O boundary — for P2P/co-op that is transfer-reassembly, reconnect, and barrier/heartbeat recovery (see **Liveness & Recovery**), NOT circuit-breaker/bulkhead/thundering-herd on an HTTP client. Gate the outbound-HTTP-client items (circuit breaker, bulkhead, thundering herd, timeout cascade, singleflight) behind an outbound-call surface; skip cleanly if the project makes no outbound calls to flaky deps.
+
 - Retry: exponential backoff + jitter
 - Idempotency on retry
 - Circuit breaker for unstable deps
@@ -700,6 +773,8 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 ---
 
 ## Level 3: Configuration Management (DEEP)
+
+> **Applicability (split):** the **magic-numbers-as-named-consts** and **fail-fast startup validation** bullets are UNIVERSAL — always check. The rest — env-var/secret-manager storage, hot-reload races, config cliffs (pool sizing), debug-endpoints-in-prod, request-manipulable feature flags — require `has_runtime_config` (a runtime config store / env vars / deploy pipeline). Skip those cleanly when config is compile-time consts + build-gated latches only (record a one-line limitation, not a finding).
 
 - No magic numbers (timeouts/limits in config)
 - Dev defaults not in production
@@ -741,7 +816,7 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 
 ## Level 3: Container & Image Security (DEEP)
 
-> If Docker/Podman/container orchestration used.
+> **Applicability:** `has_container` (Docker/Podman/compose/K8s detected — same gate as the `infra.md` trigger). Absent → skip the whole section cleanly (one-line limitation), not a dead read.
 
 **Dockerfile:**
 - Base image pinned by digest (`FROM node:20@sha256:abc...`)
@@ -775,7 +850,7 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 
 ## Level 3: CI/CD Pipeline Security (DEEP)
 
-> If CI/CD config exists.
+> **Applicability:** a CI/CD config (`.github/workflows`, `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines.yml`). A repo with `.github/workflows` but **no deploy/container pipeline** → keep only **Actions/plugins** (SHA-pinning, `permissions:` scope, `pull_request_target`) and **Branch protection**; the deploy/artifact-signing/container items are `has_container`-gated — skip cleanly. No CI at all → skip the section.
 
 **Secrets:**
 - None hardcoded in CI config
@@ -805,6 +880,8 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 
 ## Level 3: Supply Chain (DEEP)
 
+> **Applicability:** the dependency-freshness / CVE / transitive / SBOM items require `has_package_manager`. A local-DLL / vendored-only project (no `PackageReference`/`package.json`/lockfile — deps are game- or vendor-shipped binaries) has no manifest to scan: downshift to a **manual DLL/binary-version note** and record a one-line limitation, rather than running no-op `dotnet list package` / `npm audit`. See csharp.md → local-DLL downshift.
+
 - Lock files committed
 - No `latest`/`*`/unbounded versions
 - Repo binaries have provenance docs
@@ -826,6 +903,7 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 
 ## Level 3: SBOM & Software Composition (DEEP)
 
+> **Applicability:** `has_package_manager` (a resolvable dependency manifest + a release/deploy artifact). A local-DLL / vendored-only project with no package manager cannot produce a meaningful SBOM — skip cleanly (one-line limitation), do not run no-op generators. See also csharp.md → local-DLL downshift.
 > Increasingly required for enterprise/regulated.
 
 - SBOM for releases:
@@ -859,6 +937,8 @@ Report: File:line, Anti-pattern, Severity, Evidence, Why-not-needed, Fix. Defaul
 ## Level 3: Concurrency Safety (DEEP)
 
 > Language-agnostic. Stack files have language-specific details.
+
+> **Concurrency model first — pick the profile that matches, don't assume threads+locks.** The mutex/ConcurrentDictionary/SemaphoreSlim items below assume a shared-memory multithread (TPL/ASP.NET) model. Many projects are **single-threaded UI/game-loop + callback-marshalling** (Unity main thread + Steam/network callbacks + coroutines; Node event loop; UI-thread frameworks). For that profile the real risk is NOT missing locks — it is **off-thread callbacks not marshalled back to the main loop** before touching shared state, coroutine/timer lifetime & guards, and barrier/heartbeat stuck-states. Check: every transport/OS/timer callback marshals to the main loop before mutating game/UI state; coroutines have bounded lifetime and re-entry guards; no unbounded wait without the **Liveness & Recovery** backstop.
 
 **Data races:**
 - Shared mutable state: mutex/lock or immutable
@@ -1070,6 +1150,50 @@ grep -rn 'href=["'"'"']#\?["'"'"']' --include='*.vue' --include='*.tsx' --includ
 - Startup validation?
 
 Report: File:line, Category, Severity, Evidence, Root Cause, Fix.
+
+---
+
+## Level 3: Replicated / Authoritative State-Sync Correctness (DEEP)
+
+> **Applicability:** any project that REPLICATES state across processes/peers/clients — co-op/multiplayer, authoritative-server + mirror clients, CRDT/event-sourced mirrors, cache-vs-source-of-truth. Skip cleanly if a single owner holds all state.
+> Not scanner-detectable — trace each replicated field by hand.
+
+- **One-writer-per-field:** each replicated field has exactly ONE authoritative writer. Two paths writing the same field on different nodes = divergence. List fields with >1 writer (position, AP/WP, health, ownership).
+- **Authoritative vs mirror divergence:** mirror-side code must not mutate authoritative state out of band. A client that locally computes/overwrites a host-owned field desyncs silently.
+- **Out-of-band mutation without a change signal:** a field mutated WITHOUT going through the dirty-mark / change-event / replication channel never propagates. Grep the write sites; confirm each dirties/emits.
+- **Reconvergence backstop coverage:** every replicated channel needs a drift-poll / periodic full-resync / reconciliation so a missed delta self-heals. Enumerate channels; flag those with NO backstop (a dropped update wedges forever).
+- **Non-channelled outcomes:** host-only outcomes/events suppressed on the client or not routed through a sync channel desync. Confirm both sides converge on the authoritative result.
+
+### Streamed-batch partial-apply (in a mirror / replication stream)
+
+- **Per-record isolation:** one poison/throwing record must NOT abort the rest of the batch. Compare sibling appliers — the correct pattern is per-record `try/catch` + continue.
+- **Cursor still advances:** the sequence/cursor/ack MUST advance even when a record is skipped, or the stream wedges and every later delta is lost. Flag any path where a throw both drops the batch suffix AND skips the seq-mark (durable silent per-actor desync).
+
+---
+
+## Level 3: Runtime-Binding / Reflection Drift (DEEP)
+
+> **Applicability:** modding / plugin / reflection-heavy stacks — Harmony/`AccessTools`, `MethodInfo`/`Type.GetType`, DI-by-name, serializer type-name binding, any string→member resolution against code you don't own (game/host/plugin API). Skip cleanly if all binding is compile-time.
+> The risk: a host/game/library UPDATE renames or moves a member and a stringly-bound site silently no-ops or mis-binds — no compile error, no startup error.
+
+- **Census the reflection sites:** count `AccessTools.*` / `GetMethod` / `GetType(string)` / by-name lookups. A large uncensused population is itself a finding (blast radius unknown).
+- **Load-bearing bindings fail LOUD at startup:** safety-critical bindings must be resolved + asserted at load (throw/log-fatal if the target is missing), not lazily per-call where a miss is a silent desync. Flag load-bearing sites with no startup guard.
+- **Stringly-typed exact-name matches on safety-critical paths:** an N-string exact type/member-name match (e.g. a faction/exclusion list) is DLC-/version-fragile — a rename breaks it silently. Flag exact-name matches gating correctness/security.
+- **Registry/key equality:** a key/registration with no value-equality (or a weak one) can double-register / double-mint on re-entry. Verify identity semantics.
+
+---
+
+## Level 3: Liveness & Recovery for Stateful Lifecycles (DEEP)
+
+> **Applicability:** any project with a stateful lifecycle / state machine / session / transfer / barrier / handshake — especially single-threaded + coroutine or P2P session machines. Generalizes the "no stuck states" bullet into concrete, checkable invariants. Skip cleanly if there is no multi-step wait/lifecycle.
+> Not scanner-detectable — trace the barrier/heartbeat/handshake machine by hand.
+
+- **Bounded wait:** every wait / barrier / handshake / prompt-gate has a wall-clock timeout (no unbounded block). List waits with no ceiling.
+- **Recovery path:** each timeout leads to a defined recovery (retry, abort-clean, fallback) — not a dead end that strands a party.
+- **Timeout that removes a party also tears it down / notifies it:** a straggler-kick / eviction that removes A must also notify + clean up A (no half-open state where A still thinks it's in).
+- **No suspension of a liveness detector without a ceiling:** pausing/suspending a heartbeat/timeout must have a wall-clock cap, else host-loss/peer-loss detection is disabled indefinitely.
+- **No soft-lock via blocking gate:** a blocking prompt/modal/gate on one party must not stall the whole session with no timeout or dismiss path.
+- Evidence: name the wait/barrier + the missing timeout OR recovery OR notify. A latent stuck-state that needs a runtime trigger is STILL a finding — see `STATIC_CONFIRMED` (README § Reproduction signal); do not demote it just because it can't be triggered on a static host.
 
 ---
 

@@ -4,6 +4,9 @@
 
 First-time only. Install per detected stack. Check tool exists before installing.
 
+> **Windows/PowerShell host.** Bash `curl … | sha256sum` install recipes below are marked `skip_if: windows`; use the PowerShell twin (e.g. trufflehog below) or the `choco` line where present. Prefer a checksum-gated package manager (`choco --require-checksums`) over a raw download.
+> **git-wrapping proxies corrupt counts.** A token-optimizing git wrapper/hook (e.g. `rtk`) can mangle `git` output and flags (wrong `rev-list`/`ls-files` counts; a rewritten `/p:`/`--property:` flag). For any census/count command whose number is load-bearing, run **raw `git`** (bypass the proxy) and verify.
+
 ---
 
 ## Pre-Audit Tool Integrity Protocol
@@ -189,6 +192,8 @@ Managed via build system (Gradle/Maven plugins). No separate install for most.
 
 ## C# / .NET
 
+> **requires: `PackageReference`/`packages.config`.** `dotnet-outdated-tool`, `nuget-license`, and `NuGone` all read a NuGet manifest — on a **local-DLL-reference project** (deps are game-/vendor-shipped binaries, no package manager) they are inert. Detect that case up front and DOWNSHIFT: skip these tools with a one-line limitation + a manual DLL/assembly-version note, rather than installing tools that then no-op. Not a BLOCKER (the tool is N/A for the stack, not missing coverage). See csharp.md → local-DLL downshift.
+
 ```bash
 # dotnet-format REMOVED (deprecated, retired into SDK). Use built-in `dotnet format` (SDK 6.0+);
 #   pin SDK via global.json sdk.version (e.g. 8.0.414). Run: dotnet format --verify-no-changes
@@ -237,7 +242,19 @@ grep "trufflehog_${VER}_linux_amd64.tar.gz" "trufflehog_${VER}_checksums.txt" | 
 # (Optional, stronger) cosign verify-blob the checksums.txt against the trufflesecurity OIDC identity
 # Or: go install github.com/trufflesecurity/trufflehog/v3@v3.95.3
 # Or: docker run --rm -v "$(pwd):/src" trufflesecurity/trufflehog:3.95.3 filesystem /src
+```
 
+PowerShell twin (Windows — download the signed `_windows_amd64` archive + verify SHA256):
+```powershell
+$VER = '3.95.3'
+$base = "https://github.com/trufflesecurity/trufflehog/releases/download/v$VER"
+Invoke-WebRequest "$base/trufflehog_${VER}_windows_amd64.tar.gz" -OutFile trufflehog.tar.gz
+Invoke-WebRequest "$base/trufflehog_${VER}_checksums.txt"       -OutFile checksums.txt
+$want = ((Select-String -Path checksums.txt -Pattern 'windows_amd64.tar.gz').Line -split '\s+')[0]
+if ((Get-FileHash trufflehog.tar.gz -Algorithm SHA256).Hash -ieq $want) { tar -xzf trufflehog.tar.gz trufflehog.exe } else { throw 'trufflehog checksum mismatch' }
+```
+
+```bash
 # OSV-Scanner (Google) — vuln scanner, OSV database
 # Supports go.sum, package-lock.json, requirements.txt, Cargo.lock
 go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.8
