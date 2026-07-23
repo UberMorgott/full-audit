@@ -2,6 +2,14 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.14.3] — 2026-07-23
+
+### Fixed
+- **Adversarial self-audit round 3** — 3 more defects (8 new lenses incl. concurrency-state, scoring-math, prompt-completeness, vuln-reconcile, guard-git-artifact; 2 skeptics per finding; 7 further candidates refuted). All MEDIUM; no new CRITICAL/HIGH.
+  - **[MEDIUM] `mergeInto` kept the first reproduction verdict, not the strongest** (completes the v1.14.1/v1.14.2 `_repro`-carry fix). When two high-severity duplicates got opposite Wave-2.5 verdicts, a first-seen `NOT_REPRODUCED` could mask a real `REPRODUCED`, demoting a runtime-proven bug into suspected_unconfirmed. Now keeps the strongest verdict by rank (REPRODUCED > STATIC_CONFIRMED > SKIPPED_RUNTIME > NOT_REPRODUCED).
+  - **[MEDIUM] Scratch isolation sentinel was written only for Go/Node.** For C# (`.csproj` at repo root globs `**/*.cs`) and Python (`pytest` recursive collection), a scratch repro/test file under `<project_root>/audit/scratch` was swept into the audited project's own compile/test graph — producing false "build broken"/"tests fail" findings or self-poisoned reproductions. Now also emits a `Directory.Build.props` (`EnableDefaultCompileItems/EnableDefaultItems=false`) for C# and a `conftest.py` (`collect_ignore_glob=['*']`) for Python; the "scratch is isolated" prompt claim is now true for those stacks.
+  - **[MEDIUM] Purpose-fit severity cap keyed on a merge-contaminated origin substring.** `mergeInto` unions origins, so a genuine HIGH that merged with an overlapping purpose-fit finding got `…, wave3:purpose-fit` in its origin and was silently demoted to MEDIUM. The cap now fires only when purpose-fit is the SOLE origin contributor.
+
 ## [1.14.2] — 2026-07-23
 
 ### Fixed

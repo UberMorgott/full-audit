@@ -1,6 +1,6 @@
 export const meta = {
   name: 'full-audit',
-  description: 'Recall-first multi-wave read-only code audit (full-audit v1.14.2 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
+  description: 'Recall-first multi-wave read-only code audit (full-audit v1.14.3 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
   phases: [
     { title: 'Validate', detail: 'strict args schema check; abort on failure' },
     { title: 'Wave 1', detail: 'cli-scanner per stack + universal + waste-scanner + web-researcher (FAST/RESEARCH)' },
@@ -18,7 +18,7 @@ export const meta = {
 // full-audit dynamic workflow — orchestration only. Audit DOMAIN LOGIC
 // (severity, confidence, thresholds, report format, integrity rules, FP
 // whitelist, Iron-Law verification gate, prohibited phrases) is preserved
-// verbatim from full-audit README v1.14.2. Recall-first additions
+// verbatim from full-audit README v1.14.3. Recall-first additions
 // (suspected_unconfirmed, coverage block, adversarial hunt, depth funnel)
 // are layered on top per the build spec — they EXTEND, never replace.
 // ===========================================================================
@@ -64,7 +64,7 @@ const PROHIBITED_PHRASES = [
 //     from args.tool_status.mcp. Sequential-Thinking prefix is fixed. ---
 const SEQ_THINKING = 'mcp__sequential-thinking__sequentialthinking'
 
-// --- per-stack pinned CLI catalog (tools.md v1.14.2). The cli-scanner agent
+// --- per-stack pinned CLI catalog (tools.md v1.14.3). The cli-scanner agent
 //     gets these EXACT commands; it still reads {spec_root}/{stack}.md for the
 //     level-scoped checklist. Pins must match versions.lock. ---
 const STACK_TOOLS = {
@@ -431,7 +431,7 @@ ${FP_WHITELIST.map((w, i) => `${i + 1}. ${w}`).join('\n')}
 Exception: never silently drop a *plausible real bug* on low confidence — emit it (confidence will demote it to suspected_unconfirmed, not delete it).`
 
 function header(a, role, mcpServers) {
-  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.14.2 engine). You share NO context with the orchestrator — everything you need is below.
+  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.14.3 engine). You share NO context with the orchestrator — everything you need is below.
 
 PROJECT ROOT: ${a.project_root}
 SPEC ROOT (full-audit checklist files): ${a.spec_root}
@@ -488,6 +488,9 @@ function demoteSeverity(sev) {
   const i = SEV_ORDER.indexOf(sev)
   return i > 0 ? SEV_ORDER[i - 1] : sev
 }
+// Reproduction-verdict strength rank (REPRODUCED strongest): picks the winner when
+// two merged duplicates carry opposite Wave-2.5 verdicts. Unknown -> -1.
+const reproRank = r => ({ REPRODUCED: 3, STATIC_CONFIRMED: 2, SKIPPED_RUNTIME: 1, NOT_REPRODUCED: 0 }[r] ?? -1)
 function isSecurityClass(f) {
   const s = `${f.title} ${f.detail} ${f.cwe || ''}`.toLowerCase()
   return /\b(xss|sqli|sql injection|ssrf|xxe|rce|idor|bola|bfla|auth|csrf|deserializ|secret|injection|traversal|cve|cwe|jwt|crypto|priv)/.test(s)
@@ -767,7 +770,7 @@ function mergeInto(a, b) {
   a.origin = [...origins].join(', ')
   if ((b.detail || '').length > (a.detail || '').length) a.detail = b.detail
   if ((b.snippet || '').length > (a.snippet || '').length) a.snippet = b.snippet
-  if (b._repro && !a._repro) a._repro = b._repro   // keep loser's reproduction verdict so REPRODUCED floor / NOT_REPRODUCED cap survives merge
+  if (b._repro && (!a._repro || reproRank(b._repro.result) > reproRank(a._repro.result))) a._repro = b._repro   // keep the STRONGEST reproduction verdict across merge
   const trail = new Set(Array.isArray(a.merged_from) ? a.merged_from : [])
   if (b.id) trail.add(b.id)
   if (Array.isArray(b.merged_from)) for (const x of b.merged_from) trail.add(x)
@@ -1300,21 +1303,36 @@ function scratchSetupPrompt(a) {
   for (const p of (a.stack.packages || [])) for (const s of (p.stacks || [])) stacks.add(s)
   const isGo = stacks.has('go')
   const isNode = stacks.has('frontend')
+  const isCsharp = stacks.has('csharp')
+  const isPython = stacks.has('python')
+  // Per-stack isolation sentinels, numbered from step 2. Each keeps scratch source out of
+  // the parent's build/collect graph for a stack whose native tooling recurses over the root.
+  const sentinels = []
+  if (isGo) sentinels.push(`Create \`${a.artifact_dir}/scratch/go.mod\` with exactly this content (module name \`audit_scratch\`) — this makes scratch a NESTED Go module, excluded from the parent project's \`go list ./...\`, which prevents \`main redeclared\` / DuplicateDecl when scratch \`package main\` files are added:
+-----
+module audit_scratch
+
+go 1.21
+-----`)
+  if (isNode) sentinels.push(`Create \`${a.artifact_dir}/scratch/package.json\` with exactly this content (private package, name \`audit_scratch\`) so scratch is an isolated Node package, not part of the project's workspace/package graph:
+-----
+{"name":"audit_scratch","private":true}
+-----`)
+  if (isCsharp) sentinels.push(`Create \`${a.artifact_dir}/scratch/Directory.Build.props\` with exactly this content — it disables the parent .csproj default globs (\`EnableDefaultCompileItems\`) from reaching into scratch, so a scratch \`.cs\` (e.g. Repro.cs) is NEVER globbed into any parent SDK-style project (prevents CS0017 "more than one entry point"):
+-----
+<Project><PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems><EnableDefaultItems>false</EnableDefaultItems></PropertyGroup></Project>
+-----`)
+  if (isPython) sentinels.push(`Create \`${a.artifact_dir}/scratch/conftest.py\` with exactly this content — it stops pytest from collecting scratch tests, so a bare \`pytest\` from the project root never picks up scratch \`test_*.py\` (default \`norecursedirs\` does not exclude the audit dir):
+-----
+collect_ignore_glob = ['*']
+-----`)
+  const sentinelSteps = sentinels.map((s, i) => `${i + 2}. ${s}`).join('\n')
   return `${header(a, 'scratch-setup', [])}
 
 TASK (FAST, scratch isolation setup): PRE-CREATE the isolated scratch workspace so later repro/adversarial agents can drop runnable source there WITHOUT poisoning the audited project's module/package graph. You ONLY create files UNDER \`${a.artifact_dir}/scratch\` — create NOTHING anywhere in the project tree (\`${a.project_root}\` outside \`${a.artifact_dir}\`).
 STEPS:
 1. Create the directories \`${a.artifact_dir}/scratch\` AND \`${a.artifact_dir}/tmp\` (mkdir -p / New-Item -ItemType Directory -Force). The \`tmp\` dir is where scanners write report files (gitleaks --report-path etc.); pre-creating it here means those writes don't fail. Include BOTH paths in \`created\`.
-${isGo ? `2. Create \`${a.artifact_dir}/scratch/go.mod\` with exactly this content (module name \`audit_scratch\`) — this makes scratch a NESTED Go module, excluded from the parent project's \`go list ./...\`, which prevents \`main redeclared\` / DuplicateDecl when scratch \`package main\` files are added:
------
-module audit_scratch
-
-go 1.21
------` : ''}${isNode ? `${isGo ? '\n3.' : '\n2.'} Create \`${a.artifact_dir}/scratch/package.json\` with exactly this content (private package, name \`audit_scratch\`) so scratch is an isolated Node package, not part of the project's workspace/package graph:
------
-{"name":"audit_scratch","private":true}
------` : ''}
-Do NOT run \`go mod init\`, \`npm init\`, or any installer — write the sentinel file(s) directly with the literal content above. Do NOT modify the repo. Return via the schema: created = the absolute paths you actually created (the dir + sentinel file(s)); note = a one-line summary. TOOL ACCOUNTING: if a required tool is absent so the step cannot complete (e.g. no write access to create the dir, or the relevant toolchain like \`go\` is missing so isolation cannot be set up), say so explicitly in \`note\` — state that scratch isolation could NOT be created and what that means for later repro/adversarial agents — rather than returning a clean note.`
+${sentinelSteps ? sentinelSteps + '\n' : ''}Do NOT run \`go mod init\`, \`npm init\`, or any installer — write the sentinel file(s) directly with the literal content above. Do NOT modify the repo. Return via the schema: created = the absolute paths you actually created (the dir + sentinel file(s)); note = a one-line summary. TOOL ACCOUNTING: if a required tool is absent so the step cannot complete (e.g. no write access to create the dir, or the relevant toolchain like \`go\` is missing so isolation cannot be set up), say so explicitly in \`note\` — state that scratch isolation could NOT be created and what that means for later repro/adversarial agents — rather than returning a clean note.`
 }
 
 function reproPrompt(a, batch) {
@@ -1322,7 +1340,7 @@ function reproPrompt(a, batch) {
 
 TASK (DEEP, Wave 2.5): prove each CRITICAL/HIGH finding BEFORE it is trusted. STATIC-BY-DEFAULT — no servers/DBs/network. For each: read it -> pick method (failing test / CLI command / re-run scanner for SCA) -> run ONCE -> capture exit code + output. Classify REPRODUCED / STATIC_CONFIRMED / NOT_REPRODUCED / SKIPPED_RUNTIME.
 NON-RUNNABLE STACK (STACK PROFILE is_runnable=NO — no runnable entrypoint / needs an external host such as a game engine, GPU, Steam, paid API): do NOT stage a runtime pretence. VERIFY the structural claim by CODE READ (the grep/read that proves it, put in \`method\`) and classify: STATIC_CONFIRMED = structurally certain (harmful outcome is version/precondition-gated, not statically triggerable), SKIPPED_RUNTIME = confirming truly needs the runtime, NOT_REPRODUCED = the code read DISPROVES it. Do NOT lower severity for a STATIC_CONFIRMED latent-but-severe finding — severity is decoupled from reproduction.
-SCRATCH ISOLATION (CRITICAL — do NOT poison the audited project): \`${a.artifact_dir}/scratch\` is ALREADY a pre-created, isolated module (the orchestrator created the dir + its isolation sentinel, e.g. a nested \`go.mod\` module \`audit_scratch\` / a private \`package.json\`). Just write your scratch/repro files THERE (NOT \`$TMP\`, NOT anywhere in the repo tree). Do NOT run \`go mod init\` (or \`npm init\`) yourself — the sentinel already exists. Because scratch is a nested module, \`go list ./...\` / LSP from the project root never sees it (no \`main redeclared\` / DuplicateDecl). PREFER writing a failing TEST inside the scratch module over a \`package main\`. NEVER create any \`.go\` (or other compiled source) inside the project module tree — i.e. inside \`${a.project_root}\` outside \`${a.artifact_dir}\`. Do NOT modify the repo.
+SCRATCH ISOLATION (CRITICAL — do NOT poison the audited project): \`${a.artifact_dir}/scratch\` is ALREADY a pre-created, isolated module (the orchestrator created the dir + its per-stack isolation sentinel, e.g. a nested \`go.mod\` module \`audit_scratch\` / a private \`package.json\` / a \`Directory.Build.props\` disabling C# default globs / a \`conftest.py\` excluding scratch from pytest collection). Just write your scratch/repro files THERE (NOT \`$TMP\`, NOT anywhere in the repo tree). Do NOT run \`go mod init\` (or \`npm init\`) yourself — the sentinel already exists. Because scratch is a nested module, \`go list ./...\` / LSP from the project root never sees it (no \`main redeclared\` / DuplicateDecl). PREFER writing a failing TEST inside the scratch module over a \`package main\`. NEVER create any \`.go\` (or other compiled source) inside the project module tree — i.e. inside \`${a.project_root}\` outside \`${a.artifact_dir}\`. Do NOT modify the repo.
 FINDINGS TO REPRODUCE:
 ${batch.map(f => `- id=${f.id} [${f.severity}] ${f.file}:${f.line} — ${f.title}\n  repro hint: ${f.repro_command || '(none — derive one)'}`).join('\n')}
 Return one result per id via the schema.`
@@ -1365,7 +1383,7 @@ HUNT CHECKLIST (classes static analysis structurally misses): data races; TOCTOU
 ZONES (critical modules + signal zones from earlier waves):
 ${zones.map(z => `- ${z}`).join('\n') || '- (whole scope; prioritize critical_modules)'}
 Emit findings with detection_method:"adversarial". A plausible-but-unproven bug is STILL emitted (low confidence demotes it to suspected_unconfirmed — never drop it). Put concrete triggering inputs in detail and a repro_command when you can derive one. When you can support it, put the underlying root cause — plus who/what breaks (blast radius) and an optional "Prevention:" clause — in the OPTIONAL \`root_cause\` field (inside that one prose field; do NOT add a separate impact field); this is OPTIONAL and an empty \`root_cause\` never changes the finding's severity or confidence.
-SCRATCH ISOLATION (CRITICAL — do NOT poison the audited project): if you write any runnable scratch/repro program, put it under \`${a.artifact_dir}/scratch\` ONLY (NOT \`$TMP\`, NOT the repo tree). That dir is ALREADY a pre-created, isolated module (the orchestrator created the dir + its isolation sentinel, e.g. a nested \`go.mod\` module \`audit_scratch\` / a private \`package.json\`), so \`go list ./...\` / LSP from the project root never sees it (no \`main redeclared\` / DuplicateDecl). Do NOT run \`go mod init\` (or \`npm init\`) yourself — the sentinel already exists. Prefer a failing TEST in the scratch module over a \`package main\`. NEVER create any \`.go\` (or other compiled source) inside the project module tree — i.e. inside \`${a.project_root}\` outside \`${a.artifact_dir}\`.`
+SCRATCH ISOLATION (CRITICAL — do NOT poison the audited project): if you write any runnable scratch/repro program, put it under \`${a.artifact_dir}/scratch\` ONLY (NOT \`$TMP\`, NOT the repo tree). That dir is ALREADY a pre-created, isolated module (the orchestrator created the dir + its per-stack isolation sentinel, e.g. a nested \`go.mod\` module \`audit_scratch\` / a private \`package.json\` / a \`Directory.Build.props\` disabling C# default globs / a \`conftest.py\` excluding scratch from pytest collection), so \`go list ./...\` / LSP from the project root never sees it (no \`main redeclared\` / DuplicateDecl). Do NOT run \`go mod init\` (or \`npm init\`) yourself — the sentinel already exists. Prefer a failing TEST in the scratch module over a \`package main\`. NEVER create any \`.go\` (or other compiled source) inside the project module tree — i.e. inside \`${a.project_root}\` outside \`${a.artifact_dir}\`.`
 }
 
 function scoringPrompt(a, batch) {
@@ -1747,8 +1765,10 @@ if (rawFindings.length === 0) {
       else if (f._repro.result === 'NOT_REPRODUCED') { conf = Math.min(conf, 25); f.severity = demoteSeverity(f.severity); reproTag = 'unverified' }
       else if (f._repro.result === 'SKIPPED_RUNTIME') { reproTag = 'unverified: requires runtime' }
     }
-    // purpose-fit is a high-FP quality class: hard-cap severity, never CRITICAL/HIGH (enforcement as code)
-    if (f.origin && f.origin.includes('purpose-fit') && (f.severity === 'CRITICAL' || f.severity === 'HIGH')) f.severity = 'MEDIUM'
+    // purpose-fit is a high-FP quality class: hard-cap severity, never CRITICAL/HIGH (enforcement as code).
+    // Cap only when purpose-fit is the SOLE origin contributor — mergeInto UNIONS origins, so a genuine
+    // HIGH merged with an overlapping purpose-fit finding must NOT be demoted (substring test would misfire).
+    if (f.origin && f.origin.split(',').map(s => s.trim()).filter(Boolean).every(o => o.includes('purpose-fit')) && (f.severity === 'CRITICAL' || f.severity === 'HIGH')) f.severity = 'MEDIUM'
     f.confidence = conf
     f.reproduced = f._repro ? (f._repro.result === 'STATIC_CONFIRMED' ? 'static-verified' : f._repro.result.toLowerCase()) : 'n/a'
     f.repro_tag = reproTag
