@@ -16,6 +16,7 @@
 | GitHub Actions    | actionlint    | `1.7.12`       | Workflow syntax + shell lint                     |
 | GitHub Actions    | zizmor        | `1.25.2`       | Actions supply-chain/security                    |
 
+> ⚠️ Trivy: pin `0.69.3` ONLY — v0.69.4–0.69.6 are compromised (supply-chain); do NOT bump until 0.70.0. Detail: tools.md.
 > `skip_if: no_tool(name)` per tool. `skip_if: windows` only where a tool ships
 > Unix-only; prefer container/cross-platform builds otherwise.
 

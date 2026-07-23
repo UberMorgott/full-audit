@@ -100,7 +100,10 @@ node --version 2>&1
 
 **Vue:**
 ```bash
-npx --yes vue-tsc@3.3.2 -b --noEmit 2>&1  # pin alongside typescript@~5.8
+# Prefer the project's own type-check (uses the repo's vue-tsc + TS): npm run type-check / npm run build.
+# Else run vue-tsc UNPINNED, tsc as fallback. Do NOT hard-pin vue-tsc to one TS minor — it's tsc-coupled
+# and a stale pin (e.g. 3.3.2 on TS6) crashes with ERR_PACKAGE_PATH_NOT_EXPORTED, silently dropping type-check coverage.
+npx --yes vue-tsc -b --noEmit 2>&1 || npx --yes tsc --noEmit 2>&1
 ```
 > Use `-b` (build mode) for solution-style/referenced tsconfig (`files: []` + `references`); plain `--noEmit` silently checks the empty file set (0 output, exit 0) and hides all app type errors. Matches real Vue `build`/`type-check` scripts.
 
@@ -188,7 +191,7 @@ dotenv-linter 2>&1
 # 5. TS strictness verification
 # tsconfig.json should have "noUnusedLocals": true, "noUnusedParameters": true
 # Missing → MEDIUM finding. Then:
-npx --yes svelte-check@4.4.8 2>&1  # or vue-tsc@3.3.2 -b --noEmit (use -b for solution-style tsconfig; see L2 TS check), or tsc --noEmit
+npx --yes svelte-check@4.4.8 2>&1  # or UNPINNED vue-tsc -b --noEmit (use -b for solution-style tsconfig; see L2 TS check), or tsc --noEmit — don't hard-pin vue-tsc to one TS minor (drops type-check coverage on TS6)
 ```
 
 Tool findings: adopt directly, severity = tool's or HIGH default.

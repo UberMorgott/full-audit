@@ -446,9 +446,11 @@ Check: WAL mode, foreign_keys ON, busy_timeout >0, auto_vacuum, secure_delete (i
 ### License compliance
 
 > skip_if: no_tool(go-licenses) — if `go-licenses` is missing, do NOT treat as BLOCKER; fall back to the `trivy fs --scanners license` line below.
+> **Auto-run the fallback when go-licenses DEGRADES (SK-lic):** `go-licenses report` exits 1 on non-Go assembly deps (e.g. `golang.org/x/crypto/blake2b`, `golang.org/x/sys/cpu`), leaving the license inventory PARTIAL — not only when the tool is absent. On any non-zero exit OR partial output, run `trivy fs --scanners license .` to close the gap before scoring; a partial inventory is not a clean one.
 ```bash
 go-licenses report ./... 2>&1  # requires: go install github.com/google/go-licenses/v2@v2.0.1
-# Fallback (if go-licenses unavailable): trivy fs --scanners license . 2>&1
+# Fallback — run whenever go-licenses is missing OR exits non-zero/partial (NOT optional):
+trivy fs --scanners license . 2>&1
 ```
 
 ### Dependency freshness

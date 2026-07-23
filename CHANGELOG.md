@@ -2,6 +2,21 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.14.0] — 2026-07-23
+
+### Fixed
+- **Dogfood-feedback remediation** — fixes from a live L3 audit of `full-audit` v1.13.0 against a Go+Vue+SQLite project on Windows/PowerShell (`DOGFOOD-FEEDBACK-2026-07-23.md`).
+  - **Engine (`.claude/workflows/full-audit.js`):**
+    - **Model tiers now remappable via `args.model_tiers { fast?, research?, deep? }`** (fallback `haiku`/`sonnet`/`opus`), resolved after args-parse; optional shape-check in `validateArgs`. Fixes the "swap per environment" promise that had no hook (A5/C7).
+    - **PowerShell portability:** `$TMP`/`$ARTIFACT` tokens in emitted scanner commands are resolved at prompt-build time to `<artifact_dir>/tmp` via `subTmp()` (bare `$TMP` was `$null` in PS → wrote to filesystem root) (C2). `go test -race` no longer ships a bash-only `CGO_ENABLED=1` inline prefix; shell-neutral note for PS/bash (C1).
+    - **`vue-tsc` un-pinned** — was hard-pinned `@3.3.2` (crashed on TypeScript 6, `ERR_PACKAGE_PATH_NOT_EXPORTED`); now prefers the project's own build / unpinned `vue-tsc --build --noEmit` (C3).
+    - **`go-licenses` degradation** documents the `trivy fs --scanners license .` fallback (B2).
+    - **Verify-gate cost:** CRITICAL/HIGH keep per-finding verification (unchanged rigor); the low-severity (MEDIUM/LOW) security-class tail is now BATCHED (`verify-batch:N`, 8/agent) instead of one-agent-per-finding (B8).
+    - **`mcp_used`** now lists only servers actually exercised; live-but-unused servers move to `mcp_not_used_at_level` (B6). **`audit_limitations`** deduped by capability (unions distinct impacts) so real gaps don't drown (B7).
+    - **Single-source constants:** `PROHIBITED_PHRASES`/`FP_WHITELIST`/`THRESHOLD`/model-tiers carry "single source of truth" notes; fragile "README line N-M" cross-ref comments removed (C4/C5/C6).
+  - **README:** the Workflow engine is now declared the **PRIMARY execution path** (`Workflow({name:'full-audit', args})`), with hand-orchestration reframed as fallback (A1); the `args` JSON schema + a filled example are published next to Phase 0 (A2); a <1-screen quick-start added (A3); raw `curl`/`gh api` fetch is primary, WebFetch demoted to a verify-verbatim fallback (A4); `audit/` `.gitignore` reminder (A7); domain-constant prose now points at the JS constants by name (C4/C5/C6/C7).
+  - **Spec files:** `vue-tsc` un-pinned in `frontend.md`/`tools.md` (C3); `go.md` makes the `trivy fs --scanners license` fallback an explicit auto-run on `go-licenses` degradation (B2); `infra.md` trivy pin gains its inline "0.69.4–0.69.6 compromised" rationale (C12).
+
 ## [1.13.0] — 2026-07-12
 
 ### Added

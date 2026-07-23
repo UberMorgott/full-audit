@@ -1,6 +1,6 @@
 export const meta = {
   name: 'full-audit',
-  description: 'Recall-first multi-wave read-only code audit (full-audit v1.13.0 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
+  description: 'Recall-first multi-wave read-only code audit (full-audit v1.14.0 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
   phases: [
     { title: 'Validate', detail: 'strict args schema check; abort on failure' },
     { title: 'Wave 1', detail: 'cli-scanner per stack + universal + waste-scanner + web-researcher (FAST/RESEARCH)' },
@@ -18,22 +18,28 @@ export const meta = {
 // full-audit dynamic workflow — orchestration only. Audit DOMAIN LOGIC
 // (severity, confidence, thresholds, report format, integrity rules, FP
 // whitelist, Iron-Law verification gate, prohibited phrases) is preserved
-// verbatim from full-audit README v1.13.0. Recall-first additions
+// verbatim from full-audit README v1.14.0. Recall-first additions
 // (suspected_unconfirmed, coverage block, adversarial hunt, depth funnel)
 // are layered on top per the build spec — they EXTEND, never replace.
 // ===========================================================================
 
-// --- model tiers (README 412-416): FAST=haiku, RESEARCH=sonnet, DEEP=opus ---
-const FAST = 'haiku', RESEARCH = 'sonnet', DEEP = 'opus'
+// SINGLE SOURCE OF TRUTH for model tiers — README summarizes this in prose ("Model tiers");
+// update HERE, never duplicate values in README. Defaults are overridable per-run via
+// args.model_tiers (resolved after args parse; see the Validate phase). Declared `let` so
+// the per-run remap can reassign them.
+let FAST = 'haiku', RESEARCH = 'sonnet', DEEP = 'opus'
 
-// --- per-level confidence thresholds (README 894-900) ---
+// SINGLE SOURCE OF TRUTH for per-level confidence thresholds — README summarizes this in
+// prose ("Confidence Scoring"); update HERE, never duplicate values in README.
 const THRESHOLD = { 1: 75, 2: 60, 3: 40, S: 60 }
 
-// --- reproduction-signal score overrides (README 909-913) ---
+// SINGLE SOURCE OF TRUTH for reproduction-signal score overrides — README summarizes this
+// in prose ("Reproduction signal (verified mode / L3)"); update HERE, never duplicate in README.
 // REPRODUCED -> floor 90; NOT_REPRODUCED -> cap 25, severity -1; SKIPPED_RUNTIME -> unchanged
 const SEV_ORDER = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
 
-// --- false-positive whitelist (README 936-946): auto-filter score = 0 ---
+// SINGLE SOURCE OF TRUTH for the false-positive whitelist (auto-filter score = 0) — README
+// summarizes this in prose ("False Positive Whitelist"); update HERE, never duplicate in README.
 const FP_WHITELIST = [
   'pre-existing, unrelated to recent changes (diff mode)',
   'intentional patterns in CLAUDE.md or comments (// nolint: reason)',
@@ -45,19 +51,20 @@ const FP_WHITELIST = [
   'gofmt/format failures caused by CRLF vs LF line endings on Windows (core.autocrlf) — verify with a line-ending diff before reporting',
 ]
 
-// --- prohibited unverified phrases (README 1090-1100, 473) ---
+// SINGLE SOURCE OF TRUTH for prohibited unverified phrases — README summarizes this in prose
+// ("Prohibited phrases (without evidence)"); update HERE, never duplicate values in README.
 const PROHIBITED_PHRASES = [
   'appears to be', 'no issues found', 'should be fine', "i've verified",
   'everything looks good', 'tests are passing', 'all tests pass',
   'the fix works', 'looks good', 'seems fine', 'probably fine',
 ]
 
-// --- MCP capability -> role map (README 704-712). Prefix is discovered at
+// --- MCP capability -> role map (README summarizes this in prose, "MCP Servers"). Prefix is discovered at
 //     runtime (plugin vs direct install); the EXPECTED prefix + liveness come
 //     from args.tool_status.mcp. Sequential-Thinking prefix is fixed. ---
 const SEQ_THINKING = 'mcp__sequential-thinking__sequentialthinking'
 
-// --- per-stack pinned CLI catalog (tools.md v1.13.0). The cli-scanner agent
+// --- per-stack pinned CLI catalog (tools.md v1.14.0). The cli-scanner agent
 //     gets these EXACT commands; it still reads {spec_root}/{stack}.md for the
 //     level-scoped checklist. Pins must match versions.lock. ---
 const STACK_TOOLS = {
@@ -74,11 +81,11 @@ const STACK_TOOLS = {
       ['golangci-lint@v2.12.2', 'golangci-lint run ./... --timeout 5m 2>&1'],
       ['gosec@v2.26.1', 'gosec ./... 2>&1  # post-filter //nolint:gosec'],
       ['deadcode@v0.45.0', 'deadcode ./... 2>&1'],
-      ['go test -race', 'CGO_ENABLED=1 go test -race -timeout 120s ./... 2>&1'],
+      ['go test -race', 'go test -race -timeout 120s ./... 2>&1  # requires CGO — set CGO_ENABLED=1 FIRST (shell-neutral): PowerShell `$env:CGO_ENABLED=1` ; bash `CGO_ENABLED=1 <cmd>` (NO bare inline prefix — it is a parse error in PowerShell)'],
       ['gitleaks@v8.30.1', 'gitleaks detect --source . --redact --report-path "$TMP/gitleaks.json" 2>&1'],
       ['go mod verify', 'go mod verify; go mod tidy -diff 2>&1'],
     ],
-    L3: [['go-licenses@v2.0.1', 'go-licenses report ./... 2>&1']],
+    L3: [['go-licenses@v2.0.1', 'go-licenses report ./... 2>&1  # FALLBACK when this exits non-zero on non-Go assembly warnings (partial inventory): run `trivy fs --scanners license . 2>&1` to close the license-enumeration gap']],
   },
   python: {
     manifests: ['pyproject.toml', 'requirements.txt', 'setup.py', 'Pipfile'],
@@ -105,7 +112,7 @@ const STACK_TOOLS = {
       ['tests', '<pm> test 2>&1  # vitest/jest/angular'],
     ],
     L2: [
-      ['tsc', 'npx --yes vue-tsc@3.3.2 -b --noEmit 2>&1  # or: npx tsc --noEmit'],
+      ['tsc', "npx --yes vue-tsc --build --noEmit 2>&1  # UNPINNED (vue-tsc is tsc-coupled — a hard pin crashes on a newer TypeScript, e.g. ERR_PACKAGE_PATH_NOT_EXPORTED './lib/tsc'). PREFER the project's own type-check: frontend L1 already runs '<pm> run build'. Fallback: npx --yes tsc --noEmit 2>&1"],
       ['knip@6.14.2', 'npx --yes knip@6.14.2 --reporter compact --no-progress 2>&1'],
       ['gitleaks@8.30.1', 'gitleaks detect --source . --no-git --redact --report-format json --report-path "$TMP/gitleaks.json" 2>&1'],
     ],
@@ -183,7 +190,7 @@ const UNIVERSAL_CLI = [
   ['git hygiene', 'git ls-files | git check-attr -a --stdin; check large/suspicious files + .gitignore coverage'],
 ]
 
-// --- waste-scanner pinned step list (README 536-557, L2+) ---
+// --- waste-scanner pinned step list (README summarizes this in prose, waste/dead-code section; L2+) ---
 const WASTE_STEPS = [
   '0. Universal SCA: osv-scanner --recursive .   [v2.3.8]  (skip_if no_tool)',
   '1. Supply-chain integrity gate (npm view <pkg> time/maintainers/dependencies; npm audit)',
@@ -303,6 +310,17 @@ const VERIFY_SCHEMA = {
   },
 }
 
+// B8 — batched verify: one agent verifies N lower-severity (MEDIUM/LOW) security-class findings
+// and returns an ARRAY of verdicts (one per id), each item identical to VERIFY_SCHEMA. Keeps
+// per-finding CRITICAL/HIGH verification untouched; only the cheap tail rides a batched pass.
+const VERIFY_BATCH_SCHEMA = {
+  type: 'object',
+  required: ['verdicts'],
+  properties: {
+    verdicts: { type: 'array', items: { type: 'object', required: VERIFY_SCHEMA.required, properties: VERIFY_SCHEMA.properties } },
+  },
+}
+
 // ===========================================================================
 // ARGS VALIDATION — abort with a clear message; NO silent defaults.
 // ===========================================================================
@@ -341,6 +359,11 @@ function validateArgs(a) {
   // Shape-checked only when present (like prev_audit); absent -> every capability UNKNOWN (no silent default).
   if (a.stack_profile != null && (typeof a.stack_profile !== 'object' || Array.isArray(a.stack_profile)))
     err.push('args.stack_profile, when provided, must be an object (booleans: has_http_surface/has_auth/has_db/has_container/has_package_manager/has_runtime_config/is_runnable)')
+  // model_tiers — OPTIONAL per-run model remap ({fast?,research?,deep?} model-name strings).
+  // Shape-checked only when present (like prev_audit/stack_profile); absent -> the FAST/RESEARCH/
+  // DEEP defaults stand (no silent default forced).
+  if (a.model_tiers != null && (typeof a.model_tiers !== 'object' || Array.isArray(a.model_tiers)))
+    err.push('args.model_tiers, when provided, must be an object ({fast?,research?,deep?} model-name strings)')
   return err
 }
 
@@ -408,7 +431,7 @@ ${FP_WHITELIST.map((w, i) => `${i + 1}. ${w}`).join('\n')}
 Exception: never silently drop a *plausible real bug* on low confidence — emit it (confidence will demote it to suspected_unconfirmed, not delete it).`
 
 function header(a, role, mcpServers) {
-  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.13.0 engine). You share NO context with the orchestrator — everything you need is below.
+  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.14.0 engine). You share NO context with the orchestrator — everything you need is below.
 
 PROJECT ROOT: ${a.project_root}
 SPEC ROOT (full-audit checklist files): ${a.spec_root}
@@ -442,7 +465,7 @@ READ-ONLY (HARD LAW — violating this is a hard failure, abort the task):
 
 ARTIFACTS (single-folder discipline — everything deletable at once):
 - Every file you create — scratch tests, scanner reports (e.g. gitleaks --report-path), temp output, intermediate dumps — MUST be written UNDER ${a.artifact_dir} (create it if missing). Write NOTHING else into the repo working tree. Never commit, never modify source.
-- In any command below, \`$TMP\` / \`$ARTIFACT\` mean \`${a.artifact_dir}/tmp\`. NOTE: this is for tool/scanner temp output only — runnable repro/scratch programs go to \`${a.artifact_dir}/scratch\` (a DIFFERENT dir; see repro instructions), never \`$TMP\`.
+- Scanner temp output (e.g. gitleaks \`--report-path\`) goes under \`${a.artifact_dir}/tmp\` — the pinned COMMANDS below already carry that resolved absolute path (no bare \`$TMP\`, which is undefined in PowerShell). CREATE \`${a.artifact_dir}/tmp\` FIRST if it does not exist (\`mkdir -p\` / \`New-Item -ItemType Directory -Force\`) so report writes don't fail. If you author your own command, \`$TMP\` / \`$ARTIFACT\` mean \`${a.artifact_dir}/tmp\`. Runnable repro/scratch programs go to \`${a.artifact_dir}/scratch\` (a DIFFERENT dir; see repro instructions), never the tmp dir.
 - Before returning, also write your StructuredOutput JSON to \`${a.artifact_dir}/raw/${role}.json\` (intermediate visibility for background runs).
 
 TOOL ACCOUNTING — never silently skip a tool. Every tool you were expected to run that is MISSING / not-installed / errors out / times out / you skip for any reason MUST be recorded in your \`limitations\` array as { capability: <tool name>, status: <'not installed' | 'error' | 'timeout' | 'skipped: <reason>'>, impact: <what coverage is lost> }. Also record each tool you DID run as 'tool:exitcode' in \`tools_run\`. Account for EVERY expected tool — either it ran (in tools_run) or it has a limitation entry.
@@ -467,6 +490,16 @@ function chunk(arr, n) {
   const out = []
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
   return out
+}
+// C2 — substitute the literal $TMP / $ARTIFACT tokens in emitted pinned commands with the
+// real per-run tmp dir. PowerShell has NO $TMP -> a bare "$TMP/x.json" expands to "/x.json"
+// (filesystem root). Root fix: resolve the token at prompt-build time to <artifact_dir>/tmp,
+// using the artifact_dir's own path separator (Windows backslash / POSIX slash). Applied once
+// at each injection site (cli-scanner / universal / waste), so every emitted command is safe.
+function subTmp(a, str) {
+  const sep = String(a.artifact_dir || '').includes('\\') ? '\\' : '/'
+  const tmp = String(a.artifact_dir || '').replace(/[\\/]+$/, '') + sep + 'tmp'
+  return String(str).replace(/\$TMP|\$ARTIFACT/g, tmp)
 }
 
 // P1-1/P1-3 — canonicalize a free-string CWE to the strict form CWE-<n> (accepts
@@ -1186,7 +1219,7 @@ function reconcileVulnRollup(findings) {
 function cliScannerPrompt(a, stack, pkg) {
   const t = STACK_TOOLS[stack] || { L1: [], L2: [], L3: [] }
   const lvls = a.level === 1 ? ['L1'] : a.level === 3 ? ['L1', 'L2', 'L3'] : ['L1', 'L2']
-  const cmds = lvls.flatMap(L => (t[L] || []).map(([name, cmd]) => `  [${name}] ${cmd}`))
+  const cmds = lvls.flatMap(L => (t[L] || []).map(([name, cmd]) => `  [${name}] ${subTmp(a, cmd)}`))
   const status = a.tool_status.cli || {}
   return `${header(a, `cli-scanner-${stack}`, [])}
 
@@ -1205,7 +1238,7 @@ function universalCliPrompt(a) {
   return `${header(a, 'cli-scanner-universal', [])}
 
 TASK: universal git-hygiene + SCA scan (L2+). Run from ${a.project_root}:
-${UNIVERSAL_CLI.map(([n, c]) => `  [${n}] ${c}`).join('\n')}
+${UNIVERSAL_CLI.map(([n, c]) => `  [${n}] ${subTmp(a, c)}`).join('\n')}
 Check: committed large/binary files, suspicious files (keys, dumps), .gitignore coverage gaps, lockfile-wide CVEs (osv-scanner), committed secrets (gitleaks --redact). Capture exit codes first. detection_method:"tool".`
 }
 
@@ -1213,7 +1246,7 @@ function wasteScannerPrompt(a) {
   return `${header(a, 'waste-scanner', [])}
 
 TASK: cross-ref waste detection (L2+), ALL tools PINNED (no @latest). Run from ${a.project_root} in order; skip a step when its precondition is absent:
-${WASTE_STEPS.map(s => `  ${s}`).join('\n')}
+${WASTE_STEPS.map(s => `  ${subTmp(a, s)}`).join('\n')}
 TOOL ACCOUNTING (waste steps): every step you SKIP (skip_if no_tool, precondition absent, tool missing, or it errors out) MUST record a limitation { capability:"<that step's tool>", status:"skipped: <reason>" | "not installed" | "error", impact:"<what waste/dead-code coverage is lost>" }. Skipping a waste step WITHOUT a matching limitation entry is NOT allowed — every step above either ran (in tools_run) or has a limitation.
 SCOPE (RB2 — stay in scope): the audit scope is ${JSON.stringify(a.scope.paths)}. For waste/dead-code steps that accept includes/targets (knip — use a scoped/include config; vulture <paths>; purgecss/i18n on scope dirs; strictness checks on scope files), constrain them to ${JSON.stringify(a.scope.paths)} / the package root, and FILTER emitted findings to files under those paths before reporting — drop out-of-scope dead-code/unused-dep hits (e.g. web/, web-master/ when scope is internal/directory). EXCEPTION: the intentionally-global scanners (osv-scanner SCA, gitleaks, trivy, git hygiene) stay REPO-WIDE — do NOT narrow SCA/secret scans.
 Report dead code, dead CSS/i18n/env, unused deps, weak tsconfig/eslint strictness as MEDIUM/LOW findings with detection_method:"tool" and repro_command. Step 1 supply-chain red flags (typosquat, sudden maintainer change, install scripts) -> HIGH.`
@@ -1262,7 +1295,7 @@ function scratchSetupPrompt(a) {
 
 TASK (FAST, scratch isolation setup): PRE-CREATE the isolated scratch workspace so later repro/adversarial agents can drop runnable source there WITHOUT poisoning the audited project's module/package graph. You ONLY create files UNDER \`${a.artifact_dir}/scratch\` — create NOTHING anywhere in the project tree (\`${a.project_root}\` outside \`${a.artifact_dir}\`).
 STEPS:
-1. Create the directory \`${a.artifact_dir}/scratch\` (mkdir -p / New-Item -ItemType Directory -Force).
+1. Create the directories \`${a.artifact_dir}/scratch\` AND \`${a.artifact_dir}/tmp\` (mkdir -p / New-Item -ItemType Directory -Force). The \`tmp\` dir is where scanners write report files (gitleaks --report-path etc.); pre-creating it here means those writes don't fail. Include BOTH paths in \`created\`.
 ${isGo ? `2. Create \`${a.artifact_dir}/scratch/go.mod\` with exactly this content (module name \`audit_scratch\`) — this makes scratch a NESTED Go module, excluded from the parent project's \`go list ./...\`, which prevents \`main redeclared\` / DuplicateDecl when scratch \`package main\` files are added:
 -----
 module audit_scratch
@@ -1350,6 +1383,23 @@ EVIDENCE DISCIPLINE: when you write \`evidence\` / \`verify_evidence\`, referenc
 Return via schema.`
 }
 
+// B8 — BATCHED Iron-Law gate for the lower-severity (MEDIUM/LOW) security-class tail. Same rigor
+// as the per-finding gate (fresh evidence per finding, no rubber-stamping, uniform rationale
+// verdicts), but one agent handles a chunk and returns one verdict per id. CRITICAL/HIGH never
+// come here — they keep the per-finding verifyPrompt.
+function verifyBatchPrompt(a, findings) {
+  return `${header(a, 'verify-gate-batch', [])}
+
+TASK (Iron-Law gate — BATCHED, ${findings.length} lower-severity MEDIUM/LOW security-class findings): re-run the detection FRESHLY for EACH finding below and decide admission PER finding. No cached results. Same rigor as a single-finding gate — fresh evidence for EACH, no rubber-stamping. Return exactly one verdict per id.
+FOR EACH FINDING: 1. IDENTIFY the command that proves it. 2. RUN it freshly from ${a.project_root}, capture exit_code + full output. 3. admitted=true ONLY if the fresh output confirms the claim AND its load-bearing rationale. If it cannot be run (runtime-only, OR no runnable entrypoint / needs an external host): admitted=true when a CODE READ structurally verifies the claim (note STATIC_CONFIRMED + the verifying grep/read in evidence); if confirming genuinely needs the runtime, admitted=true but note SKIPPED_RUNTIME in evidence.
+RATIONALE GATE (per finding — do NOT rubber-stamp a surface match): a literal-pattern match alone is NOT confirmation. If fresh evidence DISPROVES a finding's load-bearing claim/impact (rationale technically false, classic case \`%w\` mid-format-string still wraps so \`errors.Is/As\` work and there is NO real defect), set that finding's admitted=false AND disproves_rationale=true even if the cited literal still appears. Apply UNIFORMLY: identical idiom/title on different lines MUST get the SAME verdict (no admitting some and demoting others of the same non-defect).
+LINE CORRECTION (per finding): if fresh evidence shows a finding's cited \`line\` is WRONG (e.g. an SCA/manifest dependency or \`go <version>\` directive declared on a different 1-based line), set that finding's \`corrected_line\` to the verified 1-based line; omit when the cited line is correct.
+EVIDENCE DISCIPLINE (per finding): reference ONLY that finding's own advisory id; a sibling advisory of the same package is "separate advisory <id>, also fixed by the same bump", never cited as this finding's identity.
+FINDINGS TO VERIFY (return one verdict object per id):
+${findings.map(f => `- id=${f.id} [${f.severity}] ${f.file}:${f.line} — ${f.title}\n  detail: ${String(f.detail || '').slice(0, 240)}\n  repro_command: ${f.repro_command || '(derive the command that would prove or refute this)'}`).join('\n')}
+Return via schema: { verdicts: [ one object per id, each with id, admitted, command, exit_code, evidence, and corrected_line? / disproves_rationale? when applicable ] }.`
+}
+
 function guardPrompt(a) {
   const hasBaseline = typeof a.git_baseline === 'string'
   return `${header(a, 'read-only-guard', [])}
@@ -1397,6 +1447,14 @@ if (verrs.length) {
   throw new Error('full-audit: invalid args — aborting (no silent defaults):\n- ' + verrs.join('\n- '))
 }
 const a = _args
+// A5/C7 — per-run model-tier remap. `args` arrives as a JSON string at module eval, so the
+// remap MUST run here (after the parse), not at the const decl. Absent -> the haiku/sonnet/opus
+// defaults above stand; a partial object overrides only the tiers it names.
+if (a.model_tiers && typeof a.model_tiers === 'object' && !Array.isArray(a.model_tiers)) {
+  FAST = a.model_tiers.fast || FAST
+  RESEARCH = a.model_tiers.research || RESEARCH
+  DEEP = a.model_tiers.deep || DEEP
+}
 // Single artifact folder: all subagent junk (scratch tests, scanner reports, raw
 // dumps) lands here so it can be deleted in one shot. Phase 0 may override via
 // args.artifact_dir; default = <project_root>/audit (platform separator).
@@ -1511,7 +1569,7 @@ if (runRepro) {
   phase('Wave 2.5')
   const highSev = rawFindings.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')
   if (highSev.length) {
-    const batches = chunk(highSev, 10) // 1 repro-agent per ~10 high-sev findings (README 593)
+    const batches = chunk(highSev, 10) // 1 repro-agent per ~10 high-sev findings (README "Reproduction signal" section)
     const reproRes = await parallel(batches.map((b, i) => () =>
       agent(reproPrompt(a, b), { label: `repro:${i + 1}`, phase: 'Wave 2.5', model: DEEP, schema: REPRO_SCHEMA })))
     for (const r of reproRes) if (r && Array.isArray(r.results)) for (const res of r.results) {
@@ -1692,10 +1750,20 @@ if (rawFindings.length === 0) {
 phase('Verify')
 const mustVerify = confirmed.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH' || isSecurityClass(f))
 if (mustVerify.length) {
-  const verifyRes = await parallel(mustVerify.map(f => () =>
-    agent(verifyPrompt(a, f), { label: `verify:${f.id}`, phase: 'Verify', model: DEEP, schema: VERIFY_SCHEMA })))
+  // B8 — keep PER-FINDING verify for CRITICAL/HIGH (unchanged rigor); BATCH the remaining
+  // MEDIUM/LOW security-class findings (N per agent) so the dominant verify cost stops
+  // scaling one-agent-per-finding with noise. Both paths normalize to { verdicts: [...] }
+  // so the merge loop below (vById) is untouched.
+  const perFinding = mustVerify.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')
+  const batched = mustVerify.filter(f => f.severity !== 'CRITICAL' && f.severity !== 'HIGH')
+  const verifyThunks = perFinding.map(f => () =>
+    agent(verifyPrompt(a, f), { label: `verify:${f.id}`, phase: 'Verify', model: DEEP, schema: VERIFY_SCHEMA })
+      .then(v => ({ verdicts: v ? [v] : [] })))
+  for (const [i, b] of chunk(batched, 8).entries())
+    verifyThunks.push(() => agent(verifyBatchPrompt(a, b), { label: `verify-batch:${i + 1}`, phase: 'Verify', model: DEEP, schema: VERIFY_BATCH_SCHEMA }))
+  const verifyRes = await parallel(verifyThunks)
   const vById = {}
-  for (const v of verifyRes) if (v) vById[v.id] = v
+  for (const r of verifyRes) if (r && Array.isArray(r.verdicts)) for (const v of r.verdicts) if (v && v.id) vById[v.id] = v
   const stillConfirmed = []
   for (const f of confirmed) {
     const v = vById[f.id]
@@ -1753,7 +1821,7 @@ const systemicPatterns = crossReferencePass(confirmed, { cross_file: a.systemic_
   for (const f of [...confirmed, ...suspected]) fillIdPair(f, allAlias)
 }
 
-// strip prohibited unverified phrases programmatically (README 1090-1100)
+// strip prohibited unverified phrases programmatically (single-sourced in PROHIBITED_PHRASES above)
 const stripPhrases = (txt) => {
   if (!txt) return txt
   let out = txt
@@ -1878,8 +1946,25 @@ const limitationsRanFiltered = limitations.filter(l => {
   }
   return true
 })
-const limSeen = new Set()
-const limitationsOut = limitationsRanFiltered.filter(l => { const k = canonLimKey(l.capability); if (limSeen.has(k)) return false; limSeen.add(k); return true })
+// B7 — dedupe audit_limitations by canonical capability, MERGING duplicate rows instead of
+// dropping the later one's detail: keep the first row's capability/status, and UNION distinct
+// impacts (richest first) so no coverage note is silently lost. Genuinely distinct capabilities
+// (different tools -> different canon keys) each keep their own row. Recall-safe: limitations are
+// coverage notes, never findings.
+const limByKey = new Map()
+const limOrder = []
+for (const l of limitationsRanFiltered) {
+  const k = canonLimKey(l.capability)
+  const prev = limByKey.get(k)
+  if (!prev) { limByKey.set(k, { ...l }); limOrder.push(k); continue }
+  const impacts = new Set(String(prev.impact || '').split(' | ').map(s => s.trim()).filter(Boolean))
+  const add = String(l.impact || '').trim()
+  if (add && !impacts.has(add)) {
+    impacts.add(add)
+    prev.impact = [...impacts].sort((x, y) => y.length - x.length).join(' | ')
+  }
+}
+const limitationsOut = limOrder.map(k => limByKey.get(k))
 
 const cleanFinding = (f) => {
   ensureAdvisoryId(f)   // FIX-3 backstop: fill text-extracted advisory_id on EVERY output finding (incl. suspected + secondary govulncheck:0 path)
@@ -1909,17 +1994,35 @@ const cleanFinding = (f) => {
   }
 }
 
-// resid #1: an MCP server not exercised at the CURRENT level (e.g. Playwright at
-// L2, where the ui-reviewer is L3-only) is DELIBERATELY not probed and is NOT a
-// limitation — its absence from audit_limitations must not read as a silent skip.
-// Record those servers here so the gap is explicit (no coverage lost). Plain note
-// on the coverage object — NOT a schema/StructuredOutput change.
+// B6 / resid #1: reconcile mcp_used vs mcp_not_used_at_level so mcp_used reflects servers
+// ACTUALLY exercised (some agent's tools_run referenced them), not merely live. toolsRan holds
+// lowercased tool-name segments (e.g. "serena", "context7", "sequential..."). A live server never
+// exercised is surfaced in mcp_not_used_at_level, not silently counted as used — this fixes the
+// self-contradiction where mcp_used listed servers the limitations said were never exercised.
+// Playwright at a non-L3 level is a DELIBERATE non-probe (ui-reviewer is L3-only), noted distinctly
+// so its absence from audit_limitations doesn't read as a skipped check. Plain notes on the
+// coverage object — NOT a schema/StructuredOutput change.
+const mcpUsed = []
 const mcpNotUsedAtLevel = []
 {
   const mcp = (a.tool_status && a.tool_status.mcp) || {}
+  const liveMcp = Object.keys(mcp).filter(k => mcp[k] && mcp[k].live === true)
+  const norm = (s) => String(s).toLowerCase().replace(/[_-]/g, '')   // sequential_thinking -> sequentialthinking
+  const exercised = (key) => {
+    const base = norm(key)
+    for (const t of toolsRan) { const nt = norm(t); if (nt && (nt.includes(base) || base.includes(nt))) return true }
+    return false
+  }
   const playwrightLive = mcp.playwright && mcp.playwright.live
-  // ui-reviewer (the sole Playwright consumer) runs only at L3 with a frontend.
-  if (!isL3 && playwrightLive === false)
+  for (const k of liveMcp) {
+    if (exercised(k)) { mcpUsed.push(k); continue }
+    if (k === 'playwright' && !isL3)
+      mcpNotUsedAtLevel.push('playwright: not used at L' + L + ' (ui-reviewer is L3-only) — deliberately not probed/flagged, no coverage lost')
+    else
+      mcpNotUsedAtLevel.push(k + ': live but not exercised this run — no ' + k + ' operations recorded in any agent tools_run')
+  }
+  // Playwright DOWN at a non-L3 level is a deliberate non-probe, not a silent skip (even when Phase 0 marked it down).
+  if (!isL3 && playwrightLive === false && !mcpNotUsedAtLevel.some(s => s.startsWith('playwright:')))
     mcpNotUsedAtLevel.push('playwright: not used at L' + L + ' (ui-reviewer is L3-only) — deliberately not probed/flagged, no coverage lost')
 }
 
@@ -1934,13 +2037,12 @@ const wavesRun = ['Wave 1']
 if (L !== 1) wavesRun.push('Wave 2')
 if (runRepro) wavesRun.push('Wave 2.5')
 if (isL3) wavesRun.push('Wave 3')
-const mcpStatus = (a.tool_status && a.tool_status.mcp) || {}
 const methodology = {
   waves_run: wavesRun,
   tools_ran_ok: [...toolsRanOk],
   tools_incomplete: limitationsOut.filter(l => NEVER_SUPPRESS_STATUS.test(String(l.status || ''))).map(l => l.capability),
   threshold: THRESHOLD[L],
-  mcp_used: Object.keys(mcpStatus).filter(k => mcpStatus[k] && mcpStatus[k].live === true),
+  mcp_used: mcpUsed,   // B6: servers actually exercised (tools_run), not merely live
 }
 
 // P2-1 — TITLE-ONLY hedging lint (PG-4): titles must be declarative. Flag claim-hedging

@@ -110,7 +110,7 @@ Via `npx` — no global install needed (pinned):
 - `purgecss` — dead CSS. `npx --yes purgecss@8.0.0 --css src/app.css --content 'src/**/*.svelte' --rejected` (dry-run, shows unused selectors; `--output /dev/null` is Unix-only — omit on Windows or use a temp dir)
 - `i18n-unused` — dead i18n keys. Config: `.i18n-unused.yml`. `npx --yes i18n-unused@0.19.0 display-unused` (i18next-only projects: prefer actively-maintained `i18next-cli@1.58.1`, not framework-agnostic)
 - `dotenv-check` — dead env vars (unmaintained). Replace with `dotenv-linter@3.3.0` (Rust): `cargo install dotenv-linter --version 3.3.0`, or pinned GitHub release binary + `sha256sum -c`
-- `vue-tsc` — Vue TypeScript check. `npm install --save-dev --save-exact vue-tsc@3.3.2 typescript@~5.8`
+- `vue-tsc` — Vue TypeScript check. Prefer the project's own `npm run build` / `vue-tsc --build`; else unpinned `npx --yes vue-tsc -b --noEmit` (fallback `npx --yes tsc --noEmit`). Do NOT hard-pin vue-tsc to one TS minor — it's tsc-coupled, so a stale pin silently drops type-check coverage on modern-TS (TS6) projects.
 - `license-checker` — license compliance (unmaintained). Replace with drop-in fork: `npx --yes license-checker-evergreen@6.3.1 --failOn "GPL-2.0;GPL-3.0;LGPL-2.1;LGPL-3.0;AGPL-3.0"`
 
 Optional global / dev (pinned, exact):
