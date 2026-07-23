@@ -373,21 +373,16 @@ def _norm(v):
 # A version-looking token: digits with at least one dot (2.10.0, 10.18.0.124379, 0.45.0).
 _VER_TOKEN = r"\d+(?:\.\d+){1,3}"
 # Connectors that bind a version DIRECTLY to the preceding tool token in the docs:
-#   name==2.10.0  name@6.14.2  name@v8.30.1  --version=0.69.3  :1.2.3  name 0.45.0
-_PIN_CONNECTOR = r"(?:==|@v?|--version=v?|:v?|=v?|\s+v?)"
+#   name==2.10.0  name@6.14.2  name@v8.30.1  name --version=0.69.3  :1.2.3  name 0.45.0
+# NOTE: --version may sit after whitespace ("choco install trivy --version=0.69.3"),
+# so allow optional space before it — else the real pin is missed and a nearby
+# "vX is compromised" prose note gets misread as the pin (false drift warning).
+_PIN_CONNECTOR = r"(?:==|@v?|\s*--version[= ]v?|:v?|=v?|\s+v?)"
 
 # Go-module install paths (golang.org/x/tools, honnef.co/go/tools) share generic
 # basenames like "tools"/"cmd" that collide across tools. We never use a basename
 # that is too generic to identify a single tool.
 _GENERIC_BASENAMES = {"tools", "cmd", "go", "v2", "v3", "v8"}
-
-
-def _doc_contains_version(text, version):
-    """Bare normalized-substring match, tolerant of a leading v on either side."""
-    nv = _norm(version)
-    # Match the exact version as a token (not a prefix of a longer number).
-    pat = re.compile(r"(?<![\d.])v?" + re.escape(nv) + r"(?![\d])")
-    return bool(pat.search(text))
 
 
 def _name_tokens(tool):
@@ -482,21 +477,28 @@ def check_lock_drift(doc_lines, findings):
                     )
                 continue
 
-            text = "\n".join(lines)
-            if _doc_contains_version(text, version):
-                continue  # correct pin present
-
-            # No correct pin. Is there a CONFLICTING pin of THIS tool (= real drift)?
-            # A conflict requires the divergent version to be bound DIRECTLY to one of
-            # this tool's identifying tokens (name@X / name==X / name:X / name X), so a
-            # different tool's version on the same line cannot be misattributed.
+            # Per-line scan bound to THIS tool's tokens (NOT a whole-file substring:
+            # when two tools share a version in one doc, the other tool's matching
+            # version must not satisfy this tool's pin and mask real drift). A pin is
+            # only counted if the version is bound DIRECTLY to one of this tool's
+            # identifying tokens (name@X / name==X / name:X / name X). A correct pin
+            # anywhere -> PASS; else the first conflicting pin -> drift.
+            correct_pin = False
             conflict = None
             conflict_line = None
             for lineno, raw in enumerate(lines, 1):
                 hit = _find_bound_pin(raw, toks, nv)
-                if hit and hit[1]:  # bound version that differs from the lock
-                    conflict, conflict_line = hit[0], lineno
+                if not hit:
+                    continue
+                if hit[1]:  # bound version that differs from the lock
+                    if conflict is None:
+                        conflict, conflict_line = hit[0], lineno
+                else:       # bound version matching the lock -> correct pin present
+                    correct_pin = True
                     break
+
+            if correct_pin:
+                continue  # correct pin present, bound to this tool
 
             if conflict is not None:
                 msg = (f"{name}: {fname}:{conflict_line} pins '{conflict}' but "
