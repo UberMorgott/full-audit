@@ -2,6 +2,15 @@
 
 > Each entry describes the state **at that version**. Earlier entries are historical — behavior may have been superseded by a later release. Always read the latest version's docs for current behavior.
 
+## [1.14.1] — 2026-07-23
+
+### Fixed
+- **Adversarial self-audit remediation** — 4 defects found by running full-audit's own audit methodology against its source (7 multi-lens finders → 2 independent skeptics per finding; 3 further candidates were adversarially refuted and dropped).
+  - **[HIGH] `scripts/lint_docs.py` — `infra.md` was omitted from `DOC_FILES`**, so the release-gate linter silently skipped ALL pin-drift / cross-ref / fence checks for it despite `versions.lock` pinning 8 tools there (incl. the security-held `trivy 0.69.3`). A stale pin on `infra.md` would have passed with 0 errors. Added `infra.md` to `DOC_FILES` (now lints 12 docs) + a guard that WARNS when a lock-referenced on-disk file is absent from `DOC_FILES`.
+  - **[MEDIUM] `full-audit.js` stdlib vuln roll-up** set headline severity to the max over ALL advisories including UNREACHABLE ones, inflating the finding severity and the summary CRITICAL/HIGH tally for inactive vulns (contradicting the engine's own "unreachable = not tallied" invariant). Severity is now the max over REACHABLE members only, falling back to the reachable-preferred headline.
+  - **[MEDIUM] `full-audit.js` L1+`verified` discarded Wave 2.5 reproduction** — the DEEP reproduction wave ran but the `L===1` scoring branch never consumed `_repro`, so a `NOT_REPRODUCED` finding stayed a confirmed HIGH and the wave was wasted. The L1 branch now applies the reproduction tag + `NOT_REPRODUCED` severity demote (no confidence scoring exists at L1).
+  - **[LOW] `full-audit.js` purgecss waste-step** used a bare `--output $TMP`; on an artifact path containing a space it split under both shells. Quoted to `--output "$TMP"` (matching every sibling `$TMP` pin).
+
 ## [1.14.0] — 2026-07-23
 
 ### Fixed

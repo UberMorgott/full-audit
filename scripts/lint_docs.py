@@ -33,7 +33,8 @@ LOCK_PATH = os.path.join(REPO_ROOT, "versions.lock")
 # The skill docs this linter is responsible for.
 DOC_FILES = [
     "README.md", "universal.md", "tools.md", "api-audit.md", "go.md",
-    "frontend.md", "python.md", "rust.md", "java.md", "csharp.md", "CHANGELOG.md",
+    "frontend.md", "python.md", "rust.md", "java.md", "csharp.md",
+    "infra.md", "CHANGELOG.md",
 ]
 
 # Ecosystems whose pin formatting is loose enough that a drift "miss" is only a WARNING.
@@ -472,6 +473,12 @@ def check_lock_drift(doc_lines, findings):
                         "lock-drift",
                         f"{name}: versions.lock lists files:[{fname}] but that file "
                         f"does not exist",
+                    )
+                else:
+                    findings.warning(
+                        "lock-drift",
+                        f"{name}: versions.lock lists files:[{fname}] which exists on "
+                        f"disk but is NOT in DOC_FILES — pin drift there is unchecked",
                     )
                 continue
 

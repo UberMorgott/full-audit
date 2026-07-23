@@ -1,6 +1,6 @@
 export const meta = {
   name: 'full-audit',
-  description: 'Recall-first multi-wave read-only code audit (full-audit v1.14.0 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
+  description: 'Recall-first multi-wave read-only code audit (full-audit v1.14.1 engine). Consumes Phase-0 `args`, runs Wave 1 (CLI+research) -> Wave 2 (review) -> Wave 2.5 (reproduction) -> Wave 3 (deep+adversarial, L3) -> scoring -> fresh-evidence verification gate, and returns ONE structured findings object. Phase 0 and the fix phase stay in the conversational session.',
   phases: [
     { title: 'Validate', detail: 'strict args schema check; abort on failure' },
     { title: 'Wave 1', detail: 'cli-scanner per stack + universal + waste-scanner + web-researcher (FAST/RESEARCH)' },
@@ -18,7 +18,7 @@ export const meta = {
 // full-audit dynamic workflow — orchestration only. Audit DOMAIN LOGIC
 // (severity, confidence, thresholds, report format, integrity rules, FP
 // whitelist, Iron-Law verification gate, prohibited phrases) is preserved
-// verbatim from full-audit README v1.14.0. Recall-first additions
+// verbatim from full-audit README v1.14.1. Recall-first additions
 // (suspected_unconfirmed, coverage block, adversarial hunt, depth funnel)
 // are layered on top per the build spec — they EXTEND, never replace.
 // ===========================================================================
@@ -64,7 +64,7 @@ const PROHIBITED_PHRASES = [
 //     from args.tool_status.mcp. Sequential-Thinking prefix is fixed. ---
 const SEQ_THINKING = 'mcp__sequential-thinking__sequentialthinking'
 
-// --- per-stack pinned CLI catalog (tools.md v1.14.0). The cli-scanner agent
+// --- per-stack pinned CLI catalog (tools.md v1.14.1). The cli-scanner agent
 //     gets these EXACT commands; it still reads {spec_root}/{stack}.md for the
 //     level-scoped checklist. Pins must match versions.lock. ---
 const STACK_TOOLS = {
@@ -195,7 +195,7 @@ const WASTE_STEPS = [
   '0. Universal SCA: osv-scanner --recursive .   [v2.3.8]  (skip_if no_tool)',
   '1. Supply-chain integrity gate (npm view <pkg> time/maintainers/dependencies; npm audit)',
   '2. Dead code: npx --yes knip@6.14.2 --reporter compact --no-progress',
-  '3. Dead CSS: npx --yes purgecss@8.0.0 --rejected --output $TMP  (skip_if tailwind>=4)',
+  '3. Dead CSS: npx --yes purgecss@8.0.0 --rejected --output "$TMP"  (skip_if tailwind>=4)',
   '4. Dead i18n: npx --yes i18n-unused@0.19.0 display-unused  (if locale files)',
   '5. Dead env vars: dotenv-linter  (fallback npx --yes dotenv-check@1.0.4; if .env)',
   '6. Dep 2nd opinion: knip@6.14.2 --dependencies / cargo udeps / pip-extra-reqs',
@@ -431,7 +431,7 @@ ${FP_WHITELIST.map((w, i) => `${i + 1}. ${w}`).join('\n')}
 Exception: never silently drop a *plausible real bug* on low confidence — emit it (confidence will demote it to suspected_unconfirmed, not delete it).`
 
 function header(a, role, mcpServers) {
-  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.14.0 engine). You share NO context with the orchestrator — everything you need is below.
+  return `You are \`${role}\`, a subagent of the full-audit workflow (v1.14.1 engine). You share NO context with the orchestrator — everything you need is below.
 
 PROJECT ROOT: ${a.project_root}
 SPEC ROOT (full-audit checklist files): ${a.spec_root}
@@ -1201,7 +1201,9 @@ function reconcileVulnRollup(findings) {
     if (headlineAdv) {
       head.advisory_id = /^GO-/.test(headlineAdv.id) ? headlineAdv.id : (head.advisory_id || headlineAdv.id)
       head.cve = /^CVE-/.test(headlineAdv.id) ? headlineAdv.id : undefined   // only a REAL CVE in cve; else leave to advisory_id
-      head.severity = advisories.reduce((m, adv) => SEV_ORDER.indexOf(adv.severity) > SEV_ORDER.indexOf(m) ? adv.severity : m, head.severity)
+      // severity = highest-severity REACHABLE advisory (unreachable members are not active vulns);
+      // seed with headlineAdv.severity so a rollup with no reachable member falls back to it.
+      head.severity = advisories.reduce((m, adv) => adv.reachable && SEV_ORDER.indexOf(adv.severity) > SEV_ORDER.indexOf(m) ? adv.severity : m, headlineAdv.severity)
     }
     rollupLog = ` | stdlib roll-up: ${stdlib.length} -> 1 (headline ${headlineAdv ? headlineAdv.id : 'n/a'}, ${advisories.length} advisories)`
   }
@@ -1700,7 +1702,20 @@ if (rawFindings.length === 0) {
   log('Scoring skipped: 0 raw findings')
 } else if (L === 1) {
   // L1 has NO scoring agent: reviewers self-apply >=75 inline. Treat tool findings as confirmed.
-  confirmed = rawFindings
+  // Wave 2.5 reproduction still runs at L1 when verified=true — consume its verdict here
+  // (tag + severity demote only; no confidence scoring at L1). Mirror the else-branch tags.
+  for (const f of rawFindings) {
+    if (f._repro) {
+      const r = f._repro.result
+      if (r === 'REPRODUCED') f.repro_tag = 'reproduced'
+      else if (r === 'STATIC_CONFIRMED') f.repro_tag = 'static-verified'
+      else if (r === 'NOT_REPRODUCED') { f.severity = demoteSeverity(f.severity); f.repro_tag = 'unverified' }
+      else if (r === 'SKIPPED_RUNTIME') f.repro_tag = 'unverified: requires runtime'
+      f.reproduced = r === 'STATIC_CONFIRMED' ? 'static-verified' : r.toLowerCase()
+      delete f._repro
+    }
+    confirmed.push(f)
+  }
   log('L1: no scoring agent; reviewers self-applied >=75 gate inline')
 } else {
   const batches = chunk(rawFindings, 20)

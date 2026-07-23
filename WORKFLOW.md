@@ -9,8 +9,8 @@ appear to disagree, the **code wins**; such points are flagged inline as **[disc
 ## 1. What this is
 
 - A reusable Claude Code **Dynamic Workflow** living at `.claude/workflows/full-audit.js`.
-- It runs the heavy, **read-only** audit waves + scoring of the full-audit system (**v1.14.0 engine**) and returns **ONE structured findings object**.
-- It is **NOT** the audit logic rewritten. The following are preserved **verbatim from the full-audit README v1.14.0**:
+- It runs the heavy, **read-only** audit waves + scoring of the full-audit system (**v1.14.1 engine**) and returns **ONE structured findings object**.
+- It is **NOT** the audit logic rewritten. The following are preserved **verbatim from the full-audit README v1.14.1**:
   - severity scale and confidence scale
   - report format / integrity rules
   - false-positive (FP) whitelist
